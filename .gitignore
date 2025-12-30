@@ -114,3 +114,11 @@ download.log
 *.tmp
 *.temp
 
+# Bible API data - exclude all translations except the ones used by the app
+# Only keep: bsb (Berean Standard Bible), cuv (Chinese Union Version), cu1 (if exists)
+bible_api/*
+!bible_api/bsb/
+!bible_api/cuv/
+!bible_api/cu1/
+download.log
+
