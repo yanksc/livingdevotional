@@ -1,0 +1,5 @@
+# Xcode 16 File System Sync Exclusions
+# Add these patterns to exclude BibleData from automatic synchronization
+
+Resources/BibleData/**
+**/BibleData/**
