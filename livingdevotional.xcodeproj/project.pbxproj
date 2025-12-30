@@ -12,7 +12,7 @@
 
 /* Begin PBXFileReference section */
 		62CB97162F0267DE00A2C3D1 /* livingdevotional.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = livingdevotional.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = BibleData.bundle; path = ../BibleData.bundle; sourceTree = SOURCE_ROOT; };
+		62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = BibleData.bundle; path = livingdevotional/Resources/BibleData.bundle; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
