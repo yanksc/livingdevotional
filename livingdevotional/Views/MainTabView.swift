@@ -14,6 +14,7 @@ struct MainTabView: View {
             // Home Tab (placeholder for future)
             HomeView()
                 .environmentObject(router)
+                .environmentObject(bibleViewModel)
                 .tabItem {
                     Label("Home", systemImage: "house.fill")
                 }
@@ -34,6 +35,13 @@ struct MainTabView: View {
                 .tag(2)
         }
         .tint(AppTheme.accentColor)
+        .onChange(of: router.currentRoute) { oldRoute, newRoute in
+            // Handle navigation to reading view
+            if case .reading(let book, let chapter) = newRoute {
+                bibleViewModel.selectBookAndChapter(book, chapter: chapter)
+                router.selectedTab = 1 // Switch to Bible tab
+            }
+        }
     }
     
     private var currentTab: Int {
@@ -57,54 +65,37 @@ struct MainTabView: View {
 
 struct BibleTabView: View {
     @ObservedObject var viewModel: BibleViewModel
-    @State private var navigationPath = NavigationPath()
+    @State private var showBookSelector = false
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            BookListView(viewModel: viewModel)
-                .navigationDestination(for: NavigationDestination.self) { destination in
-                    switch destination {
-                    case .chapterGrid(let book):
-                        ChapterGridView(book: book, viewModel: viewModel)
-                    case .reading(let book, let chapter):
-                        ReadingView(book: book, chapter: chapter, bibleViewModel: viewModel)
+        NavigationStack {
+            ZStack {
+                // Show ReadingView if book and chapter are selected
+                if let book = viewModel.selectedBook, let chapter = viewModel.selectedChapter {
+                    ReadingView(book: book, chapter: chapter, bibleViewModel: viewModel)
+                } else {
+                    // Placeholder when no selection
+                    VStack(spacing: 20) {
+                        Image(systemName: "book.closed.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                        Text("Select a book to begin reading")
+                            .font(.headline)
+                            .foregroundColor(AppTheme.secondaryText)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-        }
-        .onChange(of: viewModel.selectedBook) { oldValue, newValue in
-            // Update navigation path when book selection changes programmatically
-            // (e.g., from toolbar back button or app resume)
-            updateNavigationPath()
-        }
-        .onChange(of: viewModel.selectedChapter) { oldValue, newValue in
-            // Update navigation path when chapter selection changes programmatically
-            updateNavigationPath()
-        }
-        .onAppear {
-            // If resuming from saved progress, build navigation path programmatically
-            if viewModel.selectedBook != nil {
-                updateNavigationPath()
+            }
+            .navigationTitle("Bible")
+            .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showBookSelector) {
+                BookSelectionSheet(viewModel: viewModel, isPresented: $showBookSelector)
             }
         }
-    }
-    
-    private func updateNavigationPath() {
-        // Calculate expected path count based on viewModel state
-        let expectedCount = (viewModel.selectedBook != nil ? 1 : 0) + (viewModel.selectedChapter != nil ? 1 : 0)
-        
-        // Only update if path doesn't match expected state
-        // This prevents unnecessary updates when NavigationLink or dismiss() already handled navigation
-        if navigationPath.count != expectedCount {
-            // Clear current path
-            navigationPath.removeLast(navigationPath.count)
-            
-            // Build path based on current viewModel state
-            if let book = viewModel.selectedBook {
-                navigationPath.append(NavigationDestination.chapterGrid(book))
-                
-                if let chapter = viewModel.selectedChapter {
-                    navigationPath.append(NavigationDestination.reading(book, chapter))
-                }
+        .onAppear {
+            // Show book selector on first entry if no book/chapter selected
+            if viewModel.selectedBook == nil && viewModel.selectedChapter == nil {
+                showBookSelector = true
             }
         }
     }

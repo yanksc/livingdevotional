@@ -3,31 +3,14 @@
 import SwiftUI
 import Foundation
 
-// MARK: - Debug Logging Helper
-// #region agent log
-private func debugLog(_ message: String, data: [String: Any] = [:]) {
-    let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-    let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
-    let logEntry: [String: Any] = [
-        "timestamp": timestamp,
-        "location": "ReadingView.swift",
-        "message": message,
-        "data": data,
-        "sessionId": "debug-session"
-    ]
-    
-    if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-       let jsonString = String(data: jsonData, encoding: .utf8) {
-         if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-            fileHandle.seekToEndOfFile()
-            fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-            fileHandle.closeFile()
-        } else {
-            try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-        }
+// MARK: - Scroll Offset Preference Key
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
-// #endregion agent log
 
 struct ReadingView: View {
     let bibleViewModel: BibleViewModel?
@@ -37,6 +20,17 @@ struct ReadingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showBookSelector = false
     @State private var showViewSettings = false
+    @State private var selectedVerseId: String? = nil
+    @State private var showSaveSheet = false
+    @ObservedObject private var noteStore = NoteStore.shared
+    
+    // Zen Mode - Auto-hiding toolbar
+    @State private var isToolbarVisible = true
+    @State private var lastScrollOffset: CGFloat = 0
+    @State private var scrollOffset: CGFloat = 0
+    
+    // Floating Action Button
+    @State private var showFABMenu = false
     
     // Get current book and chapter from viewModel
     private var book: BibleBook? {
@@ -59,271 +53,122 @@ struct ReadingView: View {
     }
     
     private func navigateToNextChapter() {
-        // #region agent log
-        debugLog("navigateToNextChapter called", data: [
-            "book": book?.name ?? "nil",
-            "chapter": chapter ?? -1,
-            "bookChapters": book?.chapters ?? -1,
-            "bibleViewModelExists": bibleViewModel != nil,
-            "currentBookIndex": currentBookIndex ?? -1,
-            "hypothesisId": "H1"
-        ])
-        // #endregion agent log
-        
         guard let book = book, let chapter = chapter else {
-            // #region agent log
-            debugLog("navigateToNextChapter: guard failed - book or chapter is nil", data: [
-                "book": self.book?.name ?? "nil",
-                "chapter": self.chapter ?? -1,
-                "hypothesisId": "H1"
-            ])
-            // #endregion agent log
             return
         }
-        
-        // #region agent log
-        debugLog("navigateToNextChapter: first guard passed", data: [
-            "book": book.name,
-            "chapter": chapter,
-            "hypothesisId": "H1"
-        ])
-        // #endregion agent log
         
         guard let currentIndex = currentBookIndex else {
-            // #region agent log
-            debugLog("navigateToNextChapter: currentBookIndex is nil", data: [
-                "book": book.name,
-                "hypothesisId": "H2"
-            ])
-            // #endregion agent log
             return
         }
-        
-        // #region agent log
-        debugLog("navigateToNextChapter: currentIndex found", data: ["currentIndex": currentIndex])
-        // #endregion agent log
         
         // Check if there's a next chapter in current book
         if chapter < book.chapters {
-            // Move to next chapter in same book
-            // #region agent log
-            debugLog("navigateToNextChapter: moving to next chapter in same book", data: ["nextChapter": chapter + 1])
-            // #endregion agent log
-            // #region agent log
-            debugLog("navigateToNextChapter: calling selectChapter", data: [
-                "targetChapter": chapter + 1,
-                "bibleViewModelExists": bibleViewModel != nil,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
             bibleViewModel?.selectChapter(chapter + 1)
-            // #region agent log
-            debugLog("navigateToNextChapter: after selectChapter", data: [
-                "selectedBook": bibleViewModel?.selectedBook?.name ?? "nil",
-                "selectedChapter": bibleViewModel?.selectedChapter ?? -1,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
-            // Manually trigger reload since onChange may not fire reliably
-            // #region agent log
-            debugLog("navigateToNextChapter: manually calling reloadVersesIfReady", data: ["hypothesisId": "FIX"])
-            // #endregion agent log
             reloadVersesIfReady()
         } else {
             // Move to next book's first chapter
             if currentIndex < BibleData.books.count - 1 {
                 let nextBook = BibleData.books[currentIndex + 1]
-                // #region agent log
-                debugLog("navigateToNextChapter: moving to next book", data: [
-                    "nextBook": nextBook.name,
-                    "nextBookChapters": nextBook.chapters
-                ])
-                // #endregion agent log
-                // #region agent log
-            debugLog("navigateToNextChapter: calling selectBookAndChapter", data: [
-                "nextBook": nextBook.name,
-                "targetChapter": 1,
-                "bibleViewModelExists": bibleViewModel != nil,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
-            bibleViewModel?.selectBookAndChapter(nextBook, chapter: 1)
-            // #region agent log
-            debugLog("navigateToNextChapter: after selectBookAndChapter", data: [
-                "selectedBook": bibleViewModel?.selectedBook?.name ?? "nil",
-                "selectedChapter": bibleViewModel?.selectedChapter ?? -1,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
-            // Manually trigger reload since onChange may not fire reliably
-            // #region agent log
-            debugLog("navigateToNextChapter: manually calling reloadVersesIfReady", data: ["hypothesisId": "FIX"])
-            // #endregion agent log
-            reloadVersesIfReady()
-            } else {
-                // #region agent log
-                debugLog("navigateToNextChapter: already at last book", data: ["currentIndex": currentIndex, "totalBooks": BibleData.books.count])
-                // #endregion agent log
+                bibleViewModel?.selectBookAndChapter(nextBook, chapter: 1)
+                reloadVersesIfReady()
             }
         }
     }
     
     private func navigateToPreviousChapter() {
-        // #region agent log
-        debugLog("navigateToPreviousChapter called", data: [
-            "book": book?.name ?? "nil",
-            "chapter": chapter ?? -1,
-            "bibleViewModelExists": bibleViewModel != nil,
-            "currentBookIndex": currentBookIndex ?? -1,
-            "hypothesisId": "H1"
-        ])
-        // #endregion agent log
-        
         guard let book = book, let chapter = chapter else {
-            // #region agent log
-            debugLog("navigateToPreviousChapter: guard failed - book or chapter is nil", data: [
-                "book": self.book?.name ?? "nil",
-                "chapter": self.chapter ?? -1,
-                "hypothesisId": "H1"
-            ])
-            // #endregion agent log
             return
         }
-        
-        // #region agent log
-        debugLog("navigateToPreviousChapter: first guard passed", data: [
-            "book": book.name,
-            "chapter": chapter,
-            "hypothesisId": "H1"
-        ])
-        // #endregion agent log
         
         guard let currentIndex = currentBookIndex else {
-            // #region agent log
-            debugLog("navigateToPreviousChapter: currentBookIndex is nil", data: [
-                "book": book.name,
-                "hypothesisId": "H2"
-            ])
-            // #endregion agent log
             return
         }
-        
-        // #region agent log
-        debugLog("navigateToPreviousChapter: currentIndex found", data: ["currentIndex": currentIndex])
-        // #endregion agent log
         
         // Check if there's a previous chapter in current book
         if chapter > 1 {
-            // Move to previous chapter in same book
-            // #region agent log
-            debugLog("navigateToPreviousChapter: moving to previous chapter in same book", data: ["prevChapter": chapter - 1])
-            // #endregion agent log
-            // #region agent log
-            debugLog("navigateToPreviousChapter: calling selectChapter", data: [
-                "targetChapter": chapter - 1,
-                "bibleViewModelExists": bibleViewModel != nil,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
             bibleViewModel?.selectChapter(chapter - 1)
-            // #region agent log
-            debugLog("navigateToPreviousChapter: after selectChapter", data: [
-                "selectedBook": bibleViewModel?.selectedBook?.name ?? "nil",
-                "selectedChapter": bibleViewModel?.selectedChapter ?? -1,
-                "hypothesisId": "H3"
-            ])
-            // #endregion agent log
-            // Manually trigger reload since onChange may not fire reliably
-            // #region agent log
-            debugLog("navigateToNextChapter: manually calling reloadVersesIfReady", data: ["hypothesisId": "FIX"])
-            // #endregion agent log
             reloadVersesIfReady()
         } else {
             // Move to previous book's last chapter
             if currentIndex > 0 {
                 let previousBook = BibleData.books[currentIndex - 1]
-                // #region agent log
-                debugLog("navigateToPreviousChapter: moving to previous book", data: [
-                    "prevBook": previousBook.name,
-                    "prevBookChapters": previousBook.chapters
-                ])
-                // #endregion agent log
-                // #region agent log
-                debugLog("navigateToPreviousChapter: calling selectBookAndChapter", data: [
-                    "previousBook": previousBook.name,
-                    "targetChapter": previousBook.chapters,
-                    "bibleViewModelExists": bibleViewModel != nil,
-                    "hypothesisId": "H3"
-                ])
-                // #endregion agent log
                 bibleViewModel?.selectBookAndChapter(previousBook, chapter: previousBook.chapters)
-                // #region agent log
-                debugLog("navigateToPreviousChapter: after selectBookAndChapter", data: [
-                    "selectedBook": bibleViewModel?.selectedBook?.name ?? "nil",
-                    "selectedChapter": bibleViewModel?.selectedChapter ?? -1,
-                    "hypothesisId": "H3"
-                ])
-                // #endregion agent log
-                // Manually trigger reload since onChange may not fire reliably
-                // #region agent log
-                debugLog("navigateToPreviousChapter: manually calling reloadVersesIfReady", data: ["hypothesisId": "FIX"])
-                // #endregion agent log
                 reloadVersesIfReady()
-            } else {
-                // #region agent log
-                debugLog("navigateToPreviousChapter: already at first book", data: ["currentIndex": currentIndex])
-                // #endregion agent log
             }
         }
     }
     
     private var chapterText: String {
         guard let chapter = chapter else { return "" }
-        switch settingsStore.primaryLanguage {
-        case .cuv, .cu1:
+        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hant" {
             return "第\(chapter)章"
-        case .bsb, .kjv, .none:
+        } else {
             return "Chapter \(chapter)"
         }
     }
     
     private var navigationTitleText: String {
         if let book = book, let chapter = chapter {
-            return "\(book.localizedName(for: settingsStore.primaryLanguage)) \(chapter)"
+            return "\(book.localizedName(for: settingsStore.appLanguage)) \(chapter)"
         }
         return "Bible"
     }
     
+    // MARK: - Helper Functions
+    
+    private func copyVerse(_ verse: BibleVerse) {
+        let text = verse.text(for: settingsStore.primaryLanguage)
+        let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
+        let copyText = "\"\(text)\"\n- \(reference)"
+        
+        // Close FAB menu with animation
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            showFABMenu = false
+        }
+        
+        // Perform clipboard operation on a background queue to prevent main thread hang
+        // This is a workaround for iOS Simulator pasteboard daemon hangs
+        DispatchQueue.global(qos: .userInitiated).async { [copyText] in
+            UIPasteboard.general.string = copyText
+        }
+    }
+    
+    private func shareVerse(_ verse: BibleVerse) {
+        let shareText = formatVerseForShare(verse)
+        
+        let activityVC = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                showFABMenu = false
+            }
+            
+            // Use DispatchQueue to ensure UI updates complete before presenting
+            DispatchQueue.main.async {
+                rootViewController.present(activityVC, animated: true)
+            }
+        }
+    }
+    
+    private func formatVerseForShare(_ verse: BibleVerse) -> String {
+        let text = verse.text(for: settingsStore.primaryLanguage)
+        let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
+        return "\"\(text)\"\n- \(reference)\n\nShared from Living Devotional"
+    }
+    
     private func reloadVersesIfReady() {
-        // #region agent log
-        debugLog("reloadVersesIfReady called", data: [
-            "selectedBook": bibleViewModel?.selectedBook?.name ?? "nil",
-            "selectedChapter": bibleViewModel?.selectedChapter ?? -1,
-            "hypothesisId": "H4"
-        ])
-        // #endregion agent log
+        // Clear selected verse when navigating to a new chapter
+        selectedVerseId = nil
         
         // Reload verses when both book and chapter are available
         if let book = bibleViewModel?.selectedBook,
            let chapter = bibleViewModel?.selectedChapter {
-            // #region agent log
-            debugLog("reloadVersesIfReady: both available, calling loadVerses", data: [
-                "book": book.name,
-                "chapter": chapter,
-                "hypothesisId": "H4"
-            ])
-            // #endregion agent log
             Task { @MainActor in
                 await viewModel.loadVerses(book: book.name, chapter: chapter)
             }
-        } else {
-            // #region agent log
-            debugLog("reloadVersesIfReady: not ready, skipping", data: [
-                "bookAvailable": bibleViewModel?.selectedBook != nil,
-                "chapterAvailable": bibleViewModel?.selectedChapter != nil,
-                "hypothesisId": "H4"
-            ])
-            // #endregion agent log
         }
     }
     
@@ -371,32 +216,164 @@ struct ReadingView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ZStack {
-                        // Main scrollable content
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
-                                // Spacer to account for large navigation title
-                                Color.clear
-                                    .frame(height: 8)
-                                
-                                // Chapter header - subtle and elegant
-                                HStack {
-                                    Text(chapterText)
-                                        .font(.subheadline)
-                                        .foregroundColor(AppTheme.secondaryText)
-                                        .textCase(.uppercase)
-                                        .tracking(0.5)
-                                    Spacer()
+                        // Main scrollable content with scroll tracking
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                GeometryReader { geometry in
+                                    Color.clear
+                                        .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.top, 8)
-                                .padding(.bottom, 20)
+                                .frame(height: 0)
                                 
-                                // Verses
-                                ForEach(viewModel.verses) { verse in
-                                    VerseView(verse: verse, settingsStore: settingsStore, fontSize: settingsStore.fontSize)
+                                LazyVStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
+                                    // Spacer to account for large navigation title
+                                    Color.clear
+                                        .frame(height: 8)
+                                    
+                                    // Chapter header - subtle and elegant
+                                    HStack {
+                                        Text(chapterText)
+                                            .font(.subheadline)
+                                            .foregroundColor(AppTheme.secondaryText)
+                                            .textCase(.uppercase)
+                                            .tracking(0.5)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    
+                                    // Verses
+                                    ForEach(viewModel.verses) { verse in
+                                        VerseView(
+                                            verse: verse,
+                                            settingsStore: settingsStore,
+                                            fontSize: settingsStore.fontSize,
+                                            isSelected: selectedVerseId == verse.id,
+                                            onTap: {
+                                                let wasSelected = selectedVerseId == verse.id
+                                                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                                                    selectedVerseId = wasSelected ? nil : verse.id
+                                                }
+                                                // Close FAB menu when deselecting
+                                                if wasSelected {
+                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                        showFABMenu = false
+                                                    }
+                                                }
+                                            }
+                                        )
+                                        .id(verse.id)
+                                    }
+                                }
+                                .padding(.bottom, 100) // Extra padding for FAB
+                            }
+                            .coordinateSpace(name: "scroll")
+                            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                                let newOffset = value
+                                let delta = newOffset - lastScrollOffset
+                                
+                                // Hide toolbar when scrolling down, show when scrolling up
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    if delta < -10 {
+                                        // Scrolling down
+                                        isToolbarVisible = false
+                                    } else if delta > 10 {
+                                        // Scrolling up
+                                        isToolbarVisible = true
+                                    }
+                                }
+                                
+                                lastScrollOffset = newOffset
+                                scrollOffset = newOffset
+                            }
+                        }
+                        
+                        // Floating Action Button (only show when verse is selected)
+                        // IMPORTANT: Do NOT add .contentShape(Rectangle()) or .allowsHitTesting(true)
+                        // to this container - it will block ALL touches on the screen!
+                        if selectedVerseId != nil {
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    
+                                    VStack(alignment: .trailing, spacing: 16) {
+                                        if showFABMenu {
+                                            // Expanded menu items
+                                            Group {
+                                                if let selectedId = selectedVerseId,
+                                                   let verse = viewModel.verses.first(where: { $0.id == selectedId }) {
+                                                    // Copy verse button
+                                                    FABMenuItem(
+                                                        icon: "doc.on.doc",
+                                                        label: "Copy Verse",
+                                                        color: Color(red: 0.2, green: 0.6, blue: 0.4)
+                                                    ) {
+                                                        copyVerse(verse)
+                                                    }
+                                                    
+                                                    // Share verse button
+                                                    FABMenuItem(
+                                                        icon: "square.and.arrow.up",
+                                                        label: "Share Verse",
+                                                        color: AppTheme.primaryBlue
+                                                    ) {
+                                                        shareVerse(verse)
+                                                    }
+                                                    
+                                                    // AI Insight button
+                                                    FABMenuItem(
+                                                        icon: "sparkles",
+                                                        label: "AI Insight",
+                                                        color: AppTheme.primaryPurple
+                                                    ) {
+                                                        // TODO: Implement AI insight
+                                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                            showFABMenu = false
+                                                        }
+                                                    }
+                                                    
+                                                    // Save Verse button
+                                                    FABMenuItem(
+                                                        icon: "bookmark.fill",
+                                                        label: "Save Verse",
+                                                        color: AppTheme.accentColor
+                                                    ) {
+                                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                            showFABMenu = false
+                                                        }
+                                                        // Small delay to allow menu to close smoothly
+                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                            showSaveSheet = true
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            .transition(.scale.combined(with: .opacity))
+                                        }
+                                        
+                                        // Main FAB button
+                                        Button {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                showFABMenu.toggle()
+                                            }
+                                        } label: {
+                                            Image(systemName: showFABMenu ? "xmark" : "plus")
+                                                .font(.system(size: 20, weight: .semibold))
+                                                .foregroundColor(.white)
+                                                .frame(width: 56, height: 56)
+                                                .background(
+                                                    Circle()
+                                                        .fill(AppTheme.accentColor)
+                                                        .shadow(color: AppTheme.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
+                                                )
+                                        }
+                                    }
+                                    .padding(.trailing, 20)
+                                    .padding(.bottom, 20)
                                 }
                             }
-                            .padding(.bottom, 20)
                         }
                         
                         // Edge swipe gesture overlays (iOS 17+ modern approach)
@@ -411,19 +388,8 @@ struct ReadingView: View {
                                             let horizontalAmount = value.translation.width
                                             let verticalAmount = value.translation.height
                                             
-                                            // #region agent log
-                                            debugLog("LEFT edge gesture triggered", data: [
-                                                "horizontalAmount": horizontalAmount,
-                                                "verticalAmount": verticalAmount,
-                                                "isHorizontal": abs(horizontalAmount) > abs(verticalAmount)
-                                            ])
-                                            // #endregion agent log
-                                            
                                             // Swipe right (positive horizontal) from left edge = previous chapter
                                             if horizontalAmount > 50 && abs(horizontalAmount) > abs(verticalAmount) {
-                                                // #region agent log
-                                                debugLog("LEFT edge: navigating to previous chapter")
-                                                // #endregion agent log
                                                 navigateToPreviousChapter()
                                             }
                                         }
@@ -441,19 +407,8 @@ struct ReadingView: View {
                                             let horizontalAmount = value.translation.width
                                             let verticalAmount = value.translation.height
                                             
-                                            // #region agent log
-                                            debugLog("RIGHT edge gesture triggered", data: [
-                                                "horizontalAmount": horizontalAmount,
-                                                "verticalAmount": verticalAmount,
-                                                "isHorizontal": abs(horizontalAmount) > abs(verticalAmount)
-                                            ])
-                                            // #endregion agent log
-                                            
                                             // Swipe left (negative horizontal) from right edge = next chapter
                                             if horizontalAmount < -50 && abs(horizontalAmount) > abs(verticalAmount) {
-                                                // #region agent log
-                                                debugLog("RIGHT edge: navigating to next chapter")
-                                                // #endregion agent log
                                                 navigateToNextChapter()
                                             }
                                         }
@@ -465,20 +420,11 @@ struct ReadingView: View {
         }
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode), for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(isToolbarVisible ? .visible : .hidden, for: .navigationBar)
         .preferredColorScheme(settingsStore.isDarkMode ? .dark : .light)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    // #region agent log
-                    debugLog("PREVIOUS button clicked", data: [
-                        "book": book?.name ?? "nil",
-                        "chapter": chapter ?? -1,
-                        "currentBookIndex": currentBookIndex ?? -1,
-                        "isDisabled": (chapter ?? 1) == 1 && currentBookIndex == 0,
-                        "hypothesisId": "H5"
-                    ])
-                    // #endregion agent log
                     navigateToPreviousChapter()
                 } label: {
                     Image(systemName: "chevron.left")
@@ -513,17 +459,6 @@ struct ReadingView: View {
                 }
                 
                 Button {
-                    // #region agent log
-                    debugLog("NEXT button clicked", data: [
-                        "book": book?.name ?? "nil",
-                        "chapter": chapter ?? -1,
-                        "bookChapters": book?.chapters ?? -1,
-                        "currentBookIndex": currentBookIndex ?? -1,
-                        "totalBooks": BibleData.books.count,
-                        "isDisabled": (chapter ?? 0) == (book?.chapters ?? 0) && currentBookIndex == BibleData.books.count - 1,
-                        "hypothesisId": "H5"
-                    ])
-                    // #endregion agent log
                     navigateToNextChapter()
                 } label: {
                     Image(systemName: "chevron.right")
@@ -542,26 +477,32 @@ struct ReadingView: View {
         .sheet(isPresented: $showViewSettings) {
             ReadingSettingsView(isPresented: $showViewSettings)
         }
+        .sheet(isPresented: $showSaveSheet) {
+            if let selectedId = selectedVerseId,
+               let verse = viewModel.verses.first(where: { $0.id == selectedId }),
+               let book = book {
+                SaveVerseSheet(
+                    verse: verse,
+                    book: book,
+                    chapter: chapter ?? 1,
+                    settingsStore: settingsStore,
+                    noteStore: noteStore
+                )
+                .presentationDetents([.medium, .large])
+                .onDisappear {
+                    // Reload saved verses after sheet is dismissed
+                    noteStore.loadSavedVerses()
+                }
+            }
+        }
+        .onAppear {
+            // Reload saved verses to ensure we have the latest state
+            noteStore.loadSavedVerses()
+        }
         .onChange(of: bibleViewModel?.selectedBook) { oldBook, newBook in
-            // #region agent log
-            debugLog("onChange selectedBook triggered", data: [
-                "oldBook": oldBook?.name ?? "nil",
-                "newBook": newBook?.name ?? "nil",
-                "currentChapter": bibleViewModel?.selectedChapter ?? -1,
-                "hypothesisId": "H1"
-            ])
-            // #endregion agent log
             reloadVersesIfReady()
         }
         .onChange(of: bibleViewModel?.selectedChapter) { oldChapter, newChapter in
-            // #region agent log
-            debugLog("onChange selectedChapter triggered", data: [
-                "oldChapter": oldChapter ?? -1,
-                "newChapter": newChapter ?? -1,
-                "currentBook": bibleViewModel?.selectedBook?.name ?? "nil",
-                "hypothesisId": "H1"
-            ])
-            // #endregion agent log
             reloadVersesIfReady()
         }
         .task {
@@ -580,7 +521,24 @@ struct ReadingView: View {
 struct VerseView: View {
     let verse: BibleVerse
     @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var noteStore = NoteStore.shared
     let fontSize: Double
+    let isSelected: Bool
+    let onTap: () -> Void
+    let onLongPress: (() -> Void)?
+    
+    init(verse: BibleVerse, settingsStore: SettingsStore, fontSize: Double, isSelected: Bool, onTap: @escaping () -> Void, onLongPress: (() -> Void)? = nil) {
+        self.verse = verse
+        self.settingsStore = settingsStore
+        self.fontSize = fontSize
+        self.isSelected = isSelected
+        self.onTap = onTap
+        self.onLongPress = onLongPress
+    }
+    
+    var isSaved: Bool {
+        noteStore.isVerseSaved(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber)
+    }
     
     var primaryText: String {
         verse.text(for: settingsStore.primaryLanguage)
@@ -590,14 +548,28 @@ struct VerseView: View {
         verse.text(for: settingsStore.secondaryLanguage)
     }
     
+    private func formatVerseForShare(_ verse: BibleVerse) -> String {
+        let text = verse.text(for: settingsStore.primaryLanguage)
+        let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
+        return "\"\(text)\"\n- \(reference)\n\nShared from Living Devotional"
+    }
+    
     var body: some View {
         HStack(alignment: .top, spacing: 2) {
-            // Verse number - simple text without background
-            Text("\(verse.verseNumber)")
-                .font(.system(size: fontSize, weight: .semibold))
-                .foregroundColor(AppTheme.verseNumberColor(darkMode: settingsStore.isDarkMode))
-                .frame(minWidth: 28, alignment: .leading)
-                .padding(.top, 2)
+            // Verse number with save indicator
+            HStack(spacing: 4) {
+                Text("\(verse.verseNumber)")
+                    .font(.system(size: fontSize, weight: .semibold))
+                    .foregroundColor(isSaved ? AppTheme.accentColor : AppTheme.verseNumberColor(darkMode: settingsStore.isDarkMode))
+                
+                if isSaved {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: fontSize * 0.6))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+            }
+            .frame(minWidth: 28, alignment: .leading)
+            .padding(.top, 2)
             
             VStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
                 // Primary language text
@@ -623,8 +595,60 @@ struct VerseView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 0)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Group {
+                if isSelected {
+                    AppTheme.verseSelectionGradient(darkMode: settingsStore.isDarkMode)
+                        .cornerRadius(8)
+                } else if isSaved {
+                    AppTheme.accentColor.opacity(0.05)
+                        .cornerRadius(8)
+                } else {
+                    Color.clear
+                }
+            }
+        )
+        .overlay(
+            Group {
+                if isSaved && !isSelected {
+                    Rectangle()
+                        .frame(width: 3)
+                        .foregroundColor(AppTheme.accentColor)
+                        .cornerRadius(1.5)
+                } else {
+                    Color.clear
+                }
+            },
+            alignment: .leading
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
+        .contextMenu {
+            Button {
+                // Copy verse
+                let text = verse.text(for: settingsStore.primaryLanguage)
+                let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
+                UIPasteboard.general.string = "\"\(text)\"\n- \(reference)"
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            
+            ShareLink(item: formatVerseForShare(verse)) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            
+            if let onLongPress = onLongPress {
+                Button {
+                    onLongPress()
+                } label: {
+                    Label("AI Insight", systemImage: "sparkles")
+                }
+            }
+        }
     }
 }
 
@@ -693,9 +717,46 @@ struct ReadingSettingsView: View {
     }
 }
 
+// MARK: - Floating Action Button Menu Item
+
+struct FABMenuItem: View {
+    let icon: String
+    let label: String
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(color)
+                    )
+                
+                Text(label)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.primaryText)
+                    .padding(.trailing, 8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.cardGradient(darkMode: false))
+                    .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 #Preview {
     NavigationStack {
         ReadingView(book: BibleData.books[45], chapter: 3)
     }
 }
-

@@ -4,6 +4,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var settingsStore = SettingsStore.shared
+    @ObservedObject private var noteStore = NoteStore.shared
+    @EnvironmentObject var router: AppRouter
+    @State private var showSavedNotes = false
     
     var body: some View {
         ZStack {
@@ -12,23 +15,61 @@ struct SettingsView: View {
             
             Form {
                 Section(header: 
-                    Text("Language Settings")
+                    Text("App Language")
                         .font(.headline)
                         .foregroundColor(AppTheme.primaryText)
                 ) {
-                    Picker("Primary Language", selection: $settingsStore.primaryLanguage) {
+                    Picker("App Language", selection: $settingsStore.appLanguage) {
+                        ForEach(AppLanguage.allCases) { appLanguage in
+                            Text(appLanguage.displayName).tag(appLanguage)
+                        }
+                    }
+                    .tint(AppTheme.accentColor)
+                }
+                .listRowBackground(Color.clear)
+                
+                Section(header: 
+                    Text("Bible Translation")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.primaryText)
+                ) {
+                    Picker("Primary Translation", selection: $settingsStore.primaryLanguage) {
                         ForEach(Language.allCases.filter { $0 != .none }) { language in
                             Text(language.displayName).tag(language)
                         }
                     }
                     .tint(AppTheme.accentColor)
                     
-                    Picker("Secondary Language", selection: $settingsStore.secondaryLanguage) {
+                    Picker("Secondary Translation", selection: $settingsStore.secondaryLanguage) {
                         ForEach(Language.allCases) { language in
                             Text(language.displayName).tag(language)
                         }
                     }
                     .tint(AppTheme.accentColor)
+                }
+                .listRowBackground(Color.clear)
+                
+                Section(header: 
+                    Text("Saved Notes")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.primaryText)
+                ) {
+                    Button(action: {
+                        showSavedNotes = true
+                    }) {
+                        HStack {
+                            Text("My Saved Verses")
+                                .foregroundColor(AppTheme.primaryText)
+                            Spacer()
+                            if !noteStore.savedVerses.isEmpty {
+                                Text("\(noteStore.savedVerses.count)")
+                                    .foregroundColor(AppTheme.secondaryText)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                    }
                 }
                 .listRowBackground(Color.clear)
                 
@@ -51,6 +92,15 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
+        .sheet(isPresented: $showSavedNotes) {
+            NavigationStack {
+                SavedNotesListView(
+                    noteStore: noteStore,
+                    settingsStore: settingsStore
+                )
+                .environmentObject(router)
+            }
+        }
     }
 }
 

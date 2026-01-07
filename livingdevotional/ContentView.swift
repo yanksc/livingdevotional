@@ -1,10 +1,12 @@
 // ContentView - Root view that handles routing and authentication state
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     @EnvironmentObject var router: AppRouter
     @Environment(\.services) var services
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
         Group {
@@ -21,5 +23,9 @@ struct ContentView: View {
             }
         }
         .splashScreen()
+        .onAppear {
+            // Initialize NoteStore with model context
+            NoteStore.shared.setModelContext(modelContext)
+        }
     }
 }

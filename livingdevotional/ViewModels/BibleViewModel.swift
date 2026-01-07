@@ -36,6 +36,15 @@ class BibleViewModel: ObservableObject {
         progressStore.saveProgress(book: book.name, chapter: chapter)
     }
     
+    func selectBookAndChapter(_ book: BibleBook, chapter: Int) {
+        // Set both atomically to avoid race conditions
+        selectedBook = book
+        selectedChapter = chapter
+        
+        // Save progress
+        progressStore.saveProgress(book: book.name, chapter: chapter)
+    }
+    
     func goBackToBookList() {
         selectedBook = nil
         selectedChapter = nil
@@ -45,4 +54,3 @@ class BibleViewModel: ObservableObject {
         selectedChapter = nil
     }
 }
-

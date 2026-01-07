@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct livingdevotionalApp: App {
     @StateObject private var serviceContainer = ServiceContainer.shared
     @StateObject private var router = AppRouter()
+    @ObservedObject private var settingsStore = SettingsStore.shared
     
     init() {
         setupServices()
@@ -21,7 +23,9 @@ struct livingdevotionalApp: App {
             ContentView()
                 .environment(\.services, serviceContainer)
                 .environmentObject(router)
+                .environment(\.locale, settingsStore.appLanguage.resolvedLocale())
         }
+        .modelContainer(for: SavedVerse.self)
     }
     
     private func setupServices() {
