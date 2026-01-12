@@ -29,8 +29,9 @@ struct livingdevotionalApp: App {
     }
     
     private func setupServices() {
+        // Register AI service
+        serviceContainer.registerAIService(AIService())
         // Register future services here when implemented
         // serviceContainer.registerAuthService(AuthenticationService())
-        // serviceContainer.registerAIService(AIService())
     }
 }

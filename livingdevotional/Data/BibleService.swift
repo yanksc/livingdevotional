@@ -44,6 +44,8 @@ class BibleService {
             translationFolder = "cuv"
         case .cu1:
             translationFolder = "cu1"
+        case .kjv:
+            translationFolder = "kjv"
         case .none:
             throw BibleServiceError.fileNotFound(book: book, chapter: chapter, translation: translation.rawValue)
         }
@@ -86,6 +88,7 @@ class BibleService {
                     textBsb: translation == .bsb ? verseJson.text : "",
                     textCuv: translation == .cuv ? verseJson.text : "",
                     textCu1: translation == .cu1 ? verseJson.text : "",
+                    textKjv: translation == .kjv ? verseJson.text : "",
                     testament: BibleData.book(named: book)?.testament.rawValue ?? ""
                 )
             }
@@ -105,6 +108,7 @@ class BibleService {
                         textBsb: translation == .bsb ? verseJson.text : "",
                         textCuv: translation == .cuv ? verseJson.text : "",
                         textCu1: translation == .cu1 ? verseJson.text : "",
+                        textKjv: translation == .kjv ? verseJson.text : "",
                         testament: BibleData.book(named: book)?.testament.rawValue ?? ""
                     )
                 }
@@ -145,6 +149,7 @@ class BibleService {
                 textBsb: primaryVerse.textBsb.isEmpty ? secondaryVerse.textBsb : primaryVerse.textBsb,
                 textCuv: primaryVerse.textCuv.isEmpty ? secondaryVerse.textCuv : primaryVerse.textCuv,
                 textCu1: primaryVerse.textCu1.isEmpty ? secondaryVerse.textCu1 : primaryVerse.textCu1,
+                textKjv: primaryVerse.textKjv.isEmpty ? secondaryVerse.textKjv : primaryVerse.textKjv,
                 testament: primaryVerse.testament
             )
         }

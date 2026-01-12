@@ -36,9 +36,59 @@ struct MainTabView: View {
         }
         .tint(AppTheme.accentColor)
         .onChange(of: router.currentRoute) { oldRoute, newRoute in
+            // #region agent log
+            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+            let logEntry: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "MainTabView.onChange(currentRoute)",
+                "message": "route changed",
+                "data": [
+                    "oldRoute": String(describing: oldRoute),
+                    "newRoute": String(describing: newRoute),
+                    "hypothesisId": "C"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
             // Handle navigation to reading view
-            if case .reading(let book, let chapter) = newRoute {
-                bibleViewModel.selectBookAndChapter(book, chapter: chapter)
+            if case .reading(let book, let chapter, let verse) = newRoute {
+                // #region agent log
+                let logEntry2: [String: Any] = [
+                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                    "location": "MainTabView.onChange(currentRoute)",
+                    "message": "calling selectBookAndChapter",
+                    "data": [
+                        "book": book.name,
+                        "chapter": chapter,
+                        "verse": verse as Any,
+                        "hypothesisId": "D"
+                    ],
+                    "sessionId": "debug-session"
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry2),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                        fileHandle.seekToEndOfFile()
+                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                        fileHandle.closeFile()
+                    } else {
+                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                    }
+                }
+                // #endregion agent log
+                
+                bibleViewModel.selectBookAndChapter(book, chapter: chapter, targetVerse: verse)
                 router.selectedTab = 1 // Switch to Bible tab
             }
         }

@@ -181,3 +181,7 @@ This would allow adding translations without code changes, but requires:
 
 **For future**: If you need many translations, we can refactor to a more flexible architecture.
 
+
+
+
+

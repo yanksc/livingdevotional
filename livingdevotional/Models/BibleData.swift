@@ -244,32 +244,64 @@ struct BibleData {
         books.filter { $0.testament == .new }
     }
     
-    /// Get localized book name based on language
-    static func localizedBookName(_ bookName: String, language: Language) -> String {
-        switch language {
-        case .cuv, .cu1:
+    /// Get localized book name based on app language
+    static func localizedBookName(_ bookName: String, appLanguage: AppLanguage) -> String {
+        let languageCode = appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hant" {
             return chineseBookNames[bookName] ?? bookName
-        case .bsb, .none:
+        } else {
             return bookName
         }
     }
     
-    /// Get localized testament name
-    static func localizedTestamentName(_ testament: BibleBook.Testament, language: Language) -> String {
-        switch language {
-        case .cuv, .cu1:
+    /// Get localized testament name based on app language
+    static func localizedTestamentName(_ testament: BibleBook.Testament, appLanguage: AppLanguage) -> String {
+        let languageCode = appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hant" {
             return testament.displayName
-        case .bsb, .none:
+        } else {
             return testament.englishName
         }
     }
     
-    /// Get localized "Chapter" text based on language
+    /// Get localized "Chapter" text based on app language
+    static func localizedChapterText(appLanguage: AppLanguage) -> String {
+        let languageCode = appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hant" {
+            return "第"
+        } else {
+            return "Chapter"
+        }
+    }
+    
+    // MARK: - Legacy Methods (for backward compatibility)
+    
+    /// Get localized book name based on language (legacy - uses translation to infer UI language)
+    static func localizedBookName(_ bookName: String, language: Language) -> String {
+        switch language {
+        case .cuv, .cu1:
+            return chineseBookNames[bookName] ?? bookName
+        case .bsb, .kjv, .none:
+            return bookName
+        }
+    }
+    
+    /// Get localized testament name (legacy)
+    static func localizedTestamentName(_ testament: BibleBook.Testament, language: Language) -> String {
+        switch language {
+        case .cuv, .cu1:
+            return testament.displayName
+        case .bsb, .kjv, .none:
+            return testament.englishName
+        }
+    }
+    
+    /// Get localized "Chapter" text (legacy)
     static func localizedChapterText(language: Language) -> String {
         switch language {
         case .cuv, .cu1:
             return "第"
-        case .bsb, .none:
+        case .bsb, .kjv, .none:
             return "Chapter"
         }
     }
@@ -278,7 +310,12 @@ struct BibleData {
 // MARK: - BibleBook Extension for Localization
 
 extension BibleBook {
-    /// Get localized name
+    /// Get localized name based on app language
+    func localizedName(for appLanguage: AppLanguage) -> String {
+        BibleData.localizedBookName(name, appLanguage: appLanguage)
+    }
+    
+    /// Get localized name (legacy - uses translation to infer UI language)
     func localizedName(for language: Language) -> String {
         BibleData.localizedBookName(name, language: language)
     }

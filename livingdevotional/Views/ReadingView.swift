@@ -23,14 +23,24 @@ struct ReadingView: View {
     @State private var selectedVerseId: String? = nil
     @State private var showSaveSheet = false
     @ObservedObject private var noteStore = NoteStore.shared
+    @State private var pendingScrollVerse: Int?
+    @State private var pendingScrollBook: String?
+    @State private var pendingScrollChapter: Int?
+    @State private var pendingScrollRetry: Int = 0
+    @State private var hasCompletedInitialScroll: Bool = false
+    @State private var scrollProxy: ScrollViewProxy?
+    @Environment(\.services) var services
+    @State private var showChatSheet = false
+    @State private var chatVerse: BibleVerse?
     
     // Zen Mode - Auto-hiding toolbar
     @State private var isToolbarVisible = true
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     
-    // Floating Action Button
-    @State private var showFABMenu = false
+    // AI Panel state
+    @State private var showAIPanel: String? = nil // verse ID for which AI panel is shown
+    @State private var aiPanelMode: AIMode = .insight // mode of the AI panel
     
     // Get current book and chapter from viewModel
     private var book: BibleBook? {
@@ -43,6 +53,12 @@ struct ReadingView: View {
     
     init(book: BibleBook, chapter: Int, bibleViewModel: BibleViewModel? = nil) {
         self.bibleViewModel = bibleViewModel
+        // Capture initial target verse context from the view model (if provided via router)
+        if let vm = bibleViewModel {
+            self._pendingScrollVerse = State(initialValue: vm.targetVerse)
+            self._pendingScrollBook = State(initialValue: vm.selectedBook?.name)
+            self._pendingScrollChapter = State(initialValue: vm.selectedChapter)
+        }
     }
     
     // MARK: - Navigation Helpers
@@ -63,13 +79,13 @@ struct ReadingView: View {
         
         // Check if there's a next chapter in current book
         if chapter < book.chapters {
-            bibleViewModel?.selectChapter(chapter + 1)
+                bibleViewModel?.selectChapter(chapter + 1)
             reloadVersesIfReady()
         } else {
             // Move to next book's first chapter
             if currentIndex < BibleData.books.count - 1 {
                 let nextBook = BibleData.books[currentIndex + 1]
-                bibleViewModel?.selectBookAndChapter(nextBook, chapter: 1)
+                    bibleViewModel?.selectBookAndChapter(nextBook, chapter: 1, targetVerse: nil)
                 reloadVersesIfReady()
             }
         }
@@ -86,13 +102,13 @@ struct ReadingView: View {
         
         // Check if there's a previous chapter in current book
         if chapter > 1 {
-            bibleViewModel?.selectChapter(chapter - 1)
+                bibleViewModel?.selectChapter(chapter - 1)
             reloadVersesIfReady()
         } else {
             // Move to previous book's last chapter
             if currentIndex > 0 {
                 let previousBook = BibleData.books[currentIndex - 1]
-                bibleViewModel?.selectBookAndChapter(previousBook, chapter: previousBook.chapters)
+                    bibleViewModel?.selectBookAndChapter(previousBook, chapter: previousBook.chapters, targetVerse: nil)
                 reloadVersesIfReady()
             }
         }
@@ -100,19 +116,19 @@ struct ReadingView: View {
     
     private var chapterText: String {
         guard let chapter = chapter else { return "" }
-        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
-        if languageCode == "zh-Hant" {
-            return "第\(chapter)章"
+        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+        if chapterPrefix == "第" {
+            return "\(chapterPrefix)\(chapter)章"
         } else {
-            return "Chapter \(chapter)"
+            return "\(chapterPrefix) \(chapter)"
         }
     }
     
     private var navigationTitleText: String {
         if let book = book, let chapter = chapter {
-            return "\(book.localizedName(for: settingsStore.appLanguage)) \(chapter)"
+            return "\(book.localizedName(for: settingsStore.primaryLanguage)) \(chapter)"
         }
-        return "Bible"
+        return settingsStore.appLanguage.localizedString("Bible")
     }
     
     // MARK: - Helper Functions
@@ -121,11 +137,6 @@ struct ReadingView: View {
         let text = verse.text(for: settingsStore.primaryLanguage)
         let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
         let copyText = "\"\(text)\"\n- \(reference)"
-        
-        // Close FAB menu with animation
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            showFABMenu = false
-        }
         
         // Perform clipboard operation on a background queue to prevent main thread hang
         // This is a workaround for iOS Simulator pasteboard daemon hangs
@@ -141,11 +152,6 @@ struct ReadingView: View {
         
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
-            
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                showFABMenu = false
-            }
-            
             // Use DispatchQueue to ensure UI updates complete before presenting
             DispatchQueue.main.async {
                 rootViewController.present(activityVC, animated: true)
@@ -160,14 +166,343 @@ struct ReadingView: View {
     }
     
     private func reloadVersesIfReady() {
-        // Clear selected verse when navigating to a new chapter
+        // Clear selected verse and AI panel when navigating to a new chapter
         selectedVerseId = nil
+        showAIPanel = nil
         
         // Reload verses when both book and chapter are available
         if let book = bibleViewModel?.selectedBook,
            let chapter = bibleViewModel?.selectedChapter {
             Task { @MainActor in
                 await viewModel.loadVerses(book: book.name, chapter: chapter)
+            }
+        }
+    }
+    
+    /// Use VStack (eager loading) when there's a pending scroll target to ensure scrollTo works
+    private var shouldUseEagerLoading: Bool {
+        return pendingScrollVerse != nil && !hasCompletedInitialScroll
+    }
+    
+    /// Shared content for verses list (used by both VStack and LazyVStack)
+    @ViewBuilder
+    private var versesContent: some View {
+        // Spacer to account for large navigation title
+        Color.clear
+            .frame(height: 8)
+        
+        // Chapter header - subtle and elegant
+        HStack {
+            Text(chapterText)
+                .font(.subheadline)
+                .foregroundColor(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+        
+        // Verses
+        ForEach(viewModel.verses) { verse in
+            VStack(alignment: .leading, spacing: 0) {
+                VerseView(
+                    verse: verse,
+                    settingsStore: settingsStore,
+                    fontSize: settingsStore.fontSize,
+                    isSelected: selectedVerseId == verse.id,
+                    onTap: {
+                        let wasSelected = selectedVerseId == verse.id
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                            selectedVerseId = wasSelected ? nil : verse.id
+                            // Close AI panel when deselecting
+                            if wasSelected {
+                                showAIPanel = nil
+                            }
+                        }
+                    }
+                )
+                
+                // Action bar (shown when verse is selected)
+                if selectedVerseId == verse.id {
+                    VerseActionBar(
+                        verse: verse,
+                        settingsStore: settingsStore,
+                        onCopy: {
+                            copyVerse(verse)
+                        },
+                        onShare: {
+                            shareVerse(verse)
+                        },
+                        onAIInsight: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if showAIPanel == verse.id && aiPanelMode == .insight {
+                                    showAIPanel = nil
+                                } else {
+                                    aiPanelMode = .insight
+                                    showAIPanel = verse.id
+                                }
+                            }
+                        },
+                        onAIReflect: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if showAIPanel == verse.id && aiPanelMode == .reflect {
+                                    showAIPanel = nil
+                                } else {
+                                    aiPanelMode = .reflect
+                                    showAIPanel = verse.id
+                                }
+                            }
+                        },
+                        onAIPray: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if showAIPanel == verse.id && aiPanelMode == .pray {
+                                    showAIPanel = nil
+                                } else {
+                                    aiPanelMode = .pray
+                                    showAIPanel = verse.id
+                                }
+                            }
+                        },
+                        onAIAsk: {
+                            chatVerse = verse
+                            showChatSheet = true
+                        },
+                        onSave: {
+                            // Small delay to allow animation to complete
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                showSaveSheet = true
+                            }
+                        }
+                    )
+                }
+                
+                // AI Panel (shown when AI action is requested)
+                if showAIPanel == verse.id {
+                    VerseAIPanel(
+                        verse: verse,
+                        mode: aiPanelMode,
+                        settingsStore: settingsStore,
+                        onClose: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                showAIPanel = nil
+                            }
+                        }
+                    )
+                }
+            }
+            .id(verse.id)
+        }
+    }
+    
+    /// Attempt to scroll to the pending target verse once verses are loaded.
+    private func attemptScrollToPendingVerse(proxy: ScrollViewProxy, reason: String) {
+        guard let targetVerse = pendingScrollVerse else { return }
+        
+        // Ensure verses belong to the pending book/chapter before attempting
+        if let pendingBook = pendingScrollBook,
+           let pendingChapter = pendingScrollChapter,
+           let currentBook = viewModel.currentBook,
+           let currentChapter = viewModel.currentChapter {
+            if currentBook != pendingBook || currentChapter != pendingChapter {
+                // #region agent log
+                let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+                let logEntryBlock: [String: Any] = [
+                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                    "location": "ReadingView.attemptScrollToPendingVerse",
+                    "message": "skipping scroll, verses not matching pending context",
+                    "data": [
+                        "pendingBook": pendingBook,
+                        "pendingChapter": pendingChapter,
+                        "currentBook": currentBook,
+                        "currentChapter": currentChapter,
+                        "reason": reason,
+                        "pendingRetry": pendingScrollRetry,
+                        "hypothesisId": "AUTO_SCROLL"
+                    ],
+                    "sessionId": "debug-session"
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryBlock),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                        fileHandle.seekToEndOfFile()
+                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                        fileHandle.closeFile()
+                    } else {
+                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                    }
+                }
+                // #endregion agent log
+                
+                if pendingScrollRetry < 8 {
+                    pendingScrollRetry += 1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        attemptScrollToPendingVerse(proxy: proxy, reason: "context-retry-\(pendingScrollRetry)")
+                    }
+                }
+                return
+            }
+        }
+        guard let targetId = viewModel.verses.first(where: { $0.verseNumber == targetVerse })?.id else {
+            // #region agent log
+            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+            let logEntry: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "ReadingView.attemptScrollToPendingVerse",
+                "message": "pending verse not yet found",
+                "data": [
+                    "targetVerse": targetVerse,
+                    "versesLoaded": viewModel.verses.count,
+                    "pendingRetry": pendingScrollRetry,
+                    "reason": reason,
+                    "hypothesisId": "AUTO_SCROLL"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
+            // Retry a few times to wait for LazyVStack layout to materialize IDs
+            if pendingScrollRetry < 8 {
+                pendingScrollRetry += 1
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    attemptScrollToPendingVerse(proxy: proxy, reason: "retry-\(pendingScrollRetry)")
+                }
+            } else {
+                // Give up after retries
+                pendingScrollVerse = nil
+                pendingScrollBook = nil
+                pendingScrollChapter = nil
+            }
+            return
+        }
+        
+        // #region agent log
+        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+        let logEntry: [String: Any] = [
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "location": "ReadingView.attemptScrollToPendingVerse",
+            "message": "scrolling to target verse",
+            "data": [
+                "targetVerse": targetVerse,
+                "targetId": targetId,
+                "versesLoaded": viewModel.verses.count,
+                "pendingRetry": pendingScrollRetry,
+                "reason": reason,
+                "usingEagerLoading": shouldUseEagerLoading,
+                "hypothesisId": "AUTO_SCROLL"
+            ],
+            "sessionId": "debug-session"
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                fileHandle.closeFile()
+            } else {
+                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+            }
+        }
+        // #endregion agent log
+        
+        // Add a small delay to ensure VStack has rendered all views
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            // #region agent log
+            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+            let logEntryPre: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
+                "message": "BEFORE scrollTo called",
+                "data": [
+                    "targetId": targetId,
+                    "targetVerse": targetVerse,
+                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
+                    "shouldUseEagerLoading": shouldUseEagerLoading,
+                    "hypothesisId": "F"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryPre),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
+            withAnimation(.easeInOut) {
+                proxy.scrollTo(targetId, anchor: .top)
+            }
+            
+            // #region agent log
+            let logEntryPost: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
+                "message": "AFTER scrollTo, BEFORE clearing state",
+                "data": [
+                    "targetId": targetId,
+                    "hypothesisId": "F"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryPost),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
+            // DELAY clearing state to allow scroll animation to complete (fix for Hypothesis F)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // #region agent log
+                let logEntryCleared: [String: Any] = [
+                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                    "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
+                    "message": "NOW clearing state after delay",
+                    "data": [
+                        "hypothesisId": "F"
+                    ],
+                    "sessionId": "debug-session"
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryCleared),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                        fileHandle.seekToEndOfFile()
+                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                        fileHandle.closeFile()
+                    } else {
+                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                    }
+                }
+                // #endregion agent log
+                
+                // Mark scroll as completed and clear pending state
+                hasCompletedInitialScroll = true
+                pendingScrollVerse = nil
+                bibleViewModel?.targetVerse = nil
+                pendingScrollRetry = 0
+                pendingScrollBook = nil
+                pendingScrollChapter = nil
             }
         }
     }
@@ -225,50 +560,68 @@ struct ReadingView: View {
                                 }
                                 .frame(height: 0)
                                 
-                                LazyVStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
-                                    // Spacer to account for large navigation title
-                                    Color.clear
-                                        .frame(height: 8)
-                                    
-                                    // Chapter header - subtle and elegant
-                                    HStack {
-                                        Text(chapterText)
-                                            .font(.subheadline)
-                                            .foregroundColor(AppTheme.secondaryText)
-                                            .textCase(.uppercase)
-                                            .tracking(0.5)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .padding(.top, 8)
-                                    .padding(.bottom, 20)
-                                    
-                                    // Verses
-                                    ForEach(viewModel.verses) { verse in
-                                        VerseView(
-                                            verse: verse,
-                                            settingsStore: settingsStore,
-                                            fontSize: settingsStore.fontSize,
-                                            isSelected: selectedVerseId == verse.id,
-                                            onTap: {
-                                                let wasSelected = selectedVerseId == verse.id
-                                                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
-                                                    selectedVerseId = wasSelected ? nil : verse.id
-                                                }
-                                                // Close FAB menu when deselecting
-                                                if wasSelected {
-                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                        showFABMenu = false
-                                                    }
+                                // Use VStack (eager loading) when pending scroll to ensure all views render
+                                // Use LazyVStack for better performance after scroll completes
+                                Group {
+                                    if shouldUseEagerLoading {
+                                        VStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
+                                            versesContent
+                                        }
+                                        .onAppear {
+                                            // #region agent log
+                                            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+                                            let logEntry: [String: Any] = [
+                                                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                                                "location": "ReadingView.VStack",
+                                                "message": "using EAGER loading (VStack)",
+                                                "data": [
+                                                    "pendingVerse": pendingScrollVerse ?? -1,
+                                                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
+                                                    "versesCount": viewModel.verses.count,
+                                                    "hypothesisId": "AUTO_SCROLL"
+                                                ],
+                                                "sessionId": "debug-session"
+                                            ]
+                                            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+                                               let jsonString = String(data: jsonData, encoding: .utf8) {
+                                                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                                                    fileHandle.seekToEndOfFile()
+                                                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                                                    fileHandle.closeFile()
+                                                } else {
+                                                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
                                                 }
                                             }
-                                        )
-                                        .id(verse.id)
+                                            // #endregion agent log
+                                        }
+                                    } else {
+                                        LazyVStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
+                                            versesContent
+                                        }
                                     }
                                 }
-                                .padding(.bottom, 100) // Extra padding for FAB
+                                .padding(.bottom, 40) // Extra padding for safe area
                             }
                             .coordinateSpace(name: "scroll")
+                            .onAppear {
+                                scrollProxy = proxy
+                                // Sync pending target with view model on appear
+                                if pendingScrollVerse == nil {
+                                    if let targetVerse = bibleViewModel?.targetVerse {
+                                        pendingScrollVerse = targetVerse
+                                        pendingScrollBook = bibleViewModel?.selectedBook?.name
+                                        pendingScrollChapter = bibleViewModel?.selectedChapter
+                                        hasCompletedInitialScroll = false
+                                    }
+                                }
+                                attemptScrollToPendingVerse(proxy: proxy, reason: "onAppear")
+                            }
+                            .onChange(of: viewModel.verses) { _ in
+                                attemptScrollToPendingVerse(proxy: proxy, reason: "versesChanged")
+                            }
+                            .onChange(of: pendingScrollVerse) { _ in
+                                attemptScrollToPendingVerse(proxy: proxy, reason: "pendingVerseChanged")
+                            }
                             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                                 let newOffset = value
                                 let delta = newOffset - lastScrollOffset
@@ -286,93 +639,6 @@ struct ReadingView: View {
                                 
                                 lastScrollOffset = newOffset
                                 scrollOffset = newOffset
-                            }
-                        }
-                        
-                        // Floating Action Button (only show when verse is selected)
-                        // IMPORTANT: Do NOT add .contentShape(Rectangle()) or .allowsHitTesting(true)
-                        // to this container - it will block ALL touches on the screen!
-                        if selectedVerseId != nil {
-                            VStack {
-                                Spacer()
-                                HStack {
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 16) {
-                                        if showFABMenu {
-                                            // Expanded menu items
-                                            Group {
-                                                if let selectedId = selectedVerseId,
-                                                   let verse = viewModel.verses.first(where: { $0.id == selectedId }) {
-                                                    // Copy verse button
-                                                    FABMenuItem(
-                                                        icon: "doc.on.doc",
-                                                        label: "Copy Verse",
-                                                        color: Color(red: 0.2, green: 0.6, blue: 0.4)
-                                                    ) {
-                                                        copyVerse(verse)
-                                                    }
-                                                    
-                                                    // Share verse button
-                                                    FABMenuItem(
-                                                        icon: "square.and.arrow.up",
-                                                        label: "Share Verse",
-                                                        color: AppTheme.primaryBlue
-                                                    ) {
-                                                        shareVerse(verse)
-                                                    }
-                                                    
-                                                    // AI Insight button
-                                                    FABMenuItem(
-                                                        icon: "sparkles",
-                                                        label: "AI Insight",
-                                                        color: AppTheme.primaryPurple
-                                                    ) {
-                                                        // TODO: Implement AI insight
-                                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                            showFABMenu = false
-                                                        }
-                                                    }
-                                                    
-                                                    // Save Verse button
-                                                    FABMenuItem(
-                                                        icon: "bookmark.fill",
-                                                        label: "Save Verse",
-                                                        color: AppTheme.accentColor
-                                                    ) {
-                                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                            showFABMenu = false
-                                                        }
-                                                        // Small delay to allow menu to close smoothly
-                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                            showSaveSheet = true
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            .transition(.scale.combined(with: .opacity))
-                                        }
-                                        
-                                        // Main FAB button
-                                        Button {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                showFABMenu.toggle()
-                                            }
-                                        } label: {
-                                            Image(systemName: showFABMenu ? "xmark" : "plus")
-                                                .font(.system(size: 20, weight: .semibold))
-                                                .foregroundColor(.white)
-                                                .frame(width: 56, height: 56)
-                                                .background(
-                                                    Circle()
-                                                        .fill(AppTheme.accentColor)
-                                                        .shadow(color: AppTheme.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
-                                                )
-                                        }
-                                    }
-                                    .padding(.trailing, 20)
-                                    .padding(.bottom, 20)
-                                }
                             }
                         }
                         
@@ -474,6 +740,26 @@ struct ReadingView: View {
                 BookSelectionSheet(viewModel: viewModel, isPresented: $showBookSelector)
             }
         }
+        .sheet(isPresented: $showChatSheet) {
+            if let verse = chatVerse, let aiService = services.aiService {
+                ChatView(
+                    viewModel: ChatViewModel(
+                        aiService: aiService,
+                        book: verse.book,
+                        chapter: verse.chapter,
+                        verse: verse.verseNumber,
+                        verseText: verse.text(for: settingsStore.primaryLanguage),
+                        appLanguage: settingsStore.appLanguage
+                    ),
+                    settingsStore: settingsStore,
+                    onClose: {
+                        showChatSheet = false
+                    }
+                )
+                .presentationDetents([.fraction(0.8), .large])
+                .presentationDragIndicator(.visible)
+            }
+        }
         .sheet(isPresented: $showViewSettings) {
             ReadingSettingsView(isPresented: $showViewSettings)
         }
@@ -498,12 +784,64 @@ struct ReadingView: View {
         .onAppear {
             // Reload saved verses to ensure we have the latest state
             noteStore.loadSavedVerses()
+            // Capture any target verse passed through the view model
+            if pendingScrollVerse == nil {
+                if let targetVerse = bibleViewModel?.targetVerse {
+                    pendingScrollVerse = targetVerse
+                    pendingScrollBook = bibleViewModel?.selectedBook?.name
+                    pendingScrollChapter = bibleViewModel?.selectedChapter
+                    hasCompletedInitialScroll = false // Reset for new target
+                }
+            }
+            if let proxy = scrollProxy {
+                attemptScrollToPendingVerse(proxy: proxy, reason: "onAppear-root")
+            }
         }
         .onChange(of: bibleViewModel?.selectedBook) { oldBook, newBook in
             reloadVersesIfReady()
         }
         .onChange(of: bibleViewModel?.selectedChapter) { oldChapter, newChapter in
             reloadVersesIfReady()
+        }
+        .onChange(of: bibleViewModel?.targetVerse) { _, newTarget in
+            // #region agent log
+            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+            let logEntry: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "ReadingView.onChange(targetVerse)",
+                "message": "targetVerse changed",
+                "data": [
+                    "newTarget": newTarget as Any,
+                    "pendingScrollVerse": pendingScrollVerse as Any,
+                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
+                    "scrollProxyExists": scrollProxy != nil,
+                    "hypothesisId": "E"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
+            if newTarget != nil {
+                // Reset scroll completion state for new target
+                hasCompletedInitialScroll = false
+            }
+            pendingScrollVerse = newTarget
+            pendingScrollBook = bibleViewModel?.selectedBook?.name
+            pendingScrollChapter = bibleViewModel?.selectedChapter
+            pendingScrollRetry = 0
+            if let proxy = scrollProxy {
+                attemptScrollToPendingVerse(proxy: proxy, reason: "targetVerseChanged-root")
+            }
         }
         .task {
             if let book = book, let chapter = chapter {
@@ -659,7 +997,7 @@ struct ReadingSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Font Size")) {
+                Section(header: Text(settingsStore.appLanguage.localizedString("FontSize"))) {
                     HStack {
                         Image(systemName: "textformat.size.smaller")
                             .font(.caption)
@@ -675,7 +1013,7 @@ struct ReadingSettingsView: View {
                     }
                 }
                 
-                Section(header: Text("Line Spacing")) {
+                Section(header: Text(settingsStore.appLanguage.localizedString("LineSpacing"))) {
                     HStack {
                         Image(systemName: "arrow.down")
                             .font(.caption)
@@ -691,21 +1029,21 @@ struct ReadingSettingsView: View {
                     }
                 }
                 
-                Section(header: Text("Language")) {
-                    Toggle("Show Second Language", isOn: $settingsStore.showSecondaryLanguage)
+                Section(header: Text(settingsStore.appLanguage.localizedString("Language"))) {
+                    Toggle(settingsStore.appLanguage.localizedString("ShowSecondLanguage"), isOn: $settingsStore.showSecondaryLanguage)
                         .tint(AppTheme.accentColor)
                 }
                 
-                Section(header: Text("Appearance")) {
-                    Toggle("Dark Mode", isOn: $settingsStore.isDarkMode)
+                Section(header: Text(settingsStore.appLanguage.localizedString("Appearance"))) {
+                    Toggle(settingsStore.appLanguage.localizedString("DarkMode"), isOn: $settingsStore.isDarkMode)
                         .tint(AppTheme.accentColor)
                 }
             }
-            .navigationTitle("View Settings")
+            .navigationTitle(settingsStore.appLanguage.localizedString("ViewSettings"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button(settingsStore.appLanguage.localizedString("Done")) {
                         isPresented = false
                     }
                     .foregroundColor(AppTheme.accentColor)

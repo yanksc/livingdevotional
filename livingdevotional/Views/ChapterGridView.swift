@@ -43,7 +43,7 @@ struct ChapterGridView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("Books")
+                        Text(settingsStore.appLanguage.localizedString("Books"))
                     }
                     .foregroundColor(AppTheme.accentColor)
                 }
@@ -65,7 +65,7 @@ struct ChapterButton: View {
                 .frame(width: 70, height: 70)
                 .background(AppTheme.chapterButtonGradient)
                 .cornerRadius(16)
-                .shadow(color: AppTheme.primaryBlue.opacity(0.3), radius: 8, x: 0, y: 4)
+                .shadow(color: AppTheme.chapterButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(PlainButtonStyle())
         .onTapGesture {

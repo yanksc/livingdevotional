@@ -163,3 +163,7 @@ livingdevotional/
 
 The app is production-ready once the BibleData folder is added to the Xcode project.
 
+
+
+
+

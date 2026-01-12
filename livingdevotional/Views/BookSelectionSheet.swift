@@ -22,9 +22,9 @@ struct BookSelectionSheet: View {
                 VStack(spacing: 0) {
                     // Segmented Control for Testament Selection
                     Picker("Testament", selection: $selectedTab) {
-                        Text(BibleData.localizedTestamentName(.old, language: settingsStore.primaryLanguage))
+                        Text(BibleData.localizedTestamentName(.old, appLanguage: settingsStore.appLanguage))
                             .tag(0)
-                        Text(BibleData.localizedTestamentName(.new, language: settingsStore.primaryLanguage))
+                        Text(BibleData.localizedTestamentName(.new, appLanguage: settingsStore.appLanguage))
                             .tag(1)
                     }
                     .pickerStyle(.segmented)
@@ -151,11 +151,11 @@ struct BookSelectionSheet: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Select Book")
+            .navigationTitle(settingsStore.appLanguage.localizedString("SelectBook"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button(settingsStore.appLanguage.localizedString("Done")) {
                         isPresented = false
                     }
                     .foregroundColor(AppTheme.accentColor)
@@ -181,6 +181,12 @@ struct BookSelectionRow: View {
     let onSelect: () -> Void
     @ObservedObject var settingsStore = SettingsStore.shared
     
+    private var chapterText: String {
+        book.chapters == 1 
+            ? settingsStore.appLanguage.localizedString("Chapter")
+            : settingsStore.appLanguage.localizedString("Chapters")
+    }
+    
     var body: some View {
         Button(action: onSelect) {
             HStack {
@@ -189,7 +195,7 @@ struct BookSelectionRow: View {
                     .fontWeight(.medium)
                     .foregroundColor(AppTheme.primaryText)
                 Spacer()
-                Text("\(book.chapters) \(book.chapters == 1 ? "chapter" : "chapters")")
+                Text("\(book.chapters) \(chapterText)")
                     .font(.caption)
                     .foregroundColor(AppTheme.secondaryText)
                     .padding(.horizontal, 10)

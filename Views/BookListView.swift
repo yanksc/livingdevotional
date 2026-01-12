@@ -15,9 +15,9 @@ struct BookListView: View {
             VStack(spacing: 0) {
                 // Segmented Control for Testament Selection
                 Picker("Testament", selection: $selectedTab) {
-                    Text(BibleData.localizedTestamentName(.old, language: settingsStore.primaryLanguage))
+                    Text(BibleData.localizedTestamentName(.old, appLanguage: settingsStore.appLanguage))
                         .tag(0)
-                    Text(BibleData.localizedTestamentName(.new, language: settingsStore.primaryLanguage))
+                    Text(BibleData.localizedTestamentName(.new, appLanguage: settingsStore.appLanguage))
                         .tag(1)
                 }
                 .pickerStyle(.segmented)
@@ -57,7 +57,7 @@ struct BookRow: View {
     var body: some View {
         NavigationLink(value: NavigationDestination.chapterGrid(book)) {
             HStack {
-                Text(book.localizedName(for: settingsStore.primaryLanguage))
+                Text(book.localizedName(for: settingsStore.appLanguage))
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundColor(AppTheme.primaryText)

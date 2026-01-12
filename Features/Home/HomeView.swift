@@ -7,6 +7,8 @@ struct HomeView: View {
     @Environment(\.services) var services
     @EnvironmentObject var router: AppRouter
     @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject private var noteStore = NoteStore.shared
+    @State private var showSavedNotes = false
     
     var body: some View {
         ZStack {
@@ -24,6 +26,9 @@ struct HomeView: View {
                     // Quick actions
                     quickActionsSection
                     
+                    // Saved notes preview
+                    savedNotesPreviewSection
+                    
                     // Recent reading
                     recentReadingSection
                 }
@@ -32,6 +37,14 @@ struct HomeView: View {
         }
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.large)
+        .sheet(isPresented: $showSavedNotes) {
+            NavigationStack {
+                SavedNotesListView(
+                    noteStore: noteStore,
+                    settingsStore: SettingsStore.shared
+                )
+            }
+        }
     }
     
     // MARK: - View Components
@@ -75,8 +88,53 @@ struct HomeView: View {
                 quickActionButton(title: "Read Bible", icon: "book.fill") {
                     // Navigation handled by MainTabView
                 }
-                quickActionButton(title: "Search", icon: "magnifyingglass") {
-                    // TODO: Open search
+                quickActionButton(title: "My Notes", icon: "bookmark.fill") {
+                    showSavedNotes = true
+                }
+            }
+        }
+    }
+    
+    private var savedNotesPreviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Saved Notes")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
+                
+                Button("View All") {
+                    showSavedNotes = true
+                }
+                .font(.subheadline)
+                .foregroundColor(AppTheme.accentColor)
+            }
+            
+            if noteStore.savedVerses.isEmpty {
+                Text("No saved verses yet")
+                    .foregroundColor(AppTheme.secondaryText)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(AppTheme.cardGradient)
+                    .cornerRadius(12)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(noteStore.savedVerses.prefix(3)), id: \.id) { savedVerse in
+                        SavedNotePreviewRow(savedVerse: savedVerse)
+                    }
+                    
+                    if noteStore.savedVerses.count > 3 {
+                        Button(action: {
+                            showSavedNotes = true
+                        }) {
+                            Text("View \(noteStore.savedVerses.count - 3) more...")
+                                .font(.subheadline)
+                                .foregroundColor(AppTheme.accentColor)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                        }
+                    }
                 }
             }
         }
@@ -113,6 +171,40 @@ struct HomeView: View {
             .background(AppTheme.primaryGradient)
             .cornerRadius(12)
         }
+    }
+}
+
+// MARK: - Saved Note Preview Row
+
+struct SavedNotePreviewRow: View {
+    let savedVerse: SavedVerse
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "bookmark.fill")
+                .font(.caption)
+                .foregroundColor(AppTheme.accentColor)
+                .padding(.top, 2)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(savedVerse.verseReference)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                if !savedVerse.content.isEmpty {
+                    Text(savedVerse.content)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .lineLimit(2)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(AppTheme.cardGradient)
+        .cornerRadius(12)
     }
 }
 

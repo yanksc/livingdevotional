@@ -51,11 +51,18 @@ class HomeViewModel: ObservableObject {
         guard let userService = services.userService else {
             // Fallback to local progress store
             let progress = services.progressStore
-            if progress.currentBook != nil,
-               progress.currentChapter != nil {
+            if let book = progress.currentBook,
+               let chapter = progress.currentChapter {
                 await MainActor.run {
                     // Create a simple ReadingProgress from local data
-                    // This is a placeholder until UserService is implemented
+                    self.recentReading = ReadingProgress(
+                        id: "local",
+                        userId: "local",
+                        book: book,
+                        chapter: chapter,
+                        lastVerse: 1, // Default to 1 as we don't track exact verse yet
+                        lastReadAt: Date()
+                    )
                 }
             }
             return

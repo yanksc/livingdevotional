@@ -24,6 +24,9 @@ class ServiceContainer: ObservableObject {
         self.bibleService = BibleService.shared
         self.settingsStore = SettingsStore.shared
         self.progressStore = ProgressStore.shared
+        
+        // Initialize DailyVerseService
+        self.dailyVerseService = DailyVerseService.shared
     }
     
     // MARK: - Service Registration

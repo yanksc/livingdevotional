@@ -7,6 +7,7 @@ struct SettingsView: View {
     @ObservedObject private var noteStore = NoteStore.shared
     @EnvironmentObject var router: AppRouter
     @State private var showSavedNotes = false
+    @State private var showChatHistory = false
     
     var body: some View {
         ZStack {
@@ -70,6 +71,19 @@ struct SettingsView: View {
                                 .foregroundColor(AppTheme.secondaryText)
                         }
                     }
+                    
+                    Button(action: {
+                        showChatHistory = true
+                    }) {
+                        HStack {
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "AI 問答記錄" : "AI Q&A History")
+                                .foregroundColor(AppTheme.primaryText)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                    }
                 }
                 .listRowBackground(Color.clear)
                 
@@ -99,6 +113,12 @@ struct SettingsView: View {
                     settingsStore: settingsStore
                 )
                 .environmentObject(router)
+            }
+        }
+        .sheet(isPresented: $showChatHistory) {
+            NavigationStack {
+                ChatHistoryView()
+                    .environmentObject(router)
             }
         }
     }

@@ -22,6 +22,18 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    // Computed property for app language (converts Language to AppLanguage)
+    var appLanguage: AppLanguage {
+        switch primaryLanguage {
+        case .cuv, .cu1:
+            return .chineseTraditional
+        case .bsb:
+            return .english
+        case .none:
+            return .system
+        }
+    }
+    
     private init() {
         // Load saved preferences or use defaults
         if let primaryRaw = userDefaults.string(forKey: primaryLanguageKey),

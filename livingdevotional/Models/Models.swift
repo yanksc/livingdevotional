@@ -3,12 +3,29 @@
 
 import Foundation
 
-// MARK: - Language Enum
+// MARK: - AI Mode Enum
+
+enum AIMode: String, CaseIterable {
+    case insight
+    case reflect
+    case pray
+    
+    var displayName: String {
+        switch self {
+        case .insight: return "Insight"
+        case .reflect: return "Reflect"
+        case .pray: return "Pray"
+        }
+    }
+}
+
+// MARK: - Language Enum (Bible Translation)
 
 enum Language: String, Codable, CaseIterable, Identifiable {
     case bsb = "bsb"
     case cuv = "cuv"
     case cu1 = "cu1"
+    case kjv = "kjv"
     case none = "none"
     
     var id: String { rawValue }
@@ -18,6 +35,7 @@ enum Language: String, Codable, CaseIterable, Identifiable {
         case .bsb: return "English (BSB)"
         case .cuv: return "中文和合本 (CUV)"
         case .cu1: return "新标点和合本"
+        case .kjv: return "King James Version"
         case .none: return "無"
         }
     }
@@ -27,8 +45,130 @@ enum Language: String, Codable, CaseIterable, Identifiable {
         case .bsb: return "Berean Standard Bible"
         case .cuv: return "Chinese Union Version"
         case .cu1: return "Chinese Union Version with New Punctuation"
+        case .kjv: return "King James Version"
         case .none: return "僅顯示主要語言"
         }
+    }
+}
+
+// MARK: - AppLanguage Enum (UI Language)
+
+enum AppLanguage: String, CaseIterable, Identifiable, Codable {
+    case system
+    case english = "en"
+    case chineseTraditional = "zh-Hant"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System Default"
+        case .english: return "English"
+        case .chineseTraditional: return "繁體中文"
+        }
+    }
+    
+    /// Resolve to a specific locale identifier, using system locale if .system
+    func resolvedLocale() -> Locale {
+        switch self {
+        case .system:
+            return Locale.current
+        case .english:
+            return Locale(identifier: "en")
+        case .chineseTraditional:
+            return Locale(identifier: "zh-Hant")
+        }
+    }
+    
+    /// Get the resolved language code for book name localization
+    func resolvedLanguageCode() -> String {
+        switch self {
+        case .system:
+            // Use system's preferred language
+            let preferredLanguage = Locale.preferredLanguages.first ?? "en"
+            if preferredLanguage.hasPrefix("zh") {
+                return "zh-Hant"
+            }
+            return "en"
+        case .english:
+            return "en"
+        case .chineseTraditional:
+            return "zh-Hant"
+        }
+    }
+    
+    /// Localize interface strings based on app language
+    func localizedString(_ key: String) -> String {
+        let languageCode = resolvedLanguageCode()
+        
+        // #region agent log
+        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+        let logEntry: [String: Any] = [
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "location": "AppLanguage.localizedString",
+            "message": "Localizing string",
+            "data": [
+                "key": key,
+                "appLanguage": self.rawValue,
+                "resolvedLanguageCode": languageCode,
+                "hypothesisId": "C"
+            ],
+            "sessionId": "debug-session",
+            "runId": "localization-debug"
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                fileHandle.closeFile()
+            } else {
+                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+            }
+        }
+        // #endregion agent log
+        
+        // Interface string mappings
+        let strings: [String: [String: String]] = [
+            "Home": ["en": "Home", "zh-Hant": "首頁"],
+            "Welcome": ["en": "Welcome", "zh-Hant": "歡迎"],
+            "WelcomeSubtitle": ["en": "Start your daily devotional journey", "zh-Hant": "開始您的每日靈修之旅"],
+            "VerseOfTheDay": ["en": "Verse of the Day", "zh-Hant": "今日金句"],
+            "QuickActions": ["en": "Quick Actions", "zh-Hant": "快速操作"],
+            "ContinueReading": ["en": "Continue Reading", "zh-Hant": "繼續閱讀"],
+            "ReadBible": ["en": "Read Bible", "zh-Hant": "讀經"],
+            "MyNotes": ["en": "My Notes", "zh-Hant": "我的筆記"],
+            "ReadChapter": ["en": "Read Chapter", "zh-Hant": "閱讀章節"],
+            "SavedNotes": ["en": "Saved Notes", "zh-Hant": "已保存的筆記"],
+            "ViewAll": ["en": "View All", "zh-Hant": "查看全部"],
+            "NoRecentReading": ["en": "No recent reading", "zh-Hant": "沒有最近的閱讀記錄"],
+            "NoSavedVerses": ["en": "No saved verses yet", "zh-Hant": "尚未保存任何經文"],
+            "UnableToLoadVerse": ["en": "Unable to load verse", "zh-Hant": "無法載入經文"],
+            "Loading": ["en": "Loading...", "zh-Hant": "載入中..."],
+            "ErrorLoadingVerses": ["en": "Error loading verses", "zh-Hant": "載入經文時發生錯誤"],
+            "NoVersesFound": ["en": "No verses found", "zh-Hant": "找不到經文"],
+            "Retry": ["en": "Retry", "zh-Hant": "重試"],
+            "Bible": ["en": "Bible", "zh-Hant": "聖經"],
+            "Books": ["en": "Books", "zh-Hant": "書卷"],
+            "Chapter": ["en": "chapter", "zh-Hant": "章"],
+            "Chapters": ["en": "chapters", "zh-Hant": "章"],
+            "SelectBook": ["en": "Select Book", "zh-Hant": "選擇書卷"],
+            "Done": ["en": "Done", "zh-Hant": "完成"],
+            "ViewSettings": ["en": "View Settings", "zh-Hant": "檢視設定"],
+            "FontSize": ["en": "Font Size", "zh-Hant": "字體大小"],
+            "LineSpacing": ["en": "Line Spacing", "zh-Hant": "行距"],
+            "Language": ["en": "Language", "zh-Hant": "語言"],
+            "ShowSecondLanguage": ["en": "Show Second Language", "zh-Hant": "顯示第二語言"],
+            "Appearance": ["en": "Appearance", "zh-Hant": "外觀"],
+            "DarkMode": ["en": "Dark Mode", "zh-Hant": "深色模式"],
+            "AIExplanation": ["en": "AI Explanation", "zh-Hant": "AI解釋"],
+            "GeneratingExplanation": ["en": "Generating explanation...", "zh-Hant": "正在生成解釋..."],
+            "AIInsight": ["en": "Insight", "zh-Hant": "理解"],
+            "AIReflect": ["en": "Reflect", "zh-Hant": "反思"],
+            "AIPray": ["en": "Pray", "zh-Hant": "禱告"]
+        ]
+        
+        return strings[key]?[languageCode] ?? strings[key]?["en"] ?? key
     }
 }
 
@@ -42,6 +182,7 @@ struct BibleVerse: Codable, Identifiable, Hashable {
     let textBsb: String
     let textCuv: String
     let textCu1: String
+    let textKjv: String
     let testament: String
     
     enum CodingKeys: String, CodingKey {
@@ -50,6 +191,7 @@ struct BibleVerse: Codable, Identifiable, Hashable {
         case textBsb = "text_bsb"
         case textCuv = "text_cuv"
         case textCu1 = "text_cu1"
+        case textKjv = "text_kjv"
     }
     
     /// Get text for specified language
@@ -58,6 +200,7 @@ struct BibleVerse: Codable, Identifiable, Hashable {
         case .bsb: return textBsb
         case .cuv: return textCuv
         case .cu1: return textCu1
+        case .kjv: return textKjv
         case .none: return ""
         }
     }
@@ -164,6 +307,7 @@ struct DailyVerse: Codable {
     let textBsb: String
     let textCuv: String
     let textCu1: String
+    let textKjv: String
     let reference: String
     let selectedDate: String
     
@@ -173,6 +317,7 @@ struct DailyVerse: Codable {
         case textBsb = "text_bsb"
         case textCuv = "text_cuv"
         case textCu1 = "text_cu1"
+        case textKjv = "text_kjv"
         case selectedDate = "selected_date"
     }
     
@@ -181,6 +326,7 @@ struct DailyVerse: Codable {
         case .bsb: return textBsb
         case .cuv: return textCuv
         case .cu1: return textCu1
+        case .kjv: return textKjv
         case .none: return ""
         }
     }

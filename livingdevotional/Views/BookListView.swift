@@ -15,9 +15,9 @@ struct BookListView: View {
             VStack(spacing: 0) {
                 // Segmented Control for Testament Selection
                 Picker("Testament", selection: $selectedTab) {
-                    Text(BibleData.localizedTestamentName(.old, language: settingsStore.primaryLanguage))
+                    Text(BibleData.localizedTestamentName(.old, appLanguage: settingsStore.appLanguage))
                         .tag(0)
-                    Text(BibleData.localizedTestamentName(.new, language: settingsStore.primaryLanguage))
+                    Text(BibleData.localizedTestamentName(.new, appLanguage: settingsStore.appLanguage))
                         .tag(1)
                 }
                 .pickerStyle(.segmented)
@@ -44,7 +44,7 @@ struct BookListView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .navigationTitle("Bible")
+        .navigationTitle(settingsStore.appLanguage.localizedString("Bible"))
         .navigationBarTitleDisplayMode(.large)
     }
 }
@@ -54,6 +54,12 @@ struct BookRow: View {
     @ObservedObject var viewModel: BibleViewModel
     @ObservedObject var settingsStore = SettingsStore.shared
     
+    private var chapterText: String {
+        book.chapters == 1 
+            ? settingsStore.appLanguage.localizedString("Chapter")
+            : settingsStore.appLanguage.localizedString("Chapters")
+    }
+    
     var body: some View {
         NavigationLink(value: NavigationDestination.chapterGrid(book)) {
             HStack {
@@ -62,7 +68,7 @@ struct BookRow: View {
                     .fontWeight(.medium)
                     .foregroundColor(AppTheme.primaryText)
                 Spacer()
-                Text("\(book.chapters) \(book.chapters == 1 ? "chapter" : "chapters")")
+                Text("\(book.chapters) \(chapterText)")
                     .font(.caption)
                     .foregroundColor(AppTheme.secondaryText)
                     .padding(.horizontal, 10)

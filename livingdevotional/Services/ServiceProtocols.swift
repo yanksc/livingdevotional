@@ -17,7 +17,7 @@ protocol AuthenticationServiceProtocol {
 // MARK: - AI Service Protocol
 
 protocol AIServiceProtocol {
-    func explainVerse(book: String, chapter: Int, verse: Int, language: Language) async throws -> String
+    func explainVerse(book: String, chapter: Int, verse: Int, verseText: String, language: Language, mode: AIMode, appLanguage: AppLanguage, conversationHistory: [ChatMessage]?, userPrompt: String?) async throws -> AsyncThrowingStream<String, Error>
     func findRelatedVerses(book: String, chapter: Int, verse: Int) async throws -> [RelatedVerse]
     func askQuestion(question: String, context: String?) async throws -> String
     func summarizeChapter(book: String, chapter: Int, language: Language) async throws -> String
@@ -78,4 +78,8 @@ struct CheckInStats: Codable {
     let longestStreak: Int
     let lastCheckInDate: Date?
 }
+
+
+
+
 

@@ -86,3 +86,7 @@ To see what's currently being copied:
 The folder reference should preserve structure, so files should be at:
 `BibleData/bsb/GEN/1.json` not just `1.json` in bundle root.
 
+
+
+
+

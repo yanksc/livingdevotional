@@ -66,3 +66,7 @@ After removing:
 
 **Don't delete the actual files from disk!** Only remove the Xcode reference. The files at `livingdevotional/Resources/BibleData/` can stay on disk - they just shouldn't be referenced by Xcode. The top-level folder reference will handle including them in the bundle.
 
+
+
+
+

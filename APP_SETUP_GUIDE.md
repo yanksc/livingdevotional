@@ -146,3 +146,7 @@ If you encounter issues:
 2. Verify all files are in the correct locations
 3. Ensure BibleData folder is properly added to the project bundle
 
+
+
+
+

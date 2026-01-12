@@ -30,7 +30,7 @@ struct ChapterGridView: View {
                 .padding()
             }
         }
-        .navigationTitle(book.localizedName(for: settingsStore.primaryLanguage))
+        .navigationTitle(book.localizedName(for: settingsStore.appLanguage))
         .navigationBarTitleDisplayMode(.large)
         .navigationBarBackButtonHidden(true)
         .toolbar {

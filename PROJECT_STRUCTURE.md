@@ -108,3 +108,4 @@ livingdevotional/
 
 **When in doubt, check the `livingdevotional/` directory first. If a file exists there, edit that one. Never create a duplicate in the root directory.**
 
+

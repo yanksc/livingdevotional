@@ -92,8 +92,8 @@ struct SavedNotesListView: View {
                     settingsStore: settingsStore,
                     router: router
                 )
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
         }
         .scrollContentBackground(.hidden)
@@ -108,80 +108,81 @@ struct SavedNoteRow: View {
     @ObservedObject var noteStore = NoteStore.shared
     @ObservedObject var router: AppRouter
     @State private var showDeleteConfirmation = false
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         Button(action: {
             navigateToVerse()
         }) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
                 // Verse reference (localized based on primary language)
-                HStack {
+            HStack {
                     Text(localizedVerseReference)
-                        .font(.headline)
-                        .foregroundColor(AppTheme.accentColor)
-                    
-                    Spacer()
+                    .font(.headline)
+                    .foregroundColor(AppTheme.accentColor)
+                
+                Spacer()
                     
                     HStack(spacing: 8) {
                         // Navigate indicator
                         Image(systemName: "arrow.right.circle.fill")
-                            .font(.caption)
+                            .font(.title2)
                             .foregroundColor(AppTheme.accentColor.opacity(0.6))
-                        
-                        // Delete button
-                        Button(action: {
-                            showDeleteConfirmation = true
-                        }) {
-                            Image(systemName: "trash")
-                                .font(.caption)
-                                .foregroundColor(.red)
+                
+                // Delete button
+                Button(action: {
+                    showDeleteConfirmation = true
+                }) {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundColor(.red)
                         }
                         .buttonStyle(PlainButtonStyle())
-                    }
                 }
-                
-                // Verse text (if available)
-                if let verseText = getVerseText() {
-                    Text(verseText)
-                        .font(.body)
-                        .foregroundColor(AppTheme.primaryText)
-                        .lineLimit(3)
-                }
-                
-                // Note content
-                if !savedVerse.content.isEmpty {
-                    Text(savedVerse.content)
-                        .font(.subheadline)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .italic()
-                        .padding(.top, 4)
-                }
-                
-                // Labels
-                if !savedVerse.labels.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(savedVerse.labels, id: \.self) { label in
-                                Text(label)
-                                    .font(.caption2)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(AppTheme.accentColor.opacity(0.2))
-                                    .foregroundColor(AppTheme.accentColor)
-                                    .cornerRadius(8)
-                            }
+            }
+            
+            // Verse text (if available)
+            if let verseText = getVerseText() {
+                Text(verseText)
+                    .font(.body)
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(3)
+            }
+            
+            // Note content
+            if !savedVerse.content.isEmpty {
+                Text(savedVerse.content)
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .italic()
+                    .padding(.top, 4)
+            }
+            
+            // Labels
+            if !savedVerse.labels.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(savedVerse.labels, id: \.self) { label in
+                            Text(label)
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(AppTheme.accentColor.opacity(0.2))
+                                .foregroundColor(AppTheme.accentColor)
+                                .cornerRadius(8)
                         }
                     }
                 }
-                
-                // Timestamp
-                Text(formatDate(savedVerse.timestamp))
-                    .font(.caption)
-                    .foregroundColor(AppTheme.secondaryText)
             }
-            .padding()
-            .background(AppTheme.cardGradient)
-            .cornerRadius(12)
+            
+            // Timestamp
+            Text(formatDate(savedVerse.timestamp))
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+        }
+        .padding()
+        .background(AppTheme.cardGradient)
+        .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
         .confirmationDialog("Delete Note", isPresented: $showDeleteConfirmation) {
@@ -218,9 +219,62 @@ struct SavedNoteRow: View {
     }
     
     private func navigateToVerse() {
+        // #region agent log
+        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+        let logEntry1: [String: Any] = [
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "location": "SavedNoteRow.navigateToVerse",
+            "message": "navigateToVerse called",
+            "data": [
+                "savedVerse.book": savedVerse.book,
+                "savedVerse.chapter": savedVerse.chapter,
+                "savedVerse.verse": savedVerse.verse,
+                "hypothesisId": "B"
+            ],
+            "sessionId": "debug-session"
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry1),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                fileHandle.closeFile()
+            } else {
+                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+            }
+        }
+        // #endregion agent log
+        
         // Convert book string to BibleBook object
         if let book = BibleData.book(named: savedVerse.book) {
-            router.navigateToReading(book: book, chapter: savedVerse.chapter)
+            router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
+            
+            // #region agent log
+            let logEntry2: [String: Any] = [
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "location": "SavedNoteRow.navigateToVerse",
+                "message": "after navigateToReading, before dismiss",
+                "data": [
+                    "book": book.name,
+                    "chapter": savedVerse.chapter,
+                    "verse": savedVerse.verse,
+                    "hypothesisId": "A"
+                ],
+                "sessionId": "debug-session"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry2),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                    fileHandle.closeFile()
+                } else {
+                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                }
+            }
+            // #endregion agent log
+            
+            dismiss()
         }
     }
 }

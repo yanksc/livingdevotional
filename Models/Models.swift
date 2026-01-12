@@ -32,6 +32,53 @@ enum Language: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - AppLanguage Enum (UI Language)
+
+enum AppLanguage: String, CaseIterable, Identifiable, Codable {
+    case system
+    case english = "en"
+    case chineseTraditional = "zh-Hant"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System Default"
+        case .english: return "English"
+        case .chineseTraditional: return "繁體中文"
+        }
+    }
+    
+    /// Resolve to a specific locale identifier, using system locale if .system
+    func resolvedLocale() -> Locale {
+        switch self {
+        case .system:
+            return Locale.current
+        case .english:
+            return Locale(identifier: "en")
+        case .chineseTraditional:
+            return Locale(identifier: "zh-Hant")
+        }
+    }
+    
+    /// Get the resolved language code for book name localization
+    func resolvedLanguageCode() -> String {
+        switch self {
+        case .system:
+            // Use system's preferred language
+            let preferredLanguage = Locale.preferredLanguages.first ?? "en"
+            if preferredLanguage.hasPrefix("zh") {
+                return "zh-Hant"
+            }
+            return "en"
+        case .english:
+            return "en"
+        case .chineseTraditional:
+            return "zh-Hant"
+        }
+    }
+}
+
 // MARK: - Bible Verse
 
 struct BibleVerse: Codable, Identifiable, Hashable {

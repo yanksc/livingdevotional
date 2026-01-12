@@ -10,6 +10,7 @@ struct HomeView: View {
     @ObservedObject private var settingsStore = SettingsStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
     @State private var showSavedNotes = false
+    @State private var showChatHistory = false
     
     var body: some View {
         ZStack {
@@ -37,7 +38,7 @@ struct HomeView: View {
                 .padding(.bottom, 100) // Extra padding for tab bar
             }
         }
-        .navigationTitle("Home")
+        .navigationTitle(settingsStore.appLanguage.localizedString("Home"))
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -53,17 +54,23 @@ struct HomeView: View {
                 .environmentObject(router)
             }
         }
+        .sheet(isPresented: $showChatHistory) {
+            NavigationStack {
+                ChatHistoryView()
+                    .environmentObject(router)
+            }
+        }
     }
     
     // MARK: - View Components
     
     private var welcomeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Welcome")
+            Text(settingsStore.appLanguage.localizedString("Welcome"))
                 .font(.title)
                 .fontWeight(.bold)
                 .foregroundColor(AppTheme.primaryText)
-            Text("Start your daily devotional journey")
+            Text(settingsStore.appLanguage.localizedString("WelcomeSubtitle"))
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
         }
@@ -73,7 +80,7 @@ struct HomeView: View {
     private var verseOfTheDaySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Verse of the Day")
+                Text(settingsStore.appLanguage.localizedString("VerseOfTheDay"))
                     .font(.headline)
                     .foregroundColor(AppTheme.primaryText)
                 
@@ -122,10 +129,10 @@ struct HomeView: View {
                         Button {
                             // Navigate to this verse
                             if let book = BibleData.book(named: verse.book) {
-                                router.navigateToReading(book: book, chapter: verse.chapter)
+                                router.navigateToReading(book: book, chapter: verse.chapter, verse: verse.verseNumber)
                             }
                         } label: {
-                            Text("Read Chapter")
+                            Text(settingsStore.appLanguage.localizedString("ReadChapter"))
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .padding(.horizontal, 12)
@@ -158,7 +165,7 @@ struct HomeView: View {
                     .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
                     .cornerRadius(16)
             } else {
-                Text("Unable to load verse")
+                Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
                     .foregroundColor(AppTheme.secondaryText)
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -170,17 +177,21 @@ struct HomeView: View {
     
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Actions")
+            Text(settingsStore.appLanguage.localizedString("QuickActions"))
                 .font(.headline)
                 .foregroundColor(AppTheme.primaryText)
             
             HStack(spacing: 12) {
-                quickActionButton(title: "Read Bible", icon: "book.fill", color: AppTheme.primaryBlue) {
+                quickActionButton(title: settingsStore.appLanguage.localizedString("ReadBible"), icon: "book.fill", color: AppTheme.primaryBlue) {
                     router.selectedTab = 1 // Switch to Bible tab
                 }
                 
-                quickActionButton(title: "My Notes", icon: "bookmark.fill", color: AppTheme.accentColor) {
+                quickActionButton(title: settingsStore.appLanguage.localizedString("MyNotes"), icon: "bookmark.fill", color: AppTheme.accentColor) {
                     showSavedNotes = true
+                }
+                
+                quickActionButton(title: settingsStore.appLanguage == .chineseTraditional ? "問答記錄" : "Q&A History", icon: "bubble.left.and.bubble.right.fill", color: AppTheme.primaryPurple) {
+                    showChatHistory = true
                 }
             }
         }
@@ -188,7 +199,7 @@ struct HomeView: View {
     
     private var recentReadingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Continue Reading")
+            Text(settingsStore.appLanguage.localizedString("ContinueReading"))
                 .font(.headline)
                 .foregroundColor(AppTheme.primaryText)
             
@@ -196,7 +207,7 @@ struct HomeView: View {
                let book = BibleData.book(named: recent.book) {
                 
                 Button {
-                    router.navigateToReading(book: book, chapter: recent.chapter)
+                    router.navigateToReading(book: book, chapter: recent.chapter, verse: recent.lastVerse)
                 } label: {
                     HStack(spacing: 16) {
                         // Icon
@@ -210,13 +221,14 @@ struct HomeView: View {
                                 .foregroundColor(AppTheme.accentColor)
                         }
                         
-                        // Text info
+                        // Text info - use primaryLanguage for book/chapter names
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(BibleData.localizedBookName(recent.book, appLanguage: settingsStore.appLanguage))
+                            Text(BibleData.localizedBookName(recent.book, language: settingsStore.primaryLanguage))
                                 .font(.headline)
                                 .foregroundColor(AppTheme.primaryText)
                             
-                            Text("\(BibleData.localizedChapterText(appLanguage: settingsStore.appLanguage)) \(recent.chapter)")
+                            let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+                            Text(chapterPrefix == "第" ? "\(chapterPrefix)\(recent.chapter)章" : "\(chapterPrefix) \(recent.chapter)")
                                 .font(.subheadline)
                                 .foregroundColor(AppTheme.secondaryText)
                         }
@@ -238,7 +250,7 @@ struct HomeView: View {
                 HStack {
                     Image(systemName: "book.closed")
                         .foregroundColor(AppTheme.secondaryText)
-                    Text("No recent reading")
+                    Text(settingsStore.appLanguage.localizedString("NoRecentReading"))
                         .foregroundColor(AppTheme.secondaryText)
                 }
                 .padding()
@@ -277,7 +289,8 @@ struct HomeView: View {
     // MARK: - Helpers
     
     private func localizedReference(book: String, chapter: Int, verse: Int) -> String {
-        let localizedBook = BibleData.localizedBookName(book, appLanguage: settingsStore.appLanguage)
+        // Use primaryLanguage for book/chapter references
+        let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
         return "\(localizedBook) \(chapter):\(verse)"
     }
     
@@ -290,13 +303,13 @@ struct HomeView: View {
     private var savedNotesPreviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Saved Notes")
+                Text(settingsStore.appLanguage.localizedString("SavedNotes"))
                     .font(.headline)
                     .foregroundColor(AppTheme.primaryText)
                 
                 Spacer()
                 
-                Button("View All") {
+                Button(settingsStore.appLanguage.localizedString("ViewAll")) {
                     showSavedNotes = true
                 }
                 .font(.subheadline)
@@ -304,7 +317,7 @@ struct HomeView: View {
             }
             
             if noteStore.savedVerses.isEmpty {
-                Text("No saved verses yet")
+                Text(settingsStore.appLanguage.localizedString("NoSavedVerses"))
                     .foregroundColor(AppTheme.secondaryText)
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -320,7 +333,11 @@ struct HomeView: View {
                         Button(action: {
                             showSavedNotes = true
                         }) {
-                            Text("View \(noteStore.savedVerses.count - 3) more...")
+                            let moreCount = noteStore.savedVerses.count - 3
+                            let viewMoreText = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" 
+                                ? "查看其他 \(moreCount) 項..." 
+                                : "View \(moreCount) more..."
+                            Text(viewMoreText)
                                 .font(.subheadline)
                                 .foregroundColor(AppTheme.accentColor)
                                 .frame(maxWidth: .infinity)
@@ -386,7 +403,7 @@ struct SavedNotePreviewRow: View {
     private func navigateToVerse() {
         // Convert book string to BibleBook object
         if let book = BibleData.book(named: savedVerse.book) {
-            router.navigateToReading(book: book, chapter: savedVerse.chapter)
+                router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
         }
     }
 }

@@ -71,3 +71,7 @@ If exclusion doesn't work, you can also:
 
 The folder reference approach preserves the structure: `BibleData/bsb/GEN/1.json` stays separate from `BibleData/bsb/EXO/1.json`.
 
+
+
+
+

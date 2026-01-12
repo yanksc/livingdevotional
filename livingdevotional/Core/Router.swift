@@ -5,7 +5,7 @@ import SwiftUI
 enum AppRoute: Hashable {
     case home
     case bible
-    case reading(book: BibleBook, chapter: Int)
+    case reading(book: BibleBook, chapter: Int, verse: Int? = nil)
     case settings
     case profile
     case login
@@ -48,9 +48,36 @@ class AppRouter: ObservableObject {
         navigationPath.removeLast(navigationPath.count)
     }
     
-    func navigateToReading(book: BibleBook, chapter: Int) {
+    func navigateToReading(book: BibleBook, chapter: Int, verse: Int? = nil) {
+        // #region agent log
+        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
+        let logEntry: [String: Any] = [
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "location": "AppRouter.navigateToReading",
+            "message": "navigateToReading called",
+            "data": [
+                "book": book.name,
+                "chapter": chapter,
+                "verse": verse as Any,
+                "currentRoute": String(describing: currentRoute),
+                "hypothesisId": "AUTO_SCROLL"
+            ],
+            "sessionId": "debug-session"
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
+                fileHandle.closeFile()
+            } else {
+                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+            }
+        }
+        // #endregion agent log
+        
         // Set route to reading, which will trigger MainTabView to update BibleViewModel
-        currentRoute = .reading(book: book, chapter: chapter)
+        currentRoute = .reading(book: book, chapter: chapter, verse: verse)
         selectedTab = 1 // Switch to Bible tab
     }
 }

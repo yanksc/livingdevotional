@@ -205,3 +205,7 @@ This would allow adding translations without code changes, but requires:
 
 See the code changes above - follow the same pattern for any new translation. The Settings UI will automatically pick it up since it uses `Language.allCases`.
 
+
+
+
+
