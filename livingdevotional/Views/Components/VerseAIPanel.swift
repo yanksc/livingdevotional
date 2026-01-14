@@ -1,4 +1,4 @@
-// VerseAIPanel - AI explanation panel displayed underneath verse
+// VerseAIPanel - Verse explanation panel displayed underneath verse
 
 import SwiftUI
 
@@ -224,7 +224,7 @@ struct VerseAIPanel: View {
     
     private func loadExplanation() {
         guard let aiService = services.aiService else {
-            errorMessage = "AI服務未初始化"
+            errorMessage = "服務未初始化"
             return
         }
         
@@ -306,18 +306,18 @@ struct VerseAIPanel: View {
                         print("AIService Error Details: \(errorDesc), Code: \(nsError.code)")
                         
                         if nsError.code == 429 || errorDesc.contains("rate_limit") {
-                            errorMessage = "AI 服務暫時達到使用上限，請稍後再試。"
+                            errorMessage = "服務暫時達到使用上限，請稍後再試。"
                         } else if nsError.code == 401 || errorDesc.contains("unauthorized") || errorDesc.contains("authentication") {
                             errorMessage = "API 認證失敗，請檢查 API 金鑰設定。"
                         } else if nsError.code == 400 {
                             errorMessage = "請求格式錯誤：\(errorDesc)"
                         } else {
-                            errorMessage = "無法生成解釋：\(errorDesc)"
+                            errorMessage = "無法載入解釋：\(errorDesc)"
                         }
                     } else {
                         let errorString = String(describing: error)
                         print("AIService Error: \(errorString)")
-                        errorMessage = "無法生成解釋：\(errorString)"
+                        errorMessage = "無法載入解釋：\(errorString)"
                     }
                 }
             }

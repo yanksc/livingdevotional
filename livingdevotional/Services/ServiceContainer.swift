@@ -10,6 +10,7 @@ class ServiceContainer: ObservableObject {
     let bibleService: BibleService
     let settingsStore: SettingsStore
     let progressStore: ProgressStore
+    let checkInStore: CheckInStore
     
     // Future services (will be initialized when needed)
     var authService: AuthenticationServiceProtocol?
@@ -24,6 +25,7 @@ class ServiceContainer: ObservableObject {
         self.bibleService = BibleService.shared
         self.settingsStore = SettingsStore.shared
         self.progressStore = ProgressStore.shared
+        self.checkInStore = CheckInStore.shared
         
         // Initialize DailyVerseService
         self.dailyVerseService = DailyVerseService.shared

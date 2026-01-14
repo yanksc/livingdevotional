@@ -9,6 +9,42 @@ class AIService: AIServiceProtocol {
     private let heliconeAPIKey = "sk-helicone-mgqn4ly-q4tuuaq-qggr7va-ppikchq"
     private let openAIModel = "gpt-4o-mini"
     
+    // MARK: - User Profile Context
+    
+    private func buildUserContext(isChinese: Bool) -> String {
+        let profile = UserProfileStore.shared.profile
+        let maturity = isChinese ? profile.spiritualMaturity.displayNameChinese : profile.spiritualMaturity.displayName
+        let goals = profile.spiritualGoals.isEmpty ? 
+            (isChinese ? "無特定目標" : "no specific goals") :
+            profile.spiritualGoals.map { isChinese ? $0.displayNameChinese : $0.displayName }.joined(separator: ", ")
+        let tradition = isChinese ? profile.tradition.displayNameChinese : profile.tradition.displayName
+        let companionStyle = isChinese ? profile.companionStyle.displayNameChinese : profile.companionStyle.displayName
+        
+        if isChinese {
+            return """
+            你是一位\(companionStyle)。你正在與\(profile.name.isEmpty ? "一位讀者" : profile.name)對話，他是一位\(maturity)的信徒。
+            
+            背景資訊：
+            - 屬靈階段：\(maturity)
+            - 目標：\(goals)
+            - 教會背景：\(tradition)
+            
+            請根據這些資訊調整你的語調和深度，使其更貼近這位讀者的需要。
+            """
+        } else {
+            return """
+            You are a \(companionStyle). You are speaking with \(profile.name.isEmpty ? "a reader" : profile.name), who is a \(maturity) believer.
+            
+            Background:
+            - Spiritual Stage: \(maturity)
+            - Goals: \(goals)
+            - Church Background: \(tradition)
+            
+            Please adjust your tone and depth based on this information to better serve this reader's needs.
+            """
+        }
+    }
+    
     func explainVerse(
         book: String,
         chapter: Int,
@@ -28,11 +64,14 @@ class AIService: AIServiceProtocol {
         let responseLanguage = isChinese ? "繁體中文（台灣用語）" : "English"
         let languageInstruction = isChinese ? "請用繁體中文（台灣用語）提供簡潔且有幫助的回答。" : "Please provide concise and helpful responses in English."
         
-        // Add system message for context
+        // Build personalized system message with user context
+        let userContext = buildUserContext(isChinese: isChinese)
         let systemMessage: [String: Any] = [
             "role": "system",
             "content": isChinese ? """
-            你是一位聖經學者和神學教師。你正在幫助讀者理解以下經文：
+            \(userContext)
+            
+            你正在幫助讀者理解以下經文：
             
             經卷：\(book)
             章：\(chapter)
@@ -41,7 +80,9 @@ class AIService: AIServiceProtocol {
             
             \(languageInstruction)
             """ : """
-            You are a Bible scholar and theology teacher. You are helping readers understand the following verse:
+            \(userContext)
+            
+            You are helping readers understand the following verse:
             
             Book: \(book)
             Chapter: \(chapter)
@@ -135,7 +176,7 @@ class AIService: AIServiceProtocol {
             case .pray:
                 if isChinese {
                     initialPrompt = """
-                    請根據這節經文生成一篇禱告文。
+                    請根據這節經文撰寫一篇禱告文。
                     
                     請包含：
                     1. 感謝神在這節經文中顯明的真理
@@ -415,11 +456,14 @@ class AIService: AIServiceProtocol {
         let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
         let languageInstruction = isChinese ? "請用繁體中文（台灣用語）回答。" : "Please answer in English."
         
-        // Add system message for context
+        // Build personalized system message with user context
+        let userContext = buildUserContext(isChinese: isChinese)
         let systemMessage: [String: Any] = [
             "role": "system",
             "content": isChinese ? """
-            你是一位聖經學者和神學教師。你正在幫助讀者理解以下經文，並回答他們的問題：
+            \(userContext)
+            
+            你正在幫助讀者理解以下經文，並回答他們的問題：
             
             經卷：\(book)
             章：\(chapter)
@@ -429,7 +473,9 @@ class AIService: AIServiceProtocol {
             \(languageInstruction)
             請保持回答友善、有深度且符合聖經真理。
             """ : """
-            You are a Bible scholar and theology teacher. You are helping readers understand the following verse and answering their questions:
+            \(userContext)
+            
+            You are helping readers understand the following verse and answering their questions:
             
             Book: \(book)
             Chapter: \(chapter)
@@ -548,13 +594,13 @@ class AIService: AIServiceProtocol {
         let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
         
         let prompt = isChinese ? """
-        請針對以下經文生成 2 個簡短的相關問題，供讀者向 AI 提問以更深入了解經文。
+        請針對以下經文提供 2 個簡短的相關問題，供讀者提問以更深入了解經文。
         問題應簡潔明瞭（20字以內）。
         請直接列出這兩個問題，用換行分隔，不要有編號或其他文字。
         
         經文：\(book) \(chapter):\(verse) 「\(verseText)」
         """ : """
-        Please generate 2 short, relevant questions about the following verse that a reader might ask an AI to understand it better.
+        Please provide 2 short, relevant questions about the following verse that a reader might ask to understand it better.
         Questions should be concise (under 15 words).
         List the two questions directly, separated by a newline, without numbers or other text.
         

@@ -46,7 +46,7 @@ struct ChatHistoryView: View {
                 }
             }
         }
-        .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "AI 問答記錄" : "Q&A History")
+        .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "問答記錄" : "Q&A History")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

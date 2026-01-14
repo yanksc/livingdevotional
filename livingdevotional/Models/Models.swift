@@ -3,7 +3,7 @@
 
 import Foundation
 
-// MARK: - AI Mode Enum
+// MARK: - Verse Mode Enum
 
 enum AIMode: String, CaseIterable {
     case insight
@@ -15,6 +15,32 @@ enum AIMode: String, CaseIterable {
         case .insight: return "Insight"
         case .reflect: return "Reflect"
         case .pray: return "Pray"
+        }
+    }
+}
+
+// MARK: - App Font Enum
+
+enum AppFont: String, Codable, CaseIterable, Identifiable {
+    case system = "system"
+    case serif = "serif"
+    case rounded = "rounded"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .serif: return "Serif"
+        case .rounded: return "Rounded"
+        }
+    }
+    
+    func localizedDisplayName(appLanguage: AppLanguage) -> String {
+        switch self {
+        case .system: return appLanguage.localizedString("FontSystem")
+        case .serif: return appLanguage.localizedString("FontSerif")
+        case .rounded: return appLanguage.localizedString("FontRounded")
         }
     }
 }
@@ -161,11 +187,19 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "ShowSecondLanguage": ["en": "Show Second Language", "zh-Hant": "顯示第二語言"],
             "Appearance": ["en": "Appearance", "zh-Hant": "外觀"],
             "DarkMode": ["en": "Dark Mode", "zh-Hant": "深色模式"],
-            "AIExplanation": ["en": "AI Explanation", "zh-Hant": "AI解釋"],
-            "GeneratingExplanation": ["en": "Generating explanation...", "zh-Hant": "正在生成解釋..."],
+            "AIExplanation": ["en": "Explanation", "zh-Hant": "解釋"],
+            "GeneratingExplanation": ["en": "Loading explanation...", "zh-Hant": "載入解釋中..."],
             "AIInsight": ["en": "Insight", "zh-Hant": "理解"],
             "AIReflect": ["en": "Reflect", "zh-Hant": "反思"],
-            "AIPray": ["en": "Pray", "zh-Hant": "禱告"]
+            "AIPray": ["en": "Pray", "zh-Hant": "禱告"],
+            "Font": ["en": "Font", "zh-Hant": "字體"],
+            "FontSystem": ["en": "System", "zh-Hant": "系統"],
+            "FontSerif": ["en": "Serif", "zh-Hant": "襯線"],
+            "FontRounded": ["en": "Rounded", "zh-Hant": "圓體"],
+            "BibleTranslation": ["en": "Bible Translation", "zh-Hant": "聖經譯本"],
+            "PrimaryTranslation": ["en": "Primary Translation", "zh-Hant": "主要譯本"],
+            "SecondaryTranslation": ["en": "Secondary Translation", "zh-Hant": "次要譯本"],
+            "ReadingSettings": ["en": "Reading Settings", "zh-Hant": "閱讀設定"]
         ]
         
         return strings[key]?[languageCode] ?? strings[key]?["en"] ?? key
@@ -332,7 +366,7 @@ struct DailyVerse: Codable {
     }
 }
 
-// MARK: - Related Verse (AI Response)
+// MARK: - Related Verse
 
 struct RelatedVerse: Codable, Identifiable {
     let reference: String

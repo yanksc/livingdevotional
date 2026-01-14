@@ -1,6 +1,7 @@
 // AppTheme - Modern color scheme and styling utilities
 
 import SwiftUI
+import Foundation
 
 struct AppTheme {
     // MARK: - Primary Colors
@@ -153,6 +154,21 @@ extension View {
     
     func cardStyle() -> some View {
         modifier(CardStyleModifier())
+    }
+}
+
+// MARK: - AppFont Extension
+
+extension AppFont {
+    var design: Font.Design {
+        switch self {
+        case .system:
+            return .default
+        case .serif:
+            return .serif
+        case .rounded:
+            return .rounded
+        }
     }
 }
 

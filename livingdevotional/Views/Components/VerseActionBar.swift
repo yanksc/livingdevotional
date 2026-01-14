@@ -33,9 +33,9 @@ struct VerseActionBar: View {
             
             // Action buttons - Two row layout for better space utilization
             VStack(spacing: 8) {
-                // Top row: AI buttons
+                // Top row: Verse action buttons
                 HStack(spacing: 8) {
-                    // AI Insight button
+                    // Insight button
                     Button(action: onAIInsight) {
                         HStack(spacing: 4) {
                             Image(systemName: "lightbulb.fill")
@@ -55,7 +55,7 @@ struct VerseActionBar: View {
                         )
                     }
                     
-                    // AI Reflect button
+                    // Reflect button
                     Button(action: onAIReflect) {
                         HStack(spacing: 4) {
                             Image(systemName: "heart.fill")
@@ -75,7 +75,7 @@ struct VerseActionBar: View {
                         )
                     }
                     
-                    // AI Pray button
+                    // Pray button
                     Button(action: onAIPray) {
                         HStack(spacing: 4) {
                             Image(systemName: "hands.clap.fill")
@@ -95,7 +95,7 @@ struct VerseActionBar: View {
                         )
                     }
                     
-                    // AI Ask button
+                    // Ask button
                     Button(action: onAIAsk) {
                         HStack(spacing: 4) {
                             Image(systemName: "bubble.left.and.bubble.right.fill")

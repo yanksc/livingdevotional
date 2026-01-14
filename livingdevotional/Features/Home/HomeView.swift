@@ -9,6 +9,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
+    @ObservedObject private var checkInStore = CheckInStore.shared
     @State private var showSavedNotes = false
     @State private var showChatHistory = false
     
@@ -24,6 +25,9 @@ struct HomeView: View {
                     
                     // Verse of the day
                     verseOfTheDaySection
+                    
+                    // Daily Check-in
+                    CheckInCard(checkInStore: checkInStore)
                     
                     // Quick actions
                     quickActionsSection

@@ -1,4 +1,4 @@
-// ChatView - AI Conversation Interface
+// ChatView - Bible Conversation Interface
 
 import SwiftUI
 
@@ -13,7 +13,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text(settingsStore.appLanguage == .chineseTraditional ? "AI 聖經助手" : "AI Bible Assistant")
+                Text(settingsStore.appLanguage == .chineseTraditional ? "聖經助手" : "Bible Assistant")
                     .font(.headline)
                     .foregroundColor(AppTheme.primaryText)
                 
@@ -52,7 +52,7 @@ struct ChatView: View {
                             HStack {
                                 ProgressView()
                                     .scaleEffect(0.8)
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "AI 正在思考..." : "AI is thinking...")
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "正在思考..." : "Thinking...")
                                     .font(.caption)
                                     .foregroundColor(AppTheme.secondaryText)
                             }

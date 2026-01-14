@@ -17,7 +17,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
         ("Philippians", 4, 13),
         ("Jeremiah", 29, 11),
         ("Romans", 8, 28),
-        ("Psalm", 23, 1),
+        ("Psalms", 23, 1),
         ("Proverbs", 3, 5),
         ("Matthew", 6, 33),
         ("Isaiah", 40, 31),

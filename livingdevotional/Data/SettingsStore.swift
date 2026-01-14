@@ -14,6 +14,11 @@ class SettingsStore: ObservableObject {
     private let isDarkModeKey = "isDarkMode"
     private let lineSpacingKey = "lineSpacing"
     private let showSecondaryLanguageKey = "showSecondaryLanguage"
+    private let notificationsEnabledKey = "notificationsEnabled"
+    private let morningTimeKey = "morningTime"
+    private let eveningTimeKey = "eveningTime"
+    private let streakProtectionEnabledKey = "streakProtectionEnabled"
+    private let selectedFontKey = "selectedFont"
     
     @Published var primaryLanguage: Language {
         didSet {
@@ -54,6 +59,36 @@ class SettingsStore: ObservableObject {
     @Published var appLanguage: AppLanguage {
         didSet {
             saveAppLanguage()
+        }
+    }
+    
+    @Published var notificationsEnabled: Bool {
+        didSet {
+            saveNotificationsEnabled()
+        }
+    }
+    
+    @Published var morningTime: Date {
+        didSet {
+            saveMorningTime()
+        }
+    }
+    
+    @Published var eveningTime: Date {
+        didSet {
+            saveEveningTime()
+        }
+    }
+    
+    @Published var streakProtectionEnabled: Bool {
+        didSet {
+            saveStreakProtectionEnabled()
+        }
+    }
+    
+    @Published var selectedFont: AppFont {
+        didSet {
+            saveSelectedFont()
         }
     }
     
@@ -103,6 +138,48 @@ class SettingsStore: ObservableObject {
         } else {
             self.appLanguage = .system // Default to system language
         }
+        
+        // Load notification preferences or use defaults
+        if userDefaults.object(forKey: notificationsEnabledKey) != nil {
+            self.notificationsEnabled = userDefaults.bool(forKey: notificationsEnabledKey)
+        } else {
+            self.notificationsEnabled = true // Default to enabled
+        }
+        
+        // Default morning time: 7:30 AM
+        if let morningTimeData = userDefaults.object(forKey: morningTimeKey) as? Date {
+            self.morningTime = morningTimeData
+        } else {
+            var components = DateComponents()
+            components.hour = 7
+            components.minute = 30
+            self.morningTime = Calendar.current.date(from: components) ?? Date()
+        }
+        
+        // Default evening time: 8:30 PM
+        if let eveningTimeData = userDefaults.object(forKey: eveningTimeKey) as? Date {
+            self.eveningTime = eveningTimeData
+        } else {
+            var components = DateComponents()
+            components.hour = 20
+            components.minute = 30
+            self.eveningTime = Calendar.current.date(from: components) ?? Date()
+        }
+        
+        // Load streak protection preference or use default
+        if userDefaults.object(forKey: streakProtectionEnabledKey) != nil {
+            self.streakProtectionEnabled = userDefaults.bool(forKey: streakProtectionEnabledKey)
+        } else {
+            self.streakProtectionEnabled = true // Default to enabled
+        }
+        
+        // Load selectedFont or use default (.system)
+        if let fontRaw = userDefaults.string(forKey: selectedFontKey),
+           let font = AppFont(rawValue: fontRaw) {
+            self.selectedFont = font
+        } else {
+            self.selectedFont = .system // Default to system font
+        }
     }
     
     private func savePrimaryLanguage() {
@@ -131,6 +208,26 @@ class SettingsStore: ObservableObject {
     
     private func saveAppLanguage() {
         userDefaults.set(appLanguage.rawValue, forKey: appLanguageKey)
+    }
+    
+    private func saveNotificationsEnabled() {
+        userDefaults.set(notificationsEnabled, forKey: notificationsEnabledKey)
+    }
+    
+    private func saveMorningTime() {
+        userDefaults.set(morningTime, forKey: morningTimeKey)
+    }
+    
+    private func saveEveningTime() {
+        userDefaults.set(eveningTime, forKey: eveningTimeKey)
+    }
+    
+    private func saveStreakProtectionEnabled() {
+        userDefaults.set(streakProtectionEnabled, forKey: streakProtectionEnabledKey)
+    }
+    
+    private func saveSelectedFont() {
+        userDefaults.set(selectedFont.rawValue, forKey: selectedFontKey)
     }
 }
 

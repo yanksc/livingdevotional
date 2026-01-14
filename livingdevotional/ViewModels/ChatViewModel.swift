@@ -1,4 +1,4 @@
-// ChatViewModel - Manages chat session and AI interaction
+// ChatViewModel - Manages chat session and conversation interaction
 
 import Foundation
 import Combine

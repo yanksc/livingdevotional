@@ -27,8 +27,8 @@ protocol AIServiceProtocol {
 // MARK: - User Service Protocol
 
 protocol UserServiceProtocol {
-    func getUserProfile() async throws -> UserProfile
-    func updateUserProfile(_ profile: UserProfile) async throws
+    func getUserProfile() async throws -> APIUserProfile
+    func updateUserProfile(_ profile: APIUserProfile) async throws
     func getUserBookmarks() async throws -> [VerseBookmark]
     func getUserProgress() async throws -> ReadingProgress
 }
@@ -65,7 +65,7 @@ struct User: Codable, Identifiable {
     let createdAt: Date
 }
 
-struct UserProfile: Codable {
+struct APIUserProfile: Codable {
     let userId: String
     var name: String?
     var avatarUrl: String?

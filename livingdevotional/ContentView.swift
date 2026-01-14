@@ -7,19 +7,25 @@ struct ContentView: View {
     @EnvironmentObject var router: AppRouter
     @Environment(\.services) var services
     @Environment(\.modelContext) private var modelContext
+    @ObservedObject private var profileStore = UserProfileStore.shared
     
     var body: some View {
         Group {
-            // Check authentication state
-            if let authService = services.authService, authService.isAuthenticated {
-                // Authenticated: Show main app
-                MainTabView()
-                    .environmentObject(router)
+            // Check onboarding status first
+            if !profileStore.hasCompletedOnboarding {
+                OnboardingView()
             } else {
-                // Not authenticated: Show login or main app (for now)
-                // TODO: Show LoginView when auth is implemented
-                MainTabView()
-                    .environmentObject(router)
+                // Check authentication state
+                if let authService = services.authService, authService.isAuthenticated {
+                    // Authenticated: Show main app
+                    MainTabView()
+                        .environmentObject(router)
+                } else {
+                    // Not authenticated: Show login or main app (for now)
+                    // TODO: Show LoginView when auth is implemented
+                    MainTabView()
+                        .environmentObject(router)
+                }
             }
         }
         .splashScreen()

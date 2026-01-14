@@ -29,6 +29,7 @@ struct ReadingView: View {
     @State private var pendingScrollRetry: Int = 0
     @State private var hasCompletedInitialScroll: Bool = false
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var usedNearEndScroll: Bool = false // Track if we did any targeted scroll (keep eager loading)
     @Environment(\.services) var services
     @State private var showChatSheet = false
     @State private var chatVerse: BibleVerse?
@@ -38,9 +39,9 @@ struct ReadingView: View {
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     
-    // AI Panel state
-    @State private var showAIPanel: String? = nil // verse ID for which AI panel is shown
-    @State private var aiPanelMode: AIMode = .insight // mode of the AI panel
+    // Verse Panel state
+    @State private var showAIPanel: String? = nil // verse ID for which verse panel is shown
+    @State private var aiPanelMode: AIMode = .insight // mode of the verse panel
     
     // Get current book and chapter from viewModel
     private var book: BibleBook? {
@@ -166,9 +167,12 @@ struct ReadingView: View {
     }
     
     private func reloadVersesIfReady() {
-        // Clear selected verse and AI panel when navigating to a new chapter
+        // Clear selected verse and verse panel when navigating to a new chapter
         selectedVerseId = nil
         showAIPanel = nil
+        
+        // Reset targeted scroll flag when navigating to new chapter
+        usedNearEndScroll = false
         
         // Reload verses when both book and chapter are available
         if let book = bibleViewModel?.selectedBook,
@@ -180,8 +184,21 @@ struct ReadingView: View {
     }
     
     /// Use VStack (eager loading) when there's a pending scroll target to ensure scrollTo works
+    /// Also keep eager loading after ANY targeted scroll to prevent scroll position jumps
+    /// (Switching VStack→LazyVStack causes layout recalculation that shifts scroll position)
     private var shouldUseEagerLoading: Bool {
-        return pendingScrollVerse != nil && !hasCompletedInitialScroll
+        return (pendingScrollVerse != nil && !hasCompletedInitialScroll) || usedNearEndScroll
+    }
+    
+    /// Check if a verse is near the end of the chapter (within last 4 verses)
+    /// This helps determine if we should scroll to bottom instead of top to avoid overscroll issues
+    private func isVerseNearEnd(_ verseNumber: Int) -> Bool {
+        guard !viewModel.verses.isEmpty else { return false }
+        let lastVerseNumber = viewModel.verses.last?.verseNumber ?? 0
+        let threshold = 4 // Consider last 4 verses as "near end"
+        
+        // Check if verse is within threshold verses from the end
+        return verseNumber > (lastVerseNumber - threshold)
     }
     
     /// Shared content for verses list (used by both VStack and LazyVStack)
@@ -216,7 +233,7 @@ struct ReadingView: View {
                         let wasSelected = selectedVerseId == verse.id
                         withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                             selectedVerseId = wasSelected ? nil : verse.id
-                            // Close AI panel when deselecting
+                            // Close verse panel when deselecting
                             if wasSelected {
                                 showAIPanel = nil
                             }
@@ -278,7 +295,7 @@ struct ReadingView: View {
                     )
                 }
                 
-                // AI Panel (shown when AI action is requested)
+                // Verse Panel (shown when verse action is requested)
                 if showAIPanel == verse.id {
                     VerseAIPanel(
                         verse: verse,
@@ -306,35 +323,7 @@ struct ReadingView: View {
            let currentBook = viewModel.currentBook,
            let currentChapter = viewModel.currentChapter {
             if currentBook != pendingBook || currentChapter != pendingChapter {
-                // #region agent log
-                let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                let logEntryBlock: [String: Any] = [
-                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                    "location": "ReadingView.attemptScrollToPendingVerse",
-                    "message": "skipping scroll, verses not matching pending context",
-                    "data": [
-                        "pendingBook": pendingBook,
-                        "pendingChapter": pendingChapter,
-                        "currentBook": currentBook,
-                        "currentChapter": currentChapter,
-                        "reason": reason,
-                        "pendingRetry": pendingScrollRetry,
-                        "hypothesisId": "AUTO_SCROLL"
-                    ],
-                    "sessionId": "debug-session"
-                ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryBlock),
-                   let jsonString = String(data: jsonData, encoding: .utf8) {
-                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                        fileHandle.seekToEndOfFile()
-                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                        fileHandle.closeFile()
-                    } else {
-                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                    }
-                }
-                // #endregion agent log
-                
+                // Verses not yet loaded for target book/chapter, retry
                 if pendingScrollRetry < 8 {
                     pendingScrollRetry += 1
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -345,34 +334,7 @@ struct ReadingView: View {
             }
         }
         guard let targetId = viewModel.verses.first(where: { $0.verseNumber == targetVerse })?.id else {
-            // #region agent log
-            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-            let logEntry: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "ReadingView.attemptScrollToPendingVerse",
-                "message": "pending verse not yet found",
-                "data": [
-                    "targetVerse": targetVerse,
-                    "versesLoaded": viewModel.verses.count,
-                    "pendingRetry": pendingScrollRetry,
-                    "reason": reason,
-                    "hypothesisId": "AUTO_SCROLL"
-                ],
-                "sessionId": "debug-session"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
-            // Retry a few times to wait for LazyVStack layout to materialize IDs
+            // Target verse not yet found in loaded verses, retry
             if pendingScrollRetry < 8 {
                 pendingScrollRetry += 1
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -387,115 +349,47 @@ struct ReadingView: View {
             return
         }
         
-        // #region agent log
-        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-        let logEntry: [String: Any] = [
-            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            "location": "ReadingView.attemptScrollToPendingVerse",
-            "message": "scrolling to target verse",
-            "data": [
-                "targetVerse": targetVerse,
-                "targetId": targetId,
-                "versesLoaded": viewModel.verses.count,
-                "pendingRetry": pendingScrollRetry,
-                "reason": reason,
-                "usingEagerLoading": shouldUseEagerLoading,
-                "hypothesisId": "AUTO_SCROLL"
-            ],
-            "sessionId": "debug-session"
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                fileHandle.seekToEndOfFile()
-                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                fileHandle.closeFile()
+        // Determine if this verse is near the end of the chapter
+        let isNearEnd = isVerseNearEnd(targetVerse)
+        
+        // For near-end verses, scroll to the target verse with bottom anchor to avoid overscroll
+        // This ensures the target verse is visible at the bottom, all verses above are visible,
+        // and the bottom navbar doesn't disappear due to overscroll
+        // For other verses, use the existing top anchor behavior
+        let scrollTargetId: String
+        let scrollAnchor: UnitPoint
+        
+        if isNearEnd {
+            // Scroll to the LAST verse of the chapter with bottom anchor
+            // This ensures ALL verses including the last one are visible
+            // and prevents overscroll that causes verses to disappear and navbar to hide
+            if let lastVerse = viewModel.verses.last {
+                scrollTargetId = lastVerse.id
+                scrollAnchor = .bottom
             } else {
-                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
+                // Fallback to target verse if no last verse found
+                scrollTargetId = targetId
+                scrollAnchor = .bottom
             }
+        } else {
+            // Normal behavior: scroll target verse to top
+            scrollTargetId = targetId
+            scrollAnchor = .top
         }
-        // #endregion agent log
         
         // Add a small delay to ensure VStack has rendered all views
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            // #region agent log
-            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-            let logEntryPre: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
-                "message": "BEFORE scrollTo called",
-                "data": [
-                    "targetId": targetId,
-                    "targetVerse": targetVerse,
-                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
-                    "shouldUseEagerLoading": shouldUseEagerLoading,
-                    "hypothesisId": "F"
-                ],
-                "sessionId": "debug-session"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryPre),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
+            // Set flag to keep eager loading active after ANY targeted scroll
+            // This prevents VStack→LazyVStack switch that causes scroll position jumps
+            // (Previously only for near-end, but ALL verses experience jump on switch)
+            self.usedNearEndScroll = true
             
             withAnimation(.easeInOut) {
-                proxy.scrollTo(targetId, anchor: .top)
+                proxy.scrollTo(scrollTargetId, anchor: scrollAnchor)
             }
             
-            // #region agent log
-            let logEntryPost: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
-                "message": "AFTER scrollTo, BEFORE clearing state",
-                "data": [
-                    "targetId": targetId,
-                    "hypothesisId": "F"
-                ],
-                "sessionId": "debug-session"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryPost),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
-            // DELAY clearing state to allow scroll animation to complete (fix for Hypothesis F)
+            // Delay clearing state to allow scroll animation to complete
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // #region agent log
-                let logEntryCleared: [String: Any] = [
-                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                    "location": "ReadingView.attemptScrollToPendingVerse.scrollBlock",
-                    "message": "NOW clearing state after delay",
-                    "data": [
-                        "hypothesisId": "F"
-                    ],
-                    "sessionId": "debug-session"
-                ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntryCleared),
-                   let jsonString = String(data: jsonData, encoding: .utf8) {
-                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                        fileHandle.seekToEndOfFile()
-                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                        fileHandle.closeFile()
-                    } else {
-                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                    }
-                }
-                // #endregion agent log
-                
                 // Mark scroll as completed and clear pending state
                 hasCompletedInitialScroll = true
                 pendingScrollVerse = nil
@@ -567,33 +461,6 @@ struct ReadingView: View {
                                         VStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
                                             versesContent
                                         }
-                                        .onAppear {
-                                            // #region agent log
-                                            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                                            let logEntry: [String: Any] = [
-                                                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                                                "location": "ReadingView.VStack",
-                                                "message": "using EAGER loading (VStack)",
-                                                "data": [
-                                                    "pendingVerse": pendingScrollVerse ?? -1,
-                                                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
-                                                    "versesCount": viewModel.verses.count,
-                                                    "hypothesisId": "AUTO_SCROLL"
-                                                ],
-                                                "sessionId": "debug-session"
-                                            ]
-                                            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-                                               let jsonString = String(data: jsonData, encoding: .utf8) {
-                                                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                                    fileHandle.seekToEndOfFile()
-                                                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                                    fileHandle.closeFile()
-                                                } else {
-                                                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                                                }
-                                            }
-                                            // #endregion agent log
-                                        }
                                     } else {
                                         LazyVStack(alignment: .leading, spacing: settingsStore.lineSpacing) {
                                             versesContent
@@ -627,6 +494,7 @@ struct ReadingView: View {
                                 let delta = newOffset - lastScrollOffset
                                 
                                 // Hide toolbar when scrolling down, show when scrolling up
+                                let wasToolbarVisible = isToolbarVisible
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     if delta < -10 {
                                         // Scrolling down
@@ -720,7 +588,7 @@ struct ReadingView: View {
                 Button {
                     showViewSettings = true
                 } label: {
-                    Image(systemName: "textformat.size")
+                    Image(systemName: "slider.horizontal.3")
                         .foregroundColor(AppTheme.accentColor)
                 }
                 
@@ -804,33 +672,6 @@ struct ReadingView: View {
             reloadVersesIfReady()
         }
         .onChange(of: bibleViewModel?.targetVerse) { _, newTarget in
-            // #region agent log
-            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-            let logEntry: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "ReadingView.onChange(targetVerse)",
-                "message": "targetVerse changed",
-                "data": [
-                    "newTarget": newTarget as Any,
-                    "pendingScrollVerse": pendingScrollVerse as Any,
-                    "hasCompletedInitialScroll": hasCompletedInitialScroll,
-                    "scrollProxyExists": scrollProxy != nil,
-                    "hypothesisId": "E"
-                ],
-                "sessionId": "debug-session"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
             if newTarget != nil {
                 // Reset scroll completion state for new target
                 hasCompletedInitialScroll = false
@@ -897,7 +738,7 @@ struct VerseView: View {
             // Verse number with save indicator
             HStack(spacing: 4) {
                 Text("\(verse.verseNumber)")
-                    .font(.system(size: fontSize, weight: .semibold))
+                    .font(.system(size: fontSize, weight: .semibold, design: settingsStore.selectedFont.design))
                     .foregroundColor(isSaved ? AppTheme.accentColor : AppTheme.verseNumberColor(darkMode: settingsStore.isDarkMode))
                 
                 if isSaved {
@@ -913,7 +754,7 @@ struct VerseView: View {
                 // Primary language text
                 if !primaryText.isEmpty && settingsStore.primaryLanguage != .none {
                     Text(primaryText)
-                        .font(.system(size: fontSize))
+                        .font(.system(size: fontSize, design: settingsStore.selectedFont.design))
                         .foregroundColor(AppTheme.primaryText)
                         .lineSpacing(settingsStore.lineSpacing)
                         .fixedSize(horizontal: false, vertical: true)
@@ -925,7 +766,7 @@ struct VerseView: View {
                    settingsStore.secondaryLanguage != .none &&
                    settingsStore.secondaryLanguage != settingsStore.primaryLanguage {
                     Text(secondaryText)
-                        .font(.system(size: fontSize))
+                        .font(.system(size: fontSize, design: settingsStore.selectedFont.design))
                         .foregroundColor(AppTheme.secondaryText)
                         .lineSpacing(settingsStore.lineSpacing)
                         .fixedSize(horizontal: false, vertical: true)
@@ -983,7 +824,7 @@ struct VerseView: View {
                 Button {
                     onLongPress()
                 } label: {
-                    Label("AI Insight", systemImage: "sparkles")
+                    Label("Insight", systemImage: "sparkles")
                 }
             }
         }
@@ -997,6 +838,25 @@ struct ReadingSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section(header: Text(settingsStore.appLanguage.localizedString("BibleTranslation"))) {
+                    Picker(settingsStore.appLanguage.localizedString("PrimaryTranslation"), selection: $settingsStore.primaryLanguage) {
+                        ForEach(Language.allCases.filter { $0 != .none }) { language in
+                            Text(language.displayName).tag(language)
+                        }
+                    }
+                    .tint(AppTheme.accentColor)
+                    
+                    Picker(settingsStore.appLanguage.localizedString("SecondaryTranslation"), selection: $settingsStore.secondaryLanguage) {
+                        ForEach(Language.allCases) { language in
+                            Text(language.displayName).tag(language)
+                        }
+                    }
+                    .tint(AppTheme.accentColor)
+                    
+                    Toggle(settingsStore.appLanguage.localizedString("ShowSecondLanguage"), isOn: $settingsStore.showSecondaryLanguage)
+                        .tint(AppTheme.accentColor)
+                }
+                
                 Section(header: Text(settingsStore.appLanguage.localizedString("FontSize"))) {
                     HStack {
                         Image(systemName: "textformat.size.smaller")
@@ -1011,6 +871,16 @@ struct ReadingSettingsView: View {
                             .foregroundColor(AppTheme.secondaryText)
                             .frame(width: 30, alignment: .trailing)
                     }
+                }
+                
+                Section(header: Text(settingsStore.appLanguage.localizedString("Font"))) {
+                    Picker(selection: $settingsStore.selectedFont, label: Text(settingsStore.appLanguage.localizedString("Font"))) {
+                        ForEach(AppFont.allCases) { font in
+                            Text(font.localizedDisplayName(appLanguage: settingsStore.appLanguage))
+                                .tag(font)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
                 
                 Section(header: Text(settingsStore.appLanguage.localizedString("LineSpacing"))) {
@@ -1029,17 +899,12 @@ struct ReadingSettingsView: View {
                     }
                 }
                 
-                Section(header: Text(settingsStore.appLanguage.localizedString("Language"))) {
-                    Toggle(settingsStore.appLanguage.localizedString("ShowSecondLanguage"), isOn: $settingsStore.showSecondaryLanguage)
-                        .tint(AppTheme.accentColor)
-                }
-                
                 Section(header: Text(settingsStore.appLanguage.localizedString("Appearance"))) {
                     Toggle(settingsStore.appLanguage.localizedString("DarkMode"), isOn: $settingsStore.isDarkMode)
                         .tint(AppTheme.accentColor)
                 }
             }
-            .navigationTitle(settingsStore.appLanguage.localizedString("ViewSettings"))
+            .navigationTitle(settingsStore.appLanguage.localizedString("ReadingSettings"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1050,7 +915,7 @@ struct ReadingSettingsView: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 }
