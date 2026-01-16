@@ -28,9 +28,6 @@ struct HomeView: View {
                     
                     // Saved notes preview
                     savedNotesPreviewSection
-                    
-                    // Recent reading
-                    recentReadingSection
                 }
                 .padding()
             }
@@ -85,9 +82,6 @@ struct HomeView: View {
                 .foregroundColor(AppTheme.primaryText)
             
             HStack(spacing: 12) {
-                quickActionButton(title: "Read Bible", icon: "book.fill") {
-                    // Navigation handled by MainTabView
-                }
                 quickActionButton(title: "My Notes", icon: "bookmark.fill") {
                     showSavedNotes = true
                 }
@@ -137,22 +131,6 @@ struct HomeView: View {
                     }
                 }
             }
-        }
-    }
-    
-    private var recentReadingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Continue Reading")
-                .font(.headline)
-                .foregroundColor(AppTheme.primaryText)
-            
-            // TODO: Load recent reading progress
-            Text("No recent reading")
-                .foregroundColor(AppTheme.secondaryText)
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(AppTheme.cardGradient)
-                .cornerRadius(12)
         }
     }
     

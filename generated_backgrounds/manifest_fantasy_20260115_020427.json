@@ -1,0 +1,31 @@
+{
+  "generated_at": "20260115_020427",
+  "count": 3,
+  "mode": "fantasy",
+  "images": [
+    {
+      "filename": "fantasy_double_sun_desert_20260115_020427_1.png",
+      "filepath": "/Users/yhuang10/Code/livingdevotional/generated_backgrounds/fantasy_double_sun_desert_20260115_020427_1.png",
+      "prompt": "A cosmic and spectacular Alien desert landscape with two suns setting on horizon, dramatic sand dunes in impossible colors of purple and gold, otherworldly serene beauty, color palette featuring mystical pink sakura and soft lavender with golden sparkles, with binary sunset, iridescent sand dunes, exotic alien plants, dramatic long shadows. Style: cinematic dramatic lighting, magical atmosphere with volumetric lighting, award-winning concept art quality. Vertical composition perfectly framed for mobile phone wallpaper. Absolutely no text, no people. Epic fantasy art with magical atmosphere and extraordinary visual detail.",
+      "seed": 996514,
+      "size": "1024x1792",
+      "model": "flux"
+    },
+    {
+      "filename": "fantasy_aurora_crystal_lake_20260115_020427_2.png",
+      "filepath": "/Users/yhuang10/Code/livingdevotional/generated_backgrounds/fantasy_aurora_crystal_lake_20260115_020427_2.png",
+      "prompt": "A transcendent and spectacular Mystical crystal-clear lake beneath swirling aurora borealis in vivid greens and purples, glowing ethereal northern lights dancing across night sky, color palette featuring mystical pink sakura and soft lavender with golden sparkles, with luminescent aurora ribbons, crystalline ice formations, starfield reflection in water, bioluminescent glow. Style: magical atmosphere with volumetric lighting, hyper-detailed 8K resolution, cinematic dramatic lighting. Vertical composition perfectly framed for mobile phone wallpaper. Absolutely no text, no people. Epic fantasy art with magical atmosphere and extraordinary visual detail.",
+      "seed": 711919,
+      "size": "1024x1792",
+      "model": "flux"
+    },
+    {
+      "filename": "fantasy_underwater_temple_20260115_020427_3.png",
+      "filepath": "/Users/yhuang10/Code/livingdevotional/generated_backgrounds/fantasy_underwater_temple_20260115_020427_3.png",
+      "prompt": "A ethereal and magnificent Ancient submerged temple ruins with divine light streaming through water surface, peaceful underwater scene with gentle fish and coral, color palette featuring ethereal bioluminescent blues and mystical teals with soft glow, with crumbling stone columns, light rays through water, sacred temple architecture, bioluminescent sea life. Style: epic scale and composition, fantasy digital art masterpiece, cinematic dramatic lighting. Vertical composition perfectly framed for mobile phone wallpaper. Absolutely no text, no people. Epic fantasy art with magical atmosphere and extraordinary visual detail.",
+      "seed": 673125,
+      "size": "1024x1792",
+      "model": "flux"
+    }
+  ]
+}

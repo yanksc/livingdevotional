@@ -27,14 +27,21 @@ struct ChatHistoryView: View {
                     ChatHistoryRow(session: session, settingsStore: settingsStore)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            // Navigate to reading view with chat open would be ideal, 
-                            // but for now let's just show the reading view for context
-                            // In a real app we might want to restore the chat state
+                            // Navigate to reading view and open chat with this session
                             if let book = BibleData.book(named: session.book) {
+                                // Set the pending chat session ID in the router's bibleViewModel
+                                // We'll need to access it through the environment
                                 router.navigateToReading(book: book, chapter: session.chapter, verse: session.verseNumber)
-                                // We can't easily auto-open the chat sheet from here without significant plumbing,
-                                // but we can take the user to the verse.
+                                // The session ID will be passed via a notification or environment
+                                // For now, we'll use a simpler approach: store it in a shared location
+                                // and ReadingView will check for it
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("OpenChatSession"),
+                                    object: nil,
+                                    userInfo: ["sessionId": session.id]
+                                )
                             }
+                            dismiss()
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
@@ -74,15 +81,44 @@ struct ChatHistoryRow: View {
                     .foregroundColor(AppTheme.secondaryText)
             }
             
-            Text(session.title)
-                .font(.subheadline)
-                .foregroundColor(AppTheme.primaryText)
-                .lineLimit(2)
-            
+            // Show verse text
             Text(session.verseText)
                 .font(.caption)
                 .foregroundColor(AppTheme.secondaryText)
                 .lineLimit(1)
+            
+            // Show conversation preview
+            if !session.messages.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(session.messages.prefix(3))) { message in
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: message.role == .user ? "person.fill" : "bubble.left.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(message.role == .user ? AppTheme.accentColor : AppTheme.secondaryText)
+                            
+                            Text(message.content)
+                                .font(.caption)
+                                .foregroundColor(AppTheme.primaryText)
+                                .lineLimit(2)
+                        }
+                    }
+                    
+                    if session.messages.count > 3 {
+                        Text(settingsStore.appLanguage == .chineseTraditional ? 
+                             "還有 \(session.messages.count - 3) 則訊息..." : 
+                             "\(session.messages.count - 3) more messages...")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                            .italic()
+                    }
+                }
+                .padding(.top, 4)
+            } else {
+                Text(session.title)
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(2)
+            }
         }
         .padding(.vertical, 4)
     }

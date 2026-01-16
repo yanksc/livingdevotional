@@ -11,14 +11,26 @@ class AIService: AIServiceProtocol {
     
     // MARK: - User Profile Context
     
-    private func buildUserContext(isChinese: Bool) -> String {
+    private func isChineseLanguage(_ appLanguage: AppLanguage) -> Bool {
+        let languageCode = appLanguage.resolvedLanguageCode()
+        return languageCode == "zh-Hans" || languageCode == "zh-Hant"
+    }
+    
+    private func isSimplifiedChinese(_ appLanguage: AppLanguage) -> Bool {
+        return appLanguage.resolvedLanguageCode() == "zh-Hans"
+    }
+    
+    private func buildUserContext(appLanguage: AppLanguage) -> String {
         let profile = UserProfileStore.shared.profile
-        let maturity = isChinese ? profile.spiritualMaturity.displayNameChinese : profile.spiritualMaturity.displayName
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
         let goals = profile.spiritualGoals.isEmpty ? 
-            (isChinese ? "無特定目標" : "no specific goals") :
-            profile.spiritualGoals.map { isChinese ? $0.displayNameChinese : $0.displayName }.joined(separator: ", ")
-        let tradition = isChinese ? profile.tradition.displayNameChinese : profile.tradition.displayName
-        let companionStyle = isChinese ? profile.companionStyle.displayNameChinese : profile.companionStyle.displayName
+            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
+            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
+        let tradition = profile.tradition.localizedDisplayName(for: appLanguage)
+        let companionStyle = profile.companionStyle.localizedDisplayName(for: appLanguage)
         
         if isChinese {
             return """
@@ -45,6 +57,12 @@ class AIService: AIServiceProtocol {
         }
     }
     
+    // Legacy method for backward compatibility
+    private func buildUserContext(isChinese: Bool) -> String {
+        let appLanguage: AppLanguage = isChinese ? .chineseTraditional : .english
+        return buildUserContext(appLanguage: appLanguage)
+    }
+    
     func explainVerse(
         book: String,
         chapter: Int,
@@ -60,12 +78,20 @@ class AIService: AIServiceProtocol {
         var messages: [[String: Any]] = []
         
         // Determine response language based on appLanguage
-        let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
-        let responseLanguage = isChinese ? "繁體中文（台灣用語）" : "English"
-        let languageInstruction = isChinese ? "請用繁體中文（台灣用語）提供簡潔且有幫助的回答。" : "Please provide concise and helpful responses in English."
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        let languageInstruction: String
+        
+        if isSimplified {
+            languageInstruction = "请用简体中文提供简洁且有帮助的回答。"
+        } else if isChinese {
+            languageInstruction = "請用繁體中文（台灣用語）提供簡潔且有幫助的回答。"
+        } else {
+            languageInstruction = "Please provide concise and helpful responses in English."
+        }
         
         // Build personalized system message with user context
-        let userContext = buildUserContext(isChinese: isChinese)
+        let userContext = buildUserContext(appLanguage: appLanguage)
         let systemMessage: [String: Any] = [
             "role": "system",
             "content": isChinese ? """
@@ -118,31 +144,29 @@ class AIService: AIServiceProtocol {
         } else {
             // Initial prompt based on mode and language
             let initialPrompt: String
-            let lengthConstraint = isChinese ? "請控制在 150-200 字以內，精簡扼要。" : "Please keep it concise, around 100-150 words."
+            let lengthConstraint = isChinese ? "請控制在 80-120 字以內，精簡扼要。" : "Please keep it concise, around 50-80 words."
             
             switch mode {
             case .insight:
                 if isChinese {
                     initialPrompt = """
-                    請深入解釋這節經文的歷史背景、文化脈絡和上下文。
+                    請簡潔地解釋這節經文的歷史背景、文化脈絡和上下文。
                     
-                    請包含：
+                    請精簡地包含：
                     1. 這節經文的歷史背景和當時的文化情境
                     2. 經文在整章或整卷書中的上下文位置和意義
-                    3. 相關的經文引用（如果有的話）來幫助理解
-                    4. 重要的神學概念或教義背景
+                    3. 重要的神學概念或教義背景
                     
                     請用繁體中文（台灣用語）書寫，使用"這節經文"開頭。\(lengthConstraint)
                     """
                 } else {
                     initialPrompt = """
-                    Please provide insight into the historical background, cultural context, and surrounding context of this verse.
+                    Please provide concise insight into the historical background, cultural context, and surrounding context of this verse.
                     
-                    Include:
+                    Briefly include:
                     1. The historical background and cultural situation of this verse
                     2. The verse's position and meaning within the chapter or book
-                    3. Related verse references (if applicable) to aid understanding
-                    4. Important theological concepts or doctrinal background
+                    3. Important theological concepts or doctrinal background
                     
                     Please write in English, starting with "This verse". \(lengthConstraint)
                     """
@@ -150,53 +174,50 @@ class AIService: AIServiceProtocol {
             case .reflect:
                 if isChinese {
                     initialPrompt = """
-                    請幫助讀者將這節經文應用到現代生活中，進行靈修反思。
+                    請簡潔地幫助讀者將這節經文應用到現代生活中，進行靈修反思。
                     
-                    請包含：
+                    請精簡地包含：
                     1. 這節經文對現代生活的啟發和應用
                     2. 具體的生活情境或例子來說明如何實踐
-                    3. 個人靈修和成長的反思要點
-                    4. 如何在日常生活中活出這節經文的教導
+                    3. 如何在日常生活中活出這節經文的教導
                     
                     請用繁體中文（台灣用語）書寫，使用"這節經文"開頭。\(lengthConstraint)
                     """
                 } else {
                     initialPrompt = """
-                    Please help readers apply this verse to modern life and provide devotional reflection.
+                    Please help readers apply this verse to modern life and provide concise devotional reflection.
                     
-                    Include:
+                    Briefly include:
                     1. How this verse inspires and applies to modern life
                     2. Specific life situations or examples of how to practice it
-                    3. Points for personal devotion and growth
-                    4. How to live out this verse's teaching in daily life
+                    3. How to live out this verse's teaching in daily life
                     
                     Please write in English, starting with "This verse". \(lengthConstraint)
                     """
                 }
             case .pray:
+                let prayerLengthConstraint = isChinese ? "請控制在 80-120 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 60-100 words."
                 if isChinese {
                     initialPrompt = """
-                    請根據這節經文撰寫一篇禱告文。
+                    請根據這節經文撰寫一篇簡短而深刻的禱告文。
                     
-                    請包含：
+                    請簡潔地包含：
                     1. 感謝神在這節經文中顯明的真理
                     2. 認罪和悔改（如果經文相關）
                     3. 祈求神幫助我們活出這節經文的教導
-                    4. 為個人、家庭、教會或社會的需要代求（根據經文內容）
                     
-                    請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。\(lengthConstraint)
+                    請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。\(prayerLengthConstraint)
                     """
                 } else {
                     initialPrompt = """
-                    Please compose a prayer based on this verse.
+                    Please compose a concise and meaningful prayer based on this verse.
                     
-                    Include:
+                    Briefly include:
                     1. Thanksgiving for the truth revealed in this verse
                     2. Confession and repentance (if relevant to the verse)
                     3. Request for God's help to live out this verse's teaching
-                    4. Intercession for personal, family, church, or societal needs (based on verse content)
                     
-                    Please write in English, starting with "Dear Heavenly Father" or "Lord". \(lengthConstraint)
+                    Please write in English, starting with "Dear Heavenly Father" or "Lord". \(prayerLengthConstraint)
                     """
                 }
             }
@@ -209,8 +230,9 @@ class AIService: AIServiceProtocol {
         }
         
         // Create request body
-        // Use more tokens for pray mode since prayers can be longer
-        let maxTokens = mode == .pray ? 800 : 500
+        // Use fewer tokens for pray mode since prayers should be concise
+        // Reduce tokens for insight and reflect modes to enforce shorter responses
+        let maxTokens = mode == .pray ? 400 : (mode == .insight || mode == .reflect ? 300 : 500)
         let requestBody: [String: Any] = [
             "model": openAIModel,
             "messages": messages,
@@ -285,28 +307,6 @@ class AIService: AIServiceProtocol {
                     }
                     
                     // Parse Server-Sent Events (SSE) stream
-                    // #region agent log
-                    let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                    let logEntry1: [String: Any] = [
-                        "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                        "location": "AIService.explainVerse",
-                        "message": "Starting SSE stream parsing",
-                        "data": ["hypothesisId": "B"],
-                        "sessionId": "debug-session",
-                        "runId": "performance-fix"
-                    ]
-                    if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry1),
-                       let jsonString = String(data: jsonData, encoding: .utf8) {
-                        if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                            fileHandle.seekToEndOfFile()
-                            fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                            fileHandle.closeFile()
-                        } else {
-                            try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                        }
-                    }
-                    // #endregion agent log
-                    
                     // Accumulate bytes and decode incrementally
                     var byteBuffer = Data()
                     for try await byte in asyncBytes {
@@ -315,61 +315,11 @@ class AIService: AIServiceProtocol {
                         // Try to decode accumulated bytes as UTF-8 string
                         // If decoding fails, it means we have an incomplete UTF-8 sequence - keep accumulating
                         if let decodedString = String(data: byteBuffer, encoding: .utf8) {
-                            // #region agent log
-                            let logEntry2: [String: Any] = [
-                                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                                "location": "AIService.explainVerse",
-                                "message": "Decoded UTF-8 string successfully",
-                                "data": [
-                                    "decodedLength": decodedString.count,
-                                    "byteBufferLength": byteBuffer.count,
-                                    "hypothesisId": "B"
-                                ],
-                                "sessionId": "debug-session",
-                                "runId": "performance-fix"
-                            ]
-                            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry2),
-                               let jsonString = String(data: jsonData, encoding: .utf8) {
-                                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                    fileHandle.seekToEndOfFile()
-                                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                    fileHandle.closeFile()
-                                } else {
-                                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                                }
-                            }
-                            // #endregion agent log
-                            
                             // Process complete lines
                             var remainingString = decodedString
                             while let newlineIndex = remainingString.firstIndex(of: "\n") {
                                 let line = String(remainingString[..<newlineIndex])
                                 remainingString.removeSubrange(remainingString.startIndex...newlineIndex)
-                                
-                                // #region agent log
-                                let logEntry3: [String: Any] = [
-                                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                                    "location": "AIService.explainVerse",
-                                    "message": "Processing SSE line",
-                                    "data": [
-                                        "lineLength": line.count,
-                                        "hasDataPrefix": line.hasPrefix("data: "),
-                                        "hypothesisId": "B"
-                                    ],
-                                    "sessionId": "debug-session",
-                                    "runId": "performance-fix"
-                                ]
-                                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry3),
-                                   let jsonString = String(data: jsonData, encoding: .utf8) {
-                                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                        fileHandle.seekToEndOfFile()
-                                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                        fileHandle.closeFile()
-                                    } else {
-                                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                                    }
-                                }
-                                // #endregion agent log
                                 
                                 // Skip empty lines and event type lines
                                 if line.isEmpty || line.hasPrefix("event:") || line.hasPrefix(":") {
@@ -393,30 +343,6 @@ class AIService: AIServiceProtocol {
                                        let firstChoice = choices.first,
                                        let delta = firstChoice["delta"] as? [String: Any],
                                        let content = delta["content"] as? String {
-                                        // #region agent log
-                                        let logEntry4: [String: Any] = [
-                                            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                                            "location": "AIService.explainVerse",
-                                            "message": "Yielding content chunk",
-                                            "data": [
-                                                "contentLength": content.count,
-                                                "hypothesisId": "B"
-                                            ],
-                                            "sessionId": "debug-session",
-                                            "runId": "performance-fix"
-                                        ]
-                                        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry4),
-                                           let jsonString = String(data: jsonData, encoding: .utf8) {
-                                            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                                fileHandle.seekToEndOfFile()
-                                                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                                fileHandle.closeFile()
-                                            } else {
-                                                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                                            }
-                                        }
-                                        // #endregion agent log
-                                        
                                         continuation.yield(content)
                                     }
                                 }
@@ -591,21 +517,35 @@ class AIService: AIServiceProtocol {
         verseText: String,
         appLanguage: AppLanguage
     ) async throws -> [String] {
-        let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
         
-        let prompt = isChinese ? """
-        請針對以下經文提供 2 個簡短的相關問題，供讀者提問以更深入了解經文。
-        問題應簡潔明瞭（20字以內）。
-        請直接列出這兩個問題，用換行分隔，不要有編號或其他文字。
-        
-        經文：\(book) \(chapter):\(verse) 「\(verseText)」
-        """ : """
-        Please provide 2 short, relevant questions about the following verse that a reader might ask to understand it better.
-        Questions should be concise (under 15 words).
-        List the two questions directly, separated by a newline, without numbers or other text.
-        
-        Verse: \(book) \(chapter):\(verse) "\(verseText)"
-        """
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            请针对以下经文提供 2 个简短的相关问题，供读者提问以更深入了解经文。
+            问题应简洁明了（20字以内）。
+            请直接列出这两个问题，用换行分隔，不要有编号或其他文字。
+            
+            经文：\(book) \(chapter):\(verse) 「\(verseText)」
+            """
+        } else if isChinese {
+            prompt = """
+            請針對以下經文提供 2 個簡短的相關問題，供讀者提問以更深入了解經文。
+            問題應簡潔明瞭（20字以內）。
+            請直接列出這兩個問題，用換行分隔，不要有編號或其他文字。
+            
+            經文：\(book) \(chapter):\(verse) 「\(verseText)」
+            """
+        } else {
+            prompt = """
+            Please provide 2 short, relevant questions about the following verse that a reader might ask to understand it better.
+            Questions should be concise (under 15 words).
+            List the two questions directly, separated by a newline, without numbers or other text.
+            
+            Verse: \(book) \(chapter):\(verse) "\(verseText)"
+            """
+        }
         
         let messages: [[String: Any]] = [
             ["role": "user", "content": prompt]
@@ -642,10 +582,310 @@ class AIService: AIServiceProtocol {
             .map { String($0) }
     }
     
-    func findRelatedVerses(book: String, chapter: Int, verse: Int) async throws -> [RelatedVerse] {
-        // TODO: Implement related verses search
-        // Reference: migration/api/find-related-verses/route.ts
-        throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    func findRelatedVerses(book: String, chapter: Int, verse: Int, text: String, appLanguage: AppLanguage) async throws -> [RelatedVerse] {
+        let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
+        
+        let prompt: String
+        if isChinese {
+            prompt = """
+            你是一位聖經學者。針對以下經文：
+            
+            經卷：\(book)
+            章：\(chapter)
+            節：\(verse)
+            經文：「\(text)」
+            
+            請找出 3 節最相關且重要的聖經經文，讀者應該與此經文一起研讀。
+            
+            **重要規則：**
+            1. **不要**列出同一章（\(book) \(chapter)章）的經文，因為讀者已經在閱讀該章節
+            2. 優先選擇：
+               - 經典且廣為人知的經文
+               - 與主題直接相關的重要經文
+               - 能幫助讀者更深入理解的關鍵經文
+            3. 按照相關性和重要性排序（最相關的放在前面）
+            
+            對於每一節相關經文，請提供：
+            1. 經文出處（英文書卷名 章:節，例如 "John 3:16"）
+            2. 經文內容（完整的經文文字）
+            3. 相關性說明（非常簡短，不超過10個字，例如「強調信心」或「回應相同主題」）
+            
+            請以JSON陣列格式回應，結構如下：
+            [
+              {
+                "book": "Book",
+                "chapter": 3,
+                "verse": 16,
+                "reference": "Book 3:16",
+                "text": "完整的經文內容",
+                "relevance": "相關性說明"
+              }
+            ]
+            
+            **重要**: 書卷名稱必須使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            使用繁體中文（台灣用語）書寫相關性說明。只回傳JSON陣列，不要其他文字。
+            """
+        } else {
+            prompt = """
+            You are a Bible scholar. For the following verse:
+            
+            Book: \(book)
+            Chapter: \(chapter)
+            Verse: \(verse)
+            Verse Text: "\(text)"
+            
+            Please find 3 most relevant and important Bible verses that readers should study together with this verse.
+            
+            **Important Rules:**
+            1. **Do NOT** list verses from the same chapter (\(book) \(chapter)), because the reader is already reading that chapter
+            2. Prioritize:
+               - Classic and well-known verses
+               - Important verses directly related to the theme
+               - Key verses that help readers understand more deeply
+            3. Sort by relevance and importance (most relevant first)
+            
+            For each related verse, please provide:
+            1. Verse reference (English book name Chapter:Verse, e.g., "John 3:16")
+            2. Verse text (complete verse content)
+            3. Relevance explanation (Very brief, max 10 words, e.g. "Emphasizes faith" or "Echoes same theme")
+            
+            Please respond in JSON array format:
+            [
+              {
+                "book": "Book",
+                "chapter": 3,
+                "verse": 16,
+                "reference": "Book 3:16",
+                "text": "Complete verse text",
+                "relevance": "Relevance explanation"
+              }
+            ]
+            
+            **Important**: Book names must be in English, e.g., Matthew, Mark, Luke, John, Romans, Genesis, Psalms, etc.
+            Return only JSON array, no other text.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 1200
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Extract JSON array from response
+        guard let jsonData2 = cleanedContent.data(using: .utf8),
+              let verses = try? JSONDecoder().decode([RelatedVerse].self, from: jsonData2) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        return verses
+    }
+    
+    func searchVerses(query: String, appLanguage: AppLanguage) async throws -> VerseSearchResponse {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            你是一位圣经学者专家。用户问了以下问题或搜索：
+            
+            问题：「\(query)」
+            
+            请：
+            1. 先提供你对这个问题或搜索的理解（interpretation），请非常简短（不超过 30 字）
+            2. 推荐 3 节最相关且重要的圣经经文来回答这个问题
+            
+            请选择：
+            - 经典且广为人知的经文
+            - 与主题直接相关的重要经文
+            - 能帮助读者深入理解的关键经文
+            
+            对于每一节经文，请提供：
+            1. 经文出处（英文书卷名 章:节，例如 "John 3:16"）
+            2. 经文内容（完整的经文文字）
+            3. 相关性说明（简短，不超过 10 个字）
+            
+            请以JSON格式回应，结构如下：
+            {
+              "interpretation": "你对这个问题或搜索的理解",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "完整的经文内容",
+                  "relevance": "相关性说明"
+                }
+              ]
+            }
+            
+            **重要**: 书卷名称必须使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            使用简体中文书写。只回传JSON，不要其他文字。
+            """
+        } else if isChinese {
+            prompt = """
+            你是一位聖經學者專家。用戶問了以下問題或搜尋：
+            
+            問題：「\(query)」
+            
+            請：
+            1. 先提供你對這個問題或搜尋的理解（interpretation），請非常簡短（不超過 30 字）
+            2. 推薦 3 節最相關且重要的聖經經文來回答這個問題
+            
+            請選擇：
+            - 經典且廣為人知的經文
+            - 與主題直接相關的重要經文
+            - 能幫助讀者深入理解的關鍵經文
+            
+            對於每一節經文，請提供：
+            1. 經文出處（英文書卷名 章:節，例如 "John 3:16"）
+            2. 經文內容（完整的經文文字）
+            3. 相關性說明（簡短，不超過 10 個字）
+            
+            請以JSON格式回應，結構如下：
+            {
+              "interpretation": "你對這個問題或搜尋的理解",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "完整的經文內容",
+                  "relevance": "相關性說明"
+                }
+              ]
+            }
+            
+            **重要**: 書卷名稱必須使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            使用繁體中文（台灣用語）書寫。只回傳JSON，不要其他文字。
+            """
+        } else {
+            prompt = """
+            You are a Bible scholar expert. A user asked the following question or search:
+            
+            Query: "\(query)"
+            
+            Please:
+            1. First provide your interpretation of this question or search (very brief, max 20 words)
+            2. Recommend 3 most relevant and important Bible verses to answer this question
+            
+            Choose:
+            - Classic and well-known verses
+            - Important verses directly related to the theme
+            - Key verses that help readers understand deeply
+            
+            For each verse, please provide:
+            1. Verse reference (English book name Chapter:Verse, e.g., "John 3:16")
+            2. Verse text (complete verse content)
+            3. Relevance explanation (Brief, max 10 words)
+            
+            Please respond in JSON format:
+            {
+              "interpretation": "Your interpretation of this question or search",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "Complete verse text",
+                  "relevance": "Relevance explanation"
+                }
+              ]
+            }
+            
+            **Important**: Book names must be in English, e.g., Matthew, Mark, Luke, John, Romans, Genesis, Psalms, etc.
+            Return only JSON, no other text.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 1200
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8),
+              let searchResponse = try? JSONDecoder().decode(VerseSearchResponse.self, from: jsonData2) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        return searchResponse
     }
     
     func askQuestion(question: String, context: String?) async throws -> String {
@@ -660,9 +900,741 @@ class AIService: AIServiceProtocol {
         throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
     
+    func summarizeChapterStream(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error> {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let userContext = buildUserContext(appLanguage: appLanguage)
+        
+        let systemContent: String
+        if isSimplified {
+            systemContent = """
+            \(userContext)
+            
+            你正在幫助讀者理解以下聖經章節：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請用簡體中文提供簡潔且有幫助的回答。
+            """
+        } else if isChinese {
+            systemContent = """
+            \(userContext)
+            
+            你正在幫助讀者理解以下聖經章節：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請用繁體中文（台灣用語）提供簡潔且有幫助的回答。
+            """
+        } else {
+            systemContent = """
+            \(userContext)
+            
+            You are helping readers understand the following Bible chapter:
+            
+            Book: \(book)
+            Chapter: \(chapter)
+            
+            Please provide concise and helpful responses in English.
+            """
+        }
+        
+        let systemMessage: [String: Any] = [
+            "role": "system",
+            "content": systemContent
+        ]
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            请为以下圣经章节提供简短的摘要：
+            
+            经卷：\(book)
+            章：\(chapter)
+            
+            请用2-3段简短的段落（总共约150-200字）概述这一章的内容，包括：
+            
+            1. 主要主题和中心思想
+            2. 重要事件或教导
+            3. 这一章在圣经脉络中的意义
+            
+            请直接开始摘要，不需要标题或开场白。使用简体中文书写。
+            """
+        } else if isChinese {
+            prompt = """
+            請為以下聖經章節提供簡短的摘要：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請用2-3段簡短的段落（總共約150-200字）概述這一章的內容，包括：
+            
+            1. 主要主題和中心思想
+            2. 重要事件或教導
+            3. 這一章在聖經脈絡中的意義
+            
+            請直接開始摘要，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            """
+        } else {
+            prompt = """
+            Please provide a brief summary of the following Bible chapter:
+            
+            Book: \(book)
+            Chapter: \(chapter)
+            
+            Please summarize this chapter in 2-3 short paragraphs (approximately 150-200 words total), including:
+            
+            1. Main themes and central ideas
+            2. Important events or teachings
+            3. The significance of this chapter in the biblical context
+            
+            Please start directly with the summary, no title or introduction. Write in English.
+            """
+        }
+        
+        let userMessage: [String: Any] = [
+            "role": "user",
+            "content": prompt
+        ]
+        
+        let messages: [[String: Any]] = [systemMessage, userMessage]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "stream": true,
+            "stream_options": ["include_usage": false],
+            "max_tokens": 600
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                        continuation.finish(throwing: NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+                        return
+                    }
+                    
+                    var byteBuffer = Data()
+                    for try await byte in asyncBytes {
+                        byteBuffer.append(byte)
+                        
+                        if let decodedString = String(data: byteBuffer, encoding: .utf8) {
+                            var remainingString = decodedString
+                            while let newlineIndex = remainingString.firstIndex(of: "\n") {
+                                let line = String(remainingString[..<newlineIndex])
+                                remainingString.removeSubrange(remainingString.startIndex...newlineIndex)
+                                
+                                if line.hasPrefix("data: ") {
+                                    let jsonString = String(line.dropFirst(6))
+                                    if jsonString.trimmingCharacters(in: .whitespaces) == "[DONE]" {
+                                        continuation.finish()
+                                        return
+                                    }
+                                    
+                                    if let jsonData = jsonString.data(using: .utf8),
+                                       let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                                       let choices = json["choices"] as? [[String: Any]],
+                                       let firstChoice = choices.first,
+                                       let delta = firstChoice["delta"] as? [String: Any],
+                                       let content = delta["content"] as? String {
+                                        continuation.yield(content)
+                                    }
+                                }
+                            }
+                            
+                            if !remainingString.isEmpty {
+                                byteBuffer = remainingString.data(using: .utf8) ?? Data()
+                            } else {
+                                byteBuffer.removeAll()
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
+    func getChapterContext(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error> {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let userContext = buildUserContext(appLanguage: appLanguage)
+        
+        let systemContent: String
+        if isSimplified {
+            systemContent = """
+            \(userContext)
+            
+            你正在幫助讀者理解以下聖經章節的背景和作者資訊：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請用簡體中文提供簡潔且有幫助的回答。
+            """
+        } else if isChinese {
+            systemContent = """
+            \(userContext)
+            
+            你正在幫助讀者理解以下聖經章節的背景和作者資訊：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請用繁體中文（台灣用語）提供簡潔且有幫助的回答。
+            """
+        } else {
+            systemContent = """
+            \(userContext)
+            
+            You are helping readers understand the background and author information of the following Bible chapter:
+            
+            Book: \(book)
+            Chapter: \(chapter)
+            
+            Please provide concise and helpful responses in English.
+            """
+        }
+        
+        let systemMessage: [String: Any] = [
+            "role": "system",
+            "content": systemContent
+        ]
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            请为以下圣经章节提供背景和作者信息：
+            
+            经卷：\(book)
+            章：\(chapter)
+            
+            请包含：
+            1. 这卷书的作者和写作背景
+            2. 这一章的历史背景和文化脉络
+            3. 写作目的和主要受众
+            4. 这一章在整卷书中的位置和重要性
+            
+            请用2-3段简短的段落（总共约150-200字）说明，直接开始，不需要标题或开场白。使用简体中文书写。
+            """
+        } else if isChinese {
+            prompt = """
+            請為以下聖經章節提供背景和作者資訊：
+            
+            經卷：\(book)
+            章：\(chapter)
+            
+            請包含：
+            1. 這卷書的作者和寫作背景
+            2. 這一章的歷史背景和文化脈絡
+            3. 寫作目的和主要受眾
+            4. 這一章在整卷書中的位置和重要性
+            
+            請用2-3段簡短的段落（總共約150-200字）說明，直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            """
+        } else {
+            prompt = """
+            Please provide background and author information for the following Bible chapter:
+            
+            Book: \(book)
+            Chapter: \(chapter)
+            
+            Please include:
+            1. The author of this book and writing background
+            2. The historical background and cultural context of this chapter
+            3. The purpose of writing and main audience
+            4. The position and importance of this chapter within the entire book
+            
+            Please explain in 2-3 short paragraphs (approximately 150-200 words total), start directly without title or introduction. Write in English.
+            """
+        }
+        
+        let userMessage: [String: Any] = [
+            "role": "user",
+            "content": prompt
+        ]
+        
+        let messages: [[String: Any]] = [systemMessage, userMessage]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "stream": true,
+            "stream_options": ["include_usage": false],
+            "max_tokens": 600
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                        continuation.finish(throwing: NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+                        return
+                    }
+                    
+                    var byteBuffer = Data()
+                    for try await byte in asyncBytes {
+                        byteBuffer.append(byte)
+                        
+                        if let decodedString = String(data: byteBuffer, encoding: .utf8) {
+                            var remainingString = decodedString
+                            while let newlineIndex = remainingString.firstIndex(of: "\n") {
+                                let line = String(remainingString[..<newlineIndex])
+                                remainingString.removeSubrange(remainingString.startIndex...newlineIndex)
+                                
+                                if line.hasPrefix("data: ") {
+                                    let jsonString = String(line.dropFirst(6))
+                                    if jsonString.trimmingCharacters(in: .whitespaces) == "[DONE]" {
+                                        continuation.finish()
+                                        return
+                                    }
+                                    
+                                    if let jsonData = jsonString.data(using: .utf8),
+                                       let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                                       let choices = json["choices"] as? [[String: Any]],
+                                       let firstChoice = choices.first,
+                                       let delta = firstChoice["delta"] as? [String: Any],
+                                       let content = delta["content"] as? String {
+                                        continuation.yield(content)
+                                    }
+                                }
+                            }
+                            
+                            if !remainingString.isEmpty {
+                                byteBuffer = remainingString.data(using: .utf8) ?? Data()
+                            } else {
+                                byteBuffer.removeAll()
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
     func searchBible(query: String, language: Language) async throws -> [SearchResult] {
         // TODO: Implement Bible search
         // Reference: migration/api/bible-search/route.ts
         throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    }
+    
+    func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage) async throws -> DailyVerse {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        // Build prompt for AI to suggest a verse
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            你是一位圣经学者专家。用户想要为以下情况祷告：
+            
+            心中的关注：\(focus)
+            需要的帮助：\(need)
+            
+            请推荐 1 节最相关且重要的圣经经文来帮助用户祷告。请选择：
+            1. 经典且广为人知的经文
+            2. 与主题直接相关的重要经文
+            3. 能帮助读者深入理解的关键经文
+            
+            请以JSON格式回应：
+            {
+              "reference": "Book Chapter:Verse",
+              "relevance": "相关性说明"
+            }
+            
+            **重要**: 书卷名称必须使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            只回传JSON，不要其他文字。
+            """
+        } else if isChinese {
+            prompt = """
+            你是一位聖經學者專家。用戶想要為以下情況禱告：
+            
+            心中的關注：\(focus)
+            需要的幫助：\(need)
+            
+            請推薦 1 節最相關且重要的聖經經文來幫助用戶禱告。請選擇：
+            1. 經典且廣為人知的經文
+            2. 與主題直接相關的重要經文
+            3. 能幫助讀者深入理解的關鍵經文
+            
+            請以JSON格式回應：
+            {
+              "reference": "Book Chapter:Verse",
+              "relevance": "相關性說明"
+            }
+            
+            **重要**: 書卷名稱必須使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            只回傳JSON，不要其他文字。
+            """
+        } else {
+            prompt = """
+            You are a Bible scholar expert. A user wants to pray for the following situation:
+            
+            What's on their heart: \(focus)
+            What they need: \(need)
+            
+            Please recommend 1 most relevant and important Bible verse to help the user pray. Choose:
+            1. Classic and well-known verses
+            2. Important verses directly related to the theme
+            3. Key verses that help readers understand deeply
+            
+            Please respond in JSON format:
+            {
+              "reference": "Book Chapter:Verse",
+              "relevance": "Relevance explanation"
+            }
+            
+            **Important**: Book names must be in English, e.g., Matthew, Mark, Luke, John, Romans, Genesis, Psalms, etc.
+            Return only JSON, no other text.
+            """
+        }
+        
+        // Call OpenAI API
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 200
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8),
+              let suggestion = try? JSONSerialization.jsonObject(with: jsonData2) as? [String: Any],
+              let reference = suggestion["reference"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        // Parse reference like "John 3:16" or "1 Corinthians 13:4"
+        let refPattern = #"^(\d*\s*\w+)\s+(\d+):(\d+)"#
+        guard let regex = try? NSRegularExpression(pattern: refPattern, options: []),
+              let match = regex.firstMatch(in: reference, options: [], range: NSRange(reference.startIndex..., in: reference)),
+              let bookRange = Range(match.range(at: 1), in: reference),
+              let chapterRange = Range(match.range(at: 2), in: reference),
+              let verseRange = Range(match.range(at: 3), in: reference) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse verse reference: \(reference)"])
+        }
+        
+        let bookName = String(reference[bookRange]).trimmingCharacters(in: .whitespaces)
+        guard let chapter = Int(String(reference[chapterRange])),
+              let verseNumber = Int(String(reference[verseRange])) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid chapter or verse number"])
+        }
+        
+        // Find the book in BibleData
+        guard let book = BibleData.book(named: bookName) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Book not found: \(bookName)"])
+        }
+        
+        // Load verse from BibleService
+        let bibleService = BibleService.shared
+        let verses = try await bibleService.loadVerses(book: book.name, chapter: chapter, translation: language)
+        
+        guard let verse = verses.first(where: { $0.verseNumber == verseNumber }) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Verse not found: \(bookName) \(chapter):\(verseNumber)"])
+        }
+        
+        // Convert to DailyVerse
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateString = formatter.string(from: Date())
+        
+        return DailyVerse(
+            book: book.name,
+            chapter: chapter,
+            verseNumber: verseNumber,
+            textBsb: verse.textBsb,
+            textCuv: verse.textCuv,
+            textCu1: verse.textCu1,
+            textKjv: verse.textKjv,
+            textWeb: verse.textWeb,
+            textSpa: verse.textSpa,
+            textPor: verse.textPor,
+            reference: "\(book.name) \(chapter):\(verseNumber)",
+            selectedDate: dateString
+        )
+    }
+    
+    // MARK: - Journey Analysis
+    
+    func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis {
+        let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
+        
+        // Build the data summary for AI
+        let readingBooksStr = data.readingHistory.isEmpty ? (isChinese ? "尚無閱讀記錄" : "No reading history yet") : data.readingHistory.joined(separator: ", ")
+        let savedBooksStr = data.savedVerseBooks.isEmpty ? (isChinese ? "尚無保存經文" : "No saved verses yet") : data.savedVerseBooks.joined(separator: ", ")
+        let labelsStr = data.savedVerseLabels.isEmpty ? (isChinese ? "無標籤" : "No labels") : data.savedVerseLabels.joined(separator: ", ")
+        let topicsStr = data.questionTopics.isEmpty ? (isChinese ? "尚無問題記錄" : "No questions asked yet") : data.questionTopics.joined(separator: ", ")
+        let goalsStr = data.spiritualGoals.isEmpty ? (isChinese ? "尚未設定目標" : "No goals set") : data.spiritualGoals.joined(separator: ", ")
+        
+        let prompt: String
+        if isChinese {
+            prompt = """
+            你是一位溫暖且鼓勵人的屬靈導師。請根據以下用戶的信仰成長數據，生成一份個人化的分析報告。
+
+            用戶資料：
+            - 名字：\(data.userName.isEmpty ? "朋友" : data.userName)
+            - 靈命階段：\(data.spiritualMaturity)
+            - 目標：\(goalsStr)
+
+            使用數據：
+            - 總共閱讀章數：\(data.stats.totalChaptersRead)
+            - 保存經文數：\(data.stats.totalVersesSaved)
+            - 連續簽到天數：\(data.currentStreak)
+            - 提問次數：\(data.stats.questionsAsked)
+            - 總活躍天數：\(data.totalDaysActive)
+            - 閱讀過的書卷：\(readingBooksStr)
+            - 保存經文的書卷：\(savedBooksStr)
+            - 使用的標籤：\(labelsStr)
+            - 問過的主題：\(topicsStr)
+            - 禱告主題：\(data.prayerTopics.isEmpty ? (isChinese ? "尚無禱告記錄" : "No prayer logs yet") : data.prayerTopics.joined(separator: ", "))
+
+            請生成以下內容（以JSON格式回應）：
+
+            {
+              "encouragement": "一段溫暖的鼓勵話語（50-80字），直接稱呼用戶，肯定他們的努力和成長",
+              "journeySummary": "簡短總結用戶的信仰歷程特點（30-50字）",
+              "readingPersonality": {
+                "title": "閱讀性格類型（如：智慧追尋者、詩篇愛好者、福音探索者等）",
+                "description": "解釋為什麼是這個類型（20-30字）",
+                "iconName": "SF Symbol 名稱（如 book.fill, heart.fill, lightbulb.fill, star.fill, flame.fill）"
+              },
+              "recommendedVerse": {
+                "reference": "推薦經文出處（英文書名 章:節，如 Philippians 4:13）",
+                "text": "經文內容（繁體中文）",
+                "reason": "為什麼推薦這節經文（15-25字）"
+              },
+              "funFacts": [
+                {"emoji": "📖", "fact": "有趣的閱讀習慣觀察（15-25字）"},
+                {"emoji": "⭐", "fact": "另一個有趣發現（15-25字）"}
+              ],
+              "nextStep": "下一步建議（20-30字），具體且可執行"
+            }
+
+            **重要規則：**
+            1. 語氣要溫暖、鼓勵、正面
+            2. 根據實際數據給出個人化內容，不要太籠統
+            3. 如果數據很少，要鼓勵用戶開始他們的旅程
+            4. 如果用戶有禱告記錄，可以在 funFacts 或 journeySummary 中提及他們的禱告主題模式（例如：經常為工作、家庭、健康等主題禱告）
+            5. recommendedVerse 的 reference 必須用英文書名
+            6. 只回傳JSON，不要其他文字
+            """
+        } else {
+            prompt = """
+            You are a warm and encouraging mentor. Based on the following user's faith journey data, generate a personalized analysis report.
+
+            User Profile:
+            - Name: \(data.userName.isEmpty ? "Friend" : data.userName)
+            - Stage: \(data.spiritualMaturity)
+            - Goals: \(goalsStr)
+
+            Usage Data:
+            - Total chapters read: \(data.stats.totalChaptersRead)
+            - Verses saved: \(data.stats.totalVersesSaved)
+            - Current streak: \(data.currentStreak) days
+            - Questions asked: \(data.stats.questionsAsked)
+            - Total active days: \(data.totalDaysActive)
+            - Books read: \(readingBooksStr)
+            - Books with saved verses: \(savedBooksStr)
+            - Labels used: \(labelsStr)
+            - Topics asked about: \(topicsStr)
+            - Prayer topics: \(data.prayerTopics.isEmpty ? "No prayer logs yet" : data.prayerTopics.joined(separator: ", "))
+
+            Please generate the following content (respond in JSON format):
+
+            {
+              "encouragement": "A warm encouraging message (50-80 words), address the user directly, affirm their effort and growth",
+              "journeySummary": "Brief summary of the user's journey characteristics (20-40 words)",
+              "readingPersonality": {
+                "title": "Reading personality type (e.g., Wisdom Seeker, Psalm Lover, Gospel Explorer)",
+                "description": "Explain why this type fits (15-25 words)",
+                "iconName": "SF Symbol name (e.g., book.fill, heart.fill, lightbulb.fill, star.fill, flame.fill)"
+              },
+              "recommendedVerse": {
+                "reference": "Recommended verse reference (English book name Chapter:Verse, e.g., Philippians 4:13)",
+                "text": "The verse text in English",
+                "reason": "Why this verse is recommended (15-25 words)"
+              },
+              "funFacts": [
+                {"emoji": "📖", "fact": "An interesting observation about their reading habits (15-25 words)"},
+                {"emoji": "⭐", "fact": "Another interesting discovery (15-25 words)"}
+              ],
+              "nextStep": "Suggested next step (15-25 words), specific and actionable"
+            }
+
+            **Important Rules:**
+            1. Tone should be warm, encouraging, and positive
+            2. Provide personalized content based on actual data, avoid being too generic
+            3. If data is sparse, encourage user to begin their journey
+            4. If user has prayer logs, you can mention their prayer topic patterns in funFacts or journeySummary (e.g., frequently praying for work, family, health, etc.)
+            5. recommendedVerse reference must use English book names
+            6. Return only JSON, no other text
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1500
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8),
+              let analysisJson = try? JSONSerialization.jsonObject(with: jsonData2) as? [String: Any] else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        // Parse the response into our model
+        let encouragement = analysisJson["encouragement"] as? String ?? ""
+        let journeySummary = analysisJson["journeySummary"] as? String ?? ""
+        let nextStep = analysisJson["nextStep"] as? String ?? ""
+        
+        // Parse reading personality
+        var readingPersonality = ReadingPersonality(title: "Explorer", description: "Beginning your journey", iconName: "figure.walk")
+        if let personalityJson = analysisJson["readingPersonality"] as? [String: Any] {
+            readingPersonality = ReadingPersonality(
+                title: personalityJson["title"] as? String ?? "Explorer",
+                description: personalityJson["description"] as? String ?? "",
+                iconName: personalityJson["iconName"] as? String ?? "book.fill"
+            )
+        }
+        
+        // Parse recommended verse
+        var recommendedVerse: RecommendedVerse? = nil
+        if let verseJson = analysisJson["recommendedVerse"] as? [String: Any] {
+            recommendedVerse = RecommendedVerse(
+                reference: verseJson["reference"] as? String ?? "",
+                text: verseJson["text"] as? String ?? "",
+                reason: verseJson["reason"] as? String ?? ""
+            )
+        }
+        
+        // Parse fun facts
+        var funFacts: [FunFact] = []
+        if let factsJson = analysisJson["funFacts"] as? [[String: Any]] {
+            funFacts = factsJson.map { factJson in
+                FunFact(
+                    emoji: factJson["emoji"] as? String ?? "✨",
+                    fact: factJson["fact"] as? String ?? ""
+                )
+            }
+        }
+        
+        return AIJourneyAnalysis(
+            encouragement: encouragement,
+            journeySummary: journeySummary,
+            readingPersonality: readingPersonality,
+            recommendedVerse: recommendedVerse,
+            funFacts: funFacts,
+            nextStep: nextStep
+        )
     }
 }

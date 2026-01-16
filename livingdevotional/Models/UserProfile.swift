@@ -29,6 +29,23 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
         case .mature: return "成熟/領袖"
         }
     }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .seeker: return "寻求者"
+            case .newBeliever: return "初信者"
+            case .growing: return "成长中"
+            case .mature: return "成熟/领袖"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
 }
 
 // MARK: - Spiritual Goals
@@ -59,6 +76,24 @@ enum SpiritualGoal: String, Codable, CaseIterable, Identifiable {
         case .habit: return "建立習慣"
         case .healing: return "醫治"
         case .deepStudy: return "深入研讀"
+        }
+    }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .peace: return "寻找平安"
+            case .understanding: return "理解圣经"
+            case .habit: return "建立习惯"
+            case .healing: return "医治"
+            case .deepStudy: return "深入研读"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
         }
     }
 }
@@ -99,6 +134,26 @@ enum ChristianTradition: String, Codable, CaseIterable, Identifiable {
         case .none: return "無/不適用"
         }
     }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .evangelical: return "福音派"
+            case .catholic: return "天主教"
+            case .orthodox: return "东正教"
+            case .mainline: return "主流新教"
+            case .charismatic: return "灵恩派"
+            case .nondenominational: return "非宗派"
+            case .none: return "无/不适用"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
 }
 
 // MARK: - Spiritual Companion Style
@@ -126,6 +181,22 @@ enum AICompanionStyle: String, Codable, CaseIterable, Identifiable {
         }
     }
     
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .mentor: return "智慧导师"
+            case .shepherd: return "温柔牧者"
+            case .friend: return "祷告伙伴"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
+    
     var description: String {
         switch self {
         case .mentor: return "Teaches biblical truth with depth and theological insight."
@@ -139,6 +210,22 @@ enum AICompanionStyle: String, Codable, CaseIterable, Identifiable {
         case .mentor: return "以深度和神學洞察教導聖經真理。"
         case .shepherd: return "專注於安慰、鼓勵和牧養關懷。"
         case .friend: return "以親切的方式幫助您應用經文和禱告。"
+        }
+    }
+    
+    func localizedDescription(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .mentor: return "以深度和神学洞察教导圣经真理。"
+            case .shepherd: return "专注于安慰、鼓励和牧养关怀。"
+            case .friend: return "以亲切的方式帮助您应用经文和祷告。"
+            }
+        case "zh-Hant":
+            return descriptionChinese
+        default:
+            return description
         }
     }
 }

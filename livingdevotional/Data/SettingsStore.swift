@@ -11,7 +11,6 @@ class SettingsStore: ObservableObject {
     private let secondaryLanguageKey = "secondaryLanguage"
     private let appLanguageKey = "appLanguage"
     private let fontSizeKey = "fontSize"
-    private let isDarkModeKey = "isDarkMode"
     private let lineSpacingKey = "lineSpacing"
     private let showSecondaryLanguageKey = "showSecondaryLanguage"
     private let notificationsEnabledKey = "notificationsEnabled"
@@ -35,12 +34,6 @@ class SettingsStore: ObservableObject {
     @Published var fontSize: Double {
         didSet {
             saveFontSize()
-        }
-    }
-    
-    @Published var isDarkMode: Bool {
-        didSet {
-            saveIsDarkMode()
         }
     }
     
@@ -114,14 +107,11 @@ class SettingsStore: ObservableObject {
             self.fontSize = 17.0 // Default font size
         }
         
-        // Load isDarkMode or use default
-        self.isDarkMode = userDefaults.bool(forKey: isDarkModeKey)
-        
-        // Load lineSpacing or use default (more condensed)
+        // Load lineSpacing or use default (proper spacing for bilingual display)
         if userDefaults.object(forKey: lineSpacingKey) != nil {
             self.lineSpacing = userDefaults.double(forKey: lineSpacingKey)
         } else {
-            self.lineSpacing = 0.0 // Default line spacing (very condensed)
+            self.lineSpacing = 4.0 // Default line spacing for proper bilingual display
         }
         
         // Load showSecondaryLanguage or use default (true by default)
@@ -173,12 +163,12 @@ class SettingsStore: ObservableObject {
             self.streakProtectionEnabled = true // Default to enabled
         }
         
-        // Load selectedFont or use default (.system)
+        // Load selectedFont or use default (.serif)
         if let fontRaw = userDefaults.string(forKey: selectedFontKey),
            let font = AppFont(rawValue: fontRaw) {
             self.selectedFont = font
         } else {
-            self.selectedFont = .system // Default to system font
+            self.selectedFont = .serif // Default to serif font
         }
     }
     
@@ -192,10 +182,6 @@ class SettingsStore: ObservableObject {
     
     private func saveFontSize() {
         userDefaults.set(fontSize, forKey: fontSizeKey)
-    }
-    
-    private func saveIsDarkMode() {
-        userDefaults.set(isDarkMode, forKey: isDarkModeKey)
     }
     
     private func saveLineSpacing() {

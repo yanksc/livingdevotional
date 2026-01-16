@@ -20,7 +20,9 @@ API_BASE = "https://bible.helloao.org/api"
 TRANSLATIONS = {
     "BSB": "bsb",      # Map BSB to bsb folder
     # "cmn_cuv": "cuv",  # CUV copied from bible_api folder - skip download
-    "ENGWEBP": "engwebp"  # Keep as ENGWEBP for future use
+    "ENGWEBP": "engwebp",  # Keep as ENGWEBP for future use
+    "spa_r09": "spa_r09",  # Spanish Reina-Valera 1909
+    "por_blj": "por_blj"  # Portuguese Bíblia Livre
 }
 
 # Book ID mapping (from BibleData.swift)

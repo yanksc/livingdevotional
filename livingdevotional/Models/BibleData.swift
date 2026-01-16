@@ -222,6 +222,222 @@ struct BibleData {
         "Revelation": "啟示錄",
     ]
     
+    // Simplified Chinese book name mapping
+    static let chineseSimplifiedBookNames: [String: String] = [
+        // Old Testament
+        "Genesis": "创世记",
+        "Exodus": "出埃及记",
+        "Leviticus": "利未记",
+        "Numbers": "民数记",
+        "Deuteronomy": "申命记",
+        "Joshua": "约书亚记",
+        "Judges": "士师记",
+        "Ruth": "路得记",
+        "1 Samuel": "撒母耳记上",
+        "2 Samuel": "撒母耳记下",
+        "1 Kings": "列王纪上",
+        "2 Kings": "列王纪下",
+        "1 Chronicles": "历代志上",
+        "2 Chronicles": "历代志下",
+        "Ezra": "以斯拉记",
+        "Nehemiah": "尼希米记",
+        "Esther": "以斯帖记",
+        "Job": "约伯记",
+        "Psalms": "诗篇",
+        "Proverbs": "箴言",
+        "Ecclesiastes": "传道书",
+        "Song of Solomon": "雅歌",
+        "Isaiah": "以赛亚书",
+        "Jeremiah": "耶利米书",
+        "Lamentations": "耶利米哀歌",
+        "Ezekiel": "以西结书",
+        "Daniel": "但以理书",
+        "Hosea": "何西阿书",
+        "Joel": "约珥书",
+        "Amos": "阿摩司书",
+        "Obadiah": "俄巴底亚书",
+        "Jonah": "约拿书",
+        "Micah": "弥迦书",
+        "Nahum": "那鸿书",
+        "Habakkuk": "哈巴谷书",
+        "Zephaniah": "西番雅书",
+        "Haggai": "哈该书",
+        "Zechariah": "撒迦利亚书",
+        "Malachi": "玛拉基书",
+        // New Testament
+        "Matthew": "马太福音",
+        "Mark": "马可福音",
+        "Luke": "路加福音",
+        "John": "约翰福音",
+        "Acts": "使徒行传",
+        "Romans": "罗马书",
+        "1 Corinthians": "哥林多前书",
+        "2 Corinthians": "哥林多后书",
+        "Galatians": "加拉太书",
+        "Ephesians": "以弗所书",
+        "Philippians": "腓立比书",
+        "Colossians": "歌罗西书",
+        "1 Thessalonians": "帖撒罗尼迦前书",
+        "2 Thessalonians": "帖撒罗尼迦后书",
+        "1 Timothy": "提摩太前书",
+        "2 Timothy": "提摩太后书",
+        "Titus": "提多书",
+        "Philemon": "腓利门书",
+        "Hebrews": "希伯来书",
+        "James": "雅各书",
+        "1 Peter": "彼得前书",
+        "2 Peter": "彼得后书",
+        "1 John": "约翰一书",
+        "2 John": "约翰二书",
+        "3 John": "约翰三书",
+        "Jude": "犹大书",
+        "Revelation": "启示录",
+    ]
+    
+    // Spanish book name mapping
+    static let spanishBookNames: [String: String] = [
+        // Old Testament
+        "Genesis": "Génesis",
+        "Exodus": "Éxodo",
+        "Leviticus": "Levítico",
+        "Numbers": "Números",
+        "Deuteronomy": "Deuteronomio",
+        "Joshua": "Josué",
+        "Judges": "Jueces",
+        "Ruth": "Rut",
+        "1 Samuel": "1 Samuel",
+        "2 Samuel": "2 Samuel",
+        "1 Kings": "1 Reyes",
+        "2 Kings": "2 Reyes",
+        "1 Chronicles": "1 Crónicas",
+        "2 Chronicles": "2 Crónicas",
+        "Ezra": "Esdras",
+        "Nehemiah": "Nehemías",
+        "Esther": "Ester",
+        "Job": "Job",
+        "Psalms": "Salmos",
+        "Proverbs": "Proverbios",
+        "Ecclesiastes": "Eclesiastés",
+        "Song of Solomon": "Cantares",
+        "Isaiah": "Isaías",
+        "Jeremiah": "Jeremías",
+        "Lamentations": "Lamentaciones",
+        "Ezekiel": "Ezequiel",
+        "Daniel": "Daniel",
+        "Hosea": "Oseas",
+        "Joel": "Joel",
+        "Amos": "Amós",
+        "Obadiah": "Abdías",
+        "Jonah": "Jonás",
+        "Micah": "Miqueas",
+        "Nahum": "Nahúm",
+        "Habakkuk": "Habacuc",
+        "Zephaniah": "Sofonías",
+        "Haggai": "Hageo",
+        "Zechariah": "Zacarías",
+        "Malachi": "Malaquías",
+        // New Testament
+        "Matthew": "Mateo",
+        "Mark": "Marcos",
+        "Luke": "Lucas",
+        "John": "Juan",
+        "Acts": "Hechos",
+        "Romans": "Romanos",
+        "1 Corinthians": "1 Corintios",
+        "2 Corinthians": "2 Corintios",
+        "Galatians": "Gálatas",
+        "Ephesians": "Efesios",
+        "Philippians": "Filipenses",
+        "Colossians": "Colosenses",
+        "1 Thessalonians": "1 Tesalonicenses",
+        "2 Thessalonians": "2 Tesalonicenses",
+        "1 Timothy": "1 Timoteo",
+        "2 Timothy": "2 Timoteo",
+        "Titus": "Tito",
+        "Philemon": "Filemón",
+        "Hebrews": "Hebreos",
+        "James": "Santiago",
+        "1 Peter": "1 Pedro",
+        "2 Peter": "2 Pedro",
+        "1 John": "1 Juan",
+        "2 John": "2 Juan",
+        "3 John": "3 Juan",
+        "Jude": "Judas",
+        "Revelation": "Apocalipsis",
+    ]
+    
+    // Portuguese book name mapping
+    static let portugueseBookNames: [String: String] = [
+        // Old Testament
+        "Genesis": "Gênesis",
+        "Exodus": "Êxodo",
+        "Leviticus": "Levítico",
+        "Numbers": "Números",
+        "Deuteronomy": "Deuteronômio",
+        "Joshua": "Josué",
+        "Judges": "Juízes",
+        "Ruth": "Rute",
+        "1 Samuel": "1 Samuel",
+        "2 Samuel": "2 Samuel",
+        "1 Kings": "1 Reis",
+        "2 Kings": "2 Reis",
+        "1 Chronicles": "1 Crônicas",
+        "2 Chronicles": "2 Crônicas",
+        "Ezra": "Esdras",
+        "Nehemiah": "Neemias",
+        "Esther": "Ester",
+        "Job": "Jó",
+        "Psalms": "Salmos",
+        "Proverbs": "Provérbios",
+        "Ecclesiastes": "Eclesiastes",
+        "Song of Solomon": "Cantares",
+        "Isaiah": "Isaías",
+        "Jeremiah": "Jeremias",
+        "Lamentations": "Lamentações",
+        "Ezekiel": "Ezequiel",
+        "Daniel": "Daniel",
+        "Hosea": "Oséias",
+        "Joel": "Joel",
+        "Amos": "Amós",
+        "Obadiah": "Obadias",
+        "Jonah": "Jonas",
+        "Micah": "Miquéias",
+        "Nahum": "Naum",
+        "Habakkuk": "Habacuque",
+        "Zephaniah": "Sofonias",
+        "Haggai": "Ageu",
+        "Zechariah": "Zacarias",
+        "Malachi": "Malaquias",
+        // New Testament
+        "Matthew": "Mateus",
+        "Mark": "Marcos",
+        "Luke": "Lucas",
+        "John": "João",
+        "Acts": "Atos",
+        "Romans": "Romanos",
+        "1 Corinthians": "1 Coríntios",
+        "2 Corinthians": "2 Coríntios",
+        "Galatians": "Gálatas",
+        "Ephesians": "Efésios",
+        "Philippians": "Filipenses",
+        "Colossians": "Colossenses",
+        "1 Thessalonians": "1 Tessalonicenses",
+        "2 Thessalonians": "2 Tessalonicenses",
+        "1 Timothy": "1 Timóteo",
+        "2 Timothy": "2 Timóteo",
+        "Titus": "Tito",
+        "Philemon": "Filemom",
+        "Hebrews": "Hebreus",
+        "James": "Tiago",
+        "1 Peter": "1 Pedro",
+        "2 Peter": "2 Pedro",
+        "1 John": "1 João",
+        "2 John": "2 João",
+        "3 John": "3 João",
+        "Jude": "Judas",
+        "Revelation": "Apocalipse",
+    ]
+    
     // MARK: - Helper Methods
     
     /// Get book by name
@@ -247,8 +463,14 @@ struct BibleData {
     /// Get localized book name based on app language
     static func localizedBookName(_ bookName: String, appLanguage: AppLanguage) -> String {
         let languageCode = appLanguage.resolvedLanguageCode()
-        if languageCode == "zh-Hant" {
+        if languageCode == "zh-Hans" {
+            return chineseSimplifiedBookNames[bookName] ?? bookName
+        } else if languageCode == "zh-Hant" {
             return chineseBookNames[bookName] ?? bookName
+        } else if languageCode == "es" {
+            return spanishBookNames[bookName] ?? bookName
+        } else if languageCode == "pt" {
+            return portugueseBookNames[bookName] ?? bookName
         } else {
             return bookName
         }
@@ -256,19 +478,18 @@ struct BibleData {
     
     /// Get localized testament name based on app language
     static func localizedTestamentName(_ testament: BibleBook.Testament, appLanguage: AppLanguage) -> String {
-        let languageCode = appLanguage.resolvedLanguageCode()
-        if languageCode == "zh-Hant" {
-            return testament.displayName
-        } else {
-            return testament.englishName
-        }
+        return testament.localizedDisplayName(for: appLanguage)
     }
     
     /// Get localized "Chapter" text based on app language
     static func localizedChapterText(appLanguage: AppLanguage) -> String {
         let languageCode = appLanguage.resolvedLanguageCode()
-        if languageCode == "zh-Hant" {
+        if languageCode == "zh-Hans" || languageCode == "zh-Hant" {
             return "第"
+        } else if languageCode == "es" {
+            return "Capítulo"
+        } else if languageCode == "pt" {
+            return "Capítulo"
         } else {
             return "Chapter"
         }
@@ -281,7 +502,11 @@ struct BibleData {
         switch language {
         case .cuv, .cu1:
             return chineseBookNames[bookName] ?? bookName
-        case .bsb, .kjv, .none:
+        case .spa_r09:
+            return spanishBookNames[bookName] ?? bookName
+        case .por_blj:
+            return portugueseBookNames[bookName] ?? bookName
+        case .bsb, .kjv, .web, .none:
             return bookName
         }
     }
@@ -291,7 +516,11 @@ struct BibleData {
         switch language {
         case .cuv, .cu1:
             return testament.displayName
-        case .bsb, .kjv, .none:
+        case .spa_r09:
+            return testament == .old ? "Antiguo Testamento" : "Nuevo Testamento"
+        case .por_blj:
+            return testament == .old ? "Antigo Testamento" : "Novo Testamento"
+        case .bsb, .kjv, .web, .none:
             return testament.englishName
         }
     }
@@ -301,7 +530,11 @@ struct BibleData {
         switch language {
         case .cuv, .cu1:
             return "第"
-        case .bsb, .kjv, .none:
+        case .spa_r09:
+            return "Capítulo"
+        case .por_blj:
+            return "Capítulo"
+        case .bsb, .kjv, .web, .none:
             return "Chapter"
         }
     }

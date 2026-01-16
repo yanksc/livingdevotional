@@ -62,6 +62,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
         var textCuv = ""
         var textCu1 = ""
         var textKjv = ""
+        var textWeb = ""
+        var textSpa = ""
+        var textPor = ""
         
         // Load BSB
         if let bsbVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .bsb),
@@ -87,8 +90,26 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textKjv = verse.textKjv
         }
         
+        // Load WEB
+        if let webVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .web),
+           let verse = webVerses.first(where: { $0.verseNumber == selection.verse }) {
+            textWeb = verse.textWeb
+        }
+        
+        // Load Spanish
+        if let spaVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .spa_r09),
+           let verse = spaVerses.first(where: { $0.verseNumber == selection.verse }) {
+            textSpa = verse.textSpa
+        }
+        
+        // Load Portuguese
+        if let porVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .por_blj),
+           let verse = porVerses.first(where: { $0.verseNumber == selection.verse }) {
+            textPor = verse.textPor
+        }
+        
         // If no verse found in any translation, throw error
-        if textBsb.isEmpty && textCuv.isEmpty && textCu1.isEmpty && textKjv.isEmpty {
+        if textBsb.isEmpty && textCuv.isEmpty && textCu1.isEmpty && textKjv.isEmpty && textWeb.isEmpty && textSpa.isEmpty && textPor.isEmpty {
             throw NSError(domain: "DailyVerseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Verse not found"])
         }
         
@@ -105,6 +126,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textCuv: textCuv,
             textCu1: textCu1,
             textKjv: textKjv,
+            textWeb: textWeb,
+            textSpa: textSpa,
+            textPor: textPor,
             reference: "\(selection.book) \(selection.chapter):\(selection.verse)",
             selectedDate: dateString
         )

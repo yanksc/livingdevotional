@@ -18,6 +18,7 @@ struct ReadingView: View {
     @StateObject private var viewModel = ReadingViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var router: AppRouter
     @State private var showBookSelector = false
     @State private var showViewSettings = false
     @State private var selectedVerseId: String? = nil
@@ -33,9 +34,19 @@ struct ReadingView: View {
     @Environment(\.services) var services
     @State private var showChatSheet = false
     @State private var chatVerse: BibleVerse?
+    @State private var pendingChatSessionId: String?
+    @State private var showRelatedVersesSheet = false
+    @State private var relatedVerse: BibleVerse?
+    @State private var showChapterContextSheet = false
+    @State private var showChapterSummarySheet = false
+    @State private var chapterContextOffset: CGFloat = UIScreen.main.bounds.width
+    @State private var chapterSummaryOffset: CGFloat = UIScreen.main.bounds.width
+    @State private var relatedVersesOffset: CGFloat = UIScreen.main.bounds.width
+    @State private var showPrayerFlow = false
     
-    // Zen Mode - Auto-hiding toolbar
+    // Zen Mode - Auto-hiding toolbar and tab bar
     @State private var isToolbarVisible = true
+    @State private var isTabBarVisible = true
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     
@@ -93,7 +104,7 @@ struct ReadingView: View {
     }
     
     private func navigateToPreviousChapter() {
-        guard let book = book, let chapter = chapter else {
+        guard let chapter = chapter else {
             return
         }
         
@@ -163,7 +174,7 @@ struct ReadingView: View {
     private func formatVerseForShare(_ verse: BibleVerse) -> String {
         let text = verse.text(for: settingsStore.primaryLanguage)
         let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
-        return "\"\(text)\"\n- \(reference)\n\nShared from Living Devotional"
+        return "\"\(text)\"\n- \(reference)\n\nShared from Living Path"
     }
     
     private func reloadVersesIfReady() {
@@ -208,14 +219,57 @@ struct ReadingView: View {
         Color.clear
             .frame(height: 8)
         
-        // Chapter header - subtle and elegant
+        // Chapter header - subtle and elegant with context and summary buttons
         HStack {
             Text(chapterText)
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
                 .textCase(.uppercase)
                 .tracking(0.5)
+            
             Spacer()
+            
+            // Chapter Context button
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showChapterContextSheet = true
+                    }
+                } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 10, weight: .regular))
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "背景" : "Context")
+                        .font(.system(size: 11, weight: .regular))
+                }
+                .foregroundColor(AppTheme.secondaryText.opacity(0.7))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color.gray.opacity(0.05))
+                )
+            }
+            
+            // Chapter Summary button
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showChapterSummarySheet = true
+                    }
+                } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 10, weight: .regular))
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "摘要" : "Summary")
+                        .font(.system(size: 11, weight: .regular))
+                }
+                .foregroundColor(AppTheme.secondaryText.opacity(0.7))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color.gray.opacity(0.05))
+                )
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -273,18 +327,16 @@ struct ReadingView: View {
                             }
                         },
                         onAIPray: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                if showAIPanel == verse.id && aiPanelMode == .pray {
-                                    showAIPanel = nil
-                                } else {
-                                    aiPanelMode = .pray
-                                    showAIPanel = verse.id
-                                }
-                            }
+                            // Pass the selected verse to skip verse selection
+                            showPrayerFlow = true
                         },
                         onAIAsk: {
                             chatVerse = verse
                             showChatSheet = true
+                        },
+                        onRelated: {
+                            relatedVerse = verse
+                            showRelatedVersesSheet = true
                         },
                         onSave: {
                             // Small delay to allow animation to complete
@@ -311,6 +363,7 @@ struct ReadingView: View {
             }
             .id(verse.id)
         }
+        
     }
     
     /// Attempt to scroll to the pending target verse once verses are loaded.
@@ -404,7 +457,7 @@ struct ReadingView: View {
     var body: some View {
         ZStack {
             // Background gradient
-            AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode)
+            AppTheme.backgroundGradient
                 .ignoresSafeArea()
             
             // Content
@@ -483,25 +536,26 @@ struct ReadingView: View {
                                 }
                                 attemptScrollToPendingVerse(proxy: proxy, reason: "onAppear")
                             }
-                            .onChange(of: viewModel.verses) { _ in
+                            .onChange(of: viewModel.verses) { _, _ in
                                 attemptScrollToPendingVerse(proxy: proxy, reason: "versesChanged")
                             }
-                            .onChange(of: pendingScrollVerse) { _ in
+                            .onChange(of: pendingScrollVerse) { _, _ in
                                 attemptScrollToPendingVerse(proxy: proxy, reason: "pendingVerseChanged")
                             }
                             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                                 let newOffset = value
                                 let delta = newOffset - lastScrollOffset
                                 
-                                // Hide toolbar when scrolling down, show when scrolling up
-                                let wasToolbarVisible = isToolbarVisible
+                                // Hide toolbar and tab bar when scrolling down, show when scrolling up
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     if delta < -10 {
                                         // Scrolling down
                                         isToolbarVisible = false
+                                        isTabBarVisible = false
                                     } else if delta > 10 {
                                         // Scrolling up
                                         isToolbarVisible = true
+                                        isTabBarVisible = true
                                     }
                                 }
                                 
@@ -553,9 +607,10 @@ struct ReadingView: View {
             }
         }
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode), for: .navigationBar)
+        .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(isToolbarVisible ? .visible : .hidden, for: .navigationBar)
-        .preferredColorScheme(settingsStore.isDarkMode ? .dark : .light)
+        .toolbar(isTabBarVisible && !showRelatedVersesSheet && !showChapterContextSheet && !showChapterSummarySheet ? .visible : .hidden, for: .tabBar)
+        .preferredColorScheme(.light)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -617,19 +672,97 @@ struct ReadingView: View {
                         chapter: verse.chapter,
                         verse: verse.verseNumber,
                         verseText: verse.text(for: settingsStore.primaryLanguage),
-                        appLanguage: settingsStore.appLanguage
+                        appLanguage: settingsStore.appLanguage,
+                        sessionId: pendingChatSessionId
                     ),
                     settingsStore: settingsStore,
                     onClose: {
                         showChatSheet = false
+                        pendingChatSessionId = nil
                     }
                 )
                 .presentationDetents([.fraction(0.8), .large])
                 .presentationDragIndicator(.visible)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenChatSession"))) { notification in
+            guard let sessionId = notification.userInfo?["sessionId"] as? String,
+                  let session = ChatStore.shared.getSession(id: sessionId) else {
+                return
+            }
+            
+            pendingChatSessionId = sessionId
+            
+            // Try to find the verse in loaded verses
+            if let verse = viewModel.verses.first(where: { 
+                $0.verseNumber == session.verseNumber && 
+                $0.book == session.book && 
+                $0.chapter == session.chapter 
+            }) {
+                chatVerse = verse
+                showChatSheet = true
+            } else {
+                // Verse not loaded yet, wait for verses to load or try loading it
+                Task {
+                    // Wait a bit for verses to load if chapter is being loaded
+                    var attempts = 0
+                    while attempts < 10 {
+                        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                        
+                        if let verse = viewModel.verses.first(where: { 
+                            $0.verseNumber == session.verseNumber && 
+                            $0.book == session.book && 
+                            $0.chapter == session.chapter 
+                        }) {
+                            await MainActor.run {
+                                chatVerse = verse
+                                showChatSheet = true
+                            }
+                            return
+                        }
+                        
+                        attempts += 1
+                    }
+                    
+                    // If still not found, try loading the verse directly
+                    await MainActor.run {
+                        // Create a minimal verse from session data for chat purposes
+                        // The chat will work with the session's verseText
+                        if let bookObj = BibleData.book(named: session.book) {
+                            // We'll use the session's verseText which is already stored
+                            // The ChatViewModel will use this
+                            let tempVerse = BibleVerse(
+                                id: "\(session.book)-\(session.chapter)-\(session.verseNumber)",
+                                book: session.book,
+                                chapter: session.chapter,
+                                verseNumber: session.verseNumber,
+                                textBsb: session.verseText, // Use session text as fallback
+                                textCuv: session.verseText,
+                                textCu1: session.verseText,
+                                textKjv: session.verseText,
+                                textWeb: session.verseText,
+                                textSpa: session.verseText,
+                                textPor: session.verseText,
+                                testament: bookObj.testament.rawValue
+                            )
+                            chatVerse = tempVerse
+                            showChatSheet = true
+                        }
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showViewSettings) {
             ReadingSettingsView(isPresented: $showViewSettings)
+        }
+        .fullScreenCover(isPresented: $showPrayerFlow) {
+            // Pass the selected verse if available to skip verse selection
+            if let selectedId = selectedVerseId,
+               let verse = viewModel.verses.first(where: { $0.id == selectedId }) {
+                PrayerFlowView(initialVerse: verse)
+            } else {
+                PrayerFlowView()
+            }
         }
         .sheet(isPresented: $showSaveSheet) {
             if let selectedId = selectedVerseId,
@@ -646,6 +779,144 @@ struct ReadingView: View {
                 .onDisappear {
                     // Reload saved verses after sheet is dismissed
                     noteStore.loadSavedVerses()
+                }
+            }
+        }
+        .overlay {
+            // Related Verses drawer (slides from right)
+            if showRelatedVersesSheet, let verse = relatedVerse {
+                ZStack {
+                    // Background overlay - full screen, fades in/out
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showRelatedVersesSheet = false
+                                relatedVersesOffset = UIScreen.main.bounds.width
+                            }
+                        }
+                        .transition(.opacity)
+                    
+                    // Related Verses View - slides from right
+                    HStack {
+                        Spacer()
+                        RelatedVersesSheet(
+                            book: verse.book,
+                            chapter: verse.chapter,
+                            verse: verse.verseNumber,
+                            verseText: verse.text(for: settingsStore.primaryLanguage),
+                            settingsStore: settingsStore,
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    showRelatedVersesSheet = false
+                                    relatedVersesOffset = UIScreen.main.bounds.width
+                                }
+                            }
+                        )
+                        .environmentObject(router)
+                        .frame(maxWidth: min(UIScreen.main.bounds.width * 0.9, 500), maxHeight: .infinity)
+                        .offset(x: relatedVersesOffset)
+                    }
+                }
+                .zIndex(1000)
+                .onAppear {
+                    // Reset offset and animate in
+                    relatedVersesOffset = UIScreen.main.bounds.width
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        relatedVersesOffset = 0
+                    }
+                }
+            }
+            
+            // Chapter Context drawer (slides from right)
+            if showChapterContextSheet {
+                ZStack {
+                    // Background overlay - full screen, fades in/out
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showChapterContextSheet = false
+                                chapterContextOffset = UIScreen.main.bounds.width
+                            }
+                        }
+                        .transition(.opacity)
+                    
+                    // Chapter Context View - slides from right
+                    if let book = book {
+                        HStack {
+                            Spacer()
+                            ChapterInfoView(
+                                book: book.name,
+                                chapter: chapter ?? 1,
+                                mode: .context,
+                                settingsStore: settingsStore,
+                                onDismiss: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        showChapterContextSheet = false
+                                        chapterContextOffset = UIScreen.main.bounds.width
+                                    }
+                                }
+                            )
+                            .environmentObject(router)
+                            .frame(maxWidth: min(UIScreen.main.bounds.width * 0.9, 500), maxHeight: .infinity)
+                            .offset(x: chapterContextOffset)
+                        }
+                    }
+                }
+                .zIndex(1000)
+                .onAppear {
+                    // Reset offset and animate in
+                    chapterContextOffset = UIScreen.main.bounds.width
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        chapterContextOffset = 0
+                    }
+                }
+            }
+            
+            // Chapter Summary drawer (slides from right)
+            if showChapterSummarySheet {
+                ZStack {
+                    // Background overlay - full screen, fades in/out
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showChapterSummarySheet = false
+                                chapterSummaryOffset = UIScreen.main.bounds.width
+                            }
+                        }
+                        .transition(.opacity)
+                    
+                    // Chapter Summary View - slides from right
+                    if let book = book {
+                        HStack {
+                            Spacer()
+                            ChapterInfoView(
+                                book: book.name,
+                                chapter: chapter ?? 1,
+                                mode: .summary,
+                                settingsStore: settingsStore,
+                                onDismiss: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        showChapterSummarySheet = false
+                                        chapterSummaryOffset = UIScreen.main.bounds.width
+                                    }
+                                }
+                            )
+                            .environmentObject(router)
+                            .frame(maxWidth: min(UIScreen.main.bounds.width * 0.9, 500), maxHeight: .infinity)
+                            .offset(x: chapterSummaryOffset)
+                        }
+                    }
+                }
+                .zIndex(1000)
+                .onAppear {
+                    // Reset offset and animate in
+                    chapterSummaryOffset = UIScreen.main.bounds.width
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        chapterSummaryOffset = 0
+                    }
                 }
             }
         }
@@ -730,7 +1001,7 @@ struct VerseView: View {
     private func formatVerseForShare(_ verse: BibleVerse) -> String {
         let text = verse.text(for: settingsStore.primaryLanguage)
         let reference = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
-        return "\"\(text)\"\n- \(reference)\n\nShared from Living Devotional"
+        return "\"\(text)\"\n- \(reference)\n\nShared from Living Path"
     }
     
     var body: some View {
@@ -738,8 +1009,8 @@ struct VerseView: View {
             // Verse number with save indicator
             HStack(spacing: 4) {
                 Text("\(verse.verseNumber)")
-                    .font(.system(size: fontSize, weight: .semibold, design: settingsStore.selectedFont.design))
-                    .foregroundColor(isSaved ? AppTheme.accentColor : AppTheme.verseNumberColor(darkMode: settingsStore.isDarkMode))
+                    .font(settingsStore.selectedFont.font(size: fontSize, weight: .semibold))
+                    .foregroundColor(isSaved ? AppTheme.accentColor : AppTheme.verseNumberColor)
                 
                 if isSaved {
                     Image(systemName: "bookmark.fill")
@@ -754,7 +1025,7 @@ struct VerseView: View {
                 // Primary language text
                 if !primaryText.isEmpty && settingsStore.primaryLanguage != .none {
                     Text(primaryText)
-                        .font(.system(size: fontSize, design: settingsStore.selectedFont.design))
+                        .font(settingsStore.selectedFont.font(size: fontSize))
                         .foregroundColor(AppTheme.primaryText)
                         .lineSpacing(settingsStore.lineSpacing)
                         .fixedSize(horizontal: false, vertical: true)
@@ -766,7 +1037,7 @@ struct VerseView: View {
                    settingsStore.secondaryLanguage != .none &&
                    settingsStore.secondaryLanguage != settingsStore.primaryLanguage {
                     Text(secondaryText)
-                        .font(.system(size: fontSize, design: settingsStore.selectedFont.design))
+                        .font(settingsStore.selectedFont.font(size: fontSize))
                         .foregroundColor(AppTheme.secondaryText)
                         .lineSpacing(settingsStore.lineSpacing)
                         .fixedSize(horizontal: false, vertical: true)
@@ -779,7 +1050,7 @@ struct VerseView: View {
         .background(
             Group {
                 if isSelected {
-                    AppTheme.verseSelectionGradient(darkMode: settingsStore.isDarkMode)
+                    AppTheme.verseSelectionGradient
                         .cornerRadius(8)
                 } else if isSaved {
                     AppTheme.accentColor.opacity(0.05)
@@ -899,10 +1170,6 @@ struct ReadingSettingsView: View {
                     }
                 }
                 
-                Section(header: Text(settingsStore.appLanguage.localizedString("Appearance"))) {
-                    Toggle(settingsStore.appLanguage.localizedString("DarkMode"), isOn: $settingsStore.isDarkMode)
-                        .tint(AppTheme.accentColor)
-                }
             }
             .navigationTitle(settingsStore.appLanguage.localizedString("ReadingSettings"))
             .navigationBarTitleDisplayMode(.inline)
@@ -950,7 +1217,7 @@ struct FABMenuItem: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(AppTheme.cardGradient(darkMode: false))
+                    .fill(AppTheme.cardGradient)
                     .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
             )
         }

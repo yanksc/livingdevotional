@@ -21,7 +21,7 @@ struct PrayerEncouragementView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode)
+            AppTheme.backgroundGradient
                 .ignoresSafeArea()
             
             ScrollView {
@@ -53,7 +53,7 @@ struct PrayerEncouragementView: View {
                         // Show verse in primary language
                         let isChinese = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant"
                         Text(isChinese ? selectedVerse.textZh : selectedVerse.textEn)
-                            .font(.system(size: 18, weight: .medium, design: .serif))
+                            .font(settingsStore.selectedFont.font(size: 18, weight: .medium))
                             .foregroundColor(AppTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineSpacing(6)
@@ -62,7 +62,7 @@ struct PrayerEncouragementView: View {
                         if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
                             let showSecondaryChinese = (settingsStore.secondaryLanguage == .cuv || settingsStore.secondaryLanguage == .cu1)
                             Text(showSecondaryChinese ? selectedVerse.textZh : selectedVerse.textEn)
-                                .font(.system(size: 14, design: .serif))
+                                .font(settingsStore.selectedFont.font(size: 14))
                                 .foregroundColor(AppTheme.secondaryText)
                                 .multilineTextAlignment(.center)
                                 .padding(.top, 4)
@@ -75,7 +75,7 @@ struct PrayerEncouragementView: View {
                             .padding(.top, 8)
                     }
                     .padding(24)
-                    .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
+                    .background(AppTheme.cardGradient)
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
                     .padding(.horizontal)

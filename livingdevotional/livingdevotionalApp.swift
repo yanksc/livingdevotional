@@ -25,6 +25,8 @@ struct livingdevotionalApp: App {
                 .environment(\.services, serviceContainer)
                 .environmentObject(router)
                 .environment(\.locale, settingsStore.appLanguage.resolvedLocale())
+                .preferredColorScheme(.light)
+                .fontDesign(.serif)
                 .onAppear {
                     // Request notification permission on first launch
                     Task {

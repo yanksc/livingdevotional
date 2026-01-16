@@ -11,6 +11,7 @@ class ServiceContainer: ObservableObject {
     let settingsStore: SettingsStore
     let progressStore: ProgressStore
     let checkInStore: CheckInStore
+    let prayerLogStore: PrayerLogStore
     
     // Future services (will be initialized when needed)
     var authService: AuthenticationServiceProtocol?
@@ -19,6 +20,7 @@ class ServiceContainer: ObservableObject {
     var dailyVerseService: DailyVerseServiceProtocol?
     var conversationService: ConversationServiceProtocol?
     var checkInService: CheckInServiceProtocol?
+    var journeyService: JourneyServiceProtocol?
     
     private init() {
         // Initialize core services
@@ -26,9 +28,13 @@ class ServiceContainer: ObservableObject {
         self.settingsStore = SettingsStore.shared
         self.progressStore = ProgressStore.shared
         self.checkInStore = CheckInStore.shared
+        self.prayerLogStore = PrayerLogStore.shared
         
         // Initialize DailyVerseService
         self.dailyVerseService = DailyVerseService.shared
+        
+        // Initialize JourneyService
+        self.journeyService = JourneyService.shared
     }
     
     // MARK: - Service Registration

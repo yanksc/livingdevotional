@@ -97,60 +97,26 @@ struct VerseAIPanel: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             } else if !explanation.isEmpty {
-                // Explanation content
-                ScrollView {
-                    Text(explanation)
-                        .font(.system(size: 15))
-                        .foregroundColor(AppTheme.primaryText)
-                        .lineSpacing(4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-                }
-                .frame(maxHeight: 300)
+                // Explanation content - auto-expanding text without scrolling
+                Text(explanation)
+                    .font(.system(size: 15))
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineSpacing(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
+                .fill(AppTheme.cardGradient)
                 .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 2)
         )
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .transition(.move(edge: .top).combined(with: .opacity))
         .onAppear {
-            // #region agent log
-            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-            let cachedContent = aiCacheStore.getCachedResponse(verseId: verse.id, mode: mode, appLanguage: settingsStore.appLanguage)
-            let logEntry: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "VerseAIPanel.onAppear",
-                "message": "Panel appeared",
-                "data": [
-                    "mode": mode.rawValue,
-                    "verseId": verse.id,
-                    "appLanguage": settingsStore.appLanguage.rawValue,
-                    "explanationEmpty": explanation.isEmpty,
-                    "isLoading": isLoading,
-                    "hasCachedContent": cachedContent != nil,
-                    "cachedContentLength": cachedContent?.count ?? 0,
-                    "hypothesisId": "E"
-                ],
-                "sessionId": "debug-session",
-                "runId": "cache-debug"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
             // Check cache first
             if let cachedContent = aiCacheStore.getCachedResponse(verseId: verse.id, mode: mode, appLanguage: settingsStore.appLanguage) {
                 explanation = cachedContent
@@ -161,39 +127,6 @@ struct VerseAIPanel: View {
             }
         }
         .onChange(of: mode) { oldMode, newMode in
-            // #region agent log
-            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-            let cachedContent = aiCacheStore.getCachedResponse(verseId: verse.id, mode: newMode, appLanguage: settingsStore.appLanguage)
-            let logEntry: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "VerseAIPanel.onChange",
-                "message": "Mode changed",
-                "data": [
-                    "oldMode": oldMode.rawValue,
-                    "newMode": newMode.rawValue,
-                    "verseId": verse.id,
-                    "appLanguage": settingsStore.appLanguage.rawValue,
-                    "explanationLength": explanation.count,
-                    "isLoading": isLoading,
-                    "hasCachedContent": cachedContent != nil,
-                    "cachedContentLength": cachedContent?.count ?? 0,
-                    "hypothesisId": "E"
-                ],
-                "sessionId": "debug-session",
-                "runId": "cache-debug"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
             // Check cache for new mode first
             if let cachedContent = aiCacheStore.getCachedResponse(verseId: verse.id, mode: newMode, appLanguage: settingsStore.appLanguage) {
                 explanation = cachedContent
@@ -268,34 +201,6 @@ struct VerseAIPanel: View {
                 await MainActor.run {
                     if !accumulatedText.isEmpty {
                         aiCacheStore.cacheResponse(verseId: verse.id, mode: mode, appLanguage: settingsStore.appLanguage, content: accumulatedText)
-                        
-                        // #region agent log
-                        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                        let logEntry: [String: Any] = [
-                            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                            "location": "VerseAIPanel.loadExplanation",
-                            "message": "Cached response",
-                            "data": [
-                                "verseId": verse.id,
-                                "mode": mode.rawValue,
-                                "appLanguage": settingsStore.appLanguage.rawValue,
-                                "contentLength": accumulatedText.count,
-                                "hypothesisId": "E"
-                            ],
-                            "sessionId": "debug-session",
-                            "runId": "cache-debug"
-                        ]
-                        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-                           let jsonString = String(data: jsonData, encoding: .utf8) {
-                            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                fileHandle.seekToEndOfFile()
-                                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                fileHandle.closeFile()
-                            } else {
-                                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                            }
-                        }
-                        // #endregion agent log
                     }
                 }
             } catch {

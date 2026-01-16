@@ -13,7 +13,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text(settingsStore.appLanguage == .chineseTraditional ? "聖經助手" : "Bible Assistant")
+                Text(settingsStore.appLanguage == .chineseTraditional ? "Q&A" : "Q&A")
                     .font(.headline)
                     .foregroundColor(AppTheme.primaryText)
                 
@@ -26,7 +26,7 @@ struct ChatView: View {
                 }
             }
             .padding()
-            .background(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode))
+            .background(AppTheme.backgroundGradient)
             
             Divider()
             
@@ -34,8 +34,9 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Disclaimer / Welcome
+                        // Show verse reference for new sessions
                         if viewModel.session?.messages.isEmpty ?? true {
+                            verseReferenceView
                             welcomeView
                         }
                         
@@ -117,7 +118,7 @@ struct ChatView: View {
                     .padding(10)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(settingsStore.isDarkMode ? Color.black.opacity(0.3) : Color.gray.opacity(0.1))
+                            .fill(Color.gray.opacity(0.1))
                     )
                     .focused($isInputFocused)
                     .submitLabel(.send)
@@ -145,9 +146,9 @@ struct ChatView: View {
                 .disabled(viewModel.inputMessage.isEmpty || viewModel.isGenerating)
             }
             .padding()
-            .background(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode))
+            .background(AppTheme.backgroundGradient)
         }
-        .background(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode))
+        .background(AppTheme.backgroundGradient)
         .onAppear {
             Task {
                 await viewModel.loadSuggestions()
@@ -155,18 +156,42 @@ struct ChatView: View {
         }
     }
     
+    var verseReferenceView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            let localizedBook = BibleData.localizedBookName(viewModel.book, language: settingsStore.primaryLanguage)
+            Text("\(localizedBook) \(viewModel.chapter):\(viewModel.verse)")
+                .font(.headline)
+                .foregroundColor(AppTheme.accentColor)
+            
+            Text(viewModel.verseText)
+                .font(.body)
+                .foregroundColor(AppTheme.primaryText)
+                .lineSpacing(4)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(AppTheme.accentColor.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(AppTheme.accentColor.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+    
     var welcomeView: some View {
         VStack(alignment: .center, spacing: 12) {
-            Image(systemName: "sparkles")
+            Image(systemName: "questionmark.bubble")
                 .font(.system(size: 40))
                 .foregroundColor(AppTheme.accentColor)
                 .padding(.bottom, 8)
             
-            Text(settingsStore.appLanguage == .chineseTraditional ? "有什麼我可以幫你的嗎？" : "How can I help you?")
+            Text(settingsStore.appLanguage == .chineseTraditional ? "開始問答" : "Start Q&A")
                 .font(.headline)
                 .foregroundColor(AppTheme.primaryText)
             
-            Text(settingsStore.appLanguage == .chineseTraditional ? "我可以解釋這節經文，或回答您的任何疑問。" : "I can explain this verse or answer any questions you have.")
+            Text(settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題，或繼續之前的對話。" : "Ask questions about this verse or continue a previous conversation.")
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -198,7 +223,7 @@ struct ChatMessageView: View {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(message.role == .user ? AppTheme.accentColor : (settingsStore.isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1)))
+                            .fill(message.role == .user ? AppTheme.accentColor : Color.gray.opacity(0.1))
                     )
                 
                 if let date = message.createdAt {

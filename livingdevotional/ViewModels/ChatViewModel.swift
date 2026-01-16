@@ -16,12 +16,12 @@ class ChatViewModel: ObservableObject {
     private let aiService: AIServiceProtocol
     private let chatStore = ChatStore.shared
     
-    // Current verse context
-    private var book: String
-    private var chapter: Int
-    private var verse: Int
-    private var verseText: String
-    private var appLanguage: AppLanguage
+    // Current verse context (exposed for UI display)
+    let book: String
+    let chapter: Int
+    let verse: Int
+    let verseText: String
+    let appLanguage: AppLanguage
     
     init(aiService: AIServiceProtocol, book: String, chapter: Int, verse: Int, verseText: String, appLanguage: AppLanguage, sessionId: String? = nil) {
         self.aiService = aiService

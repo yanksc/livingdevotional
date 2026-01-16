@@ -46,6 +46,12 @@ class BibleService {
             translationFolder = "cu1"
         case .kjv:
             translationFolder = "kjv"
+        case .web:
+            translationFolder = "web"
+        case .spa_r09:
+            translationFolder = "spa_r09"
+        case .por_blj:
+            translationFolder = "por_blj"
         case .none:
             throw BibleServiceError.fileNotFound(book: book, chapter: chapter, translation: translation.rawValue)
         }
@@ -89,6 +95,9 @@ class BibleService {
                     textCuv: translation == .cuv ? verseJson.text : "",
                     textCu1: translation == .cu1 ? verseJson.text : "",
                     textKjv: translation == .kjv ? verseJson.text : "",
+                    textWeb: translation == .web ? verseJson.text : "",
+                    textSpa: translation == .spa_r09 ? verseJson.text : "",
+                    textPor: translation == .por_blj ? verseJson.text : "",
                     testament: BibleData.book(named: book)?.testament.rawValue ?? ""
                 )
             }
@@ -109,6 +118,9 @@ class BibleService {
                         textCuv: translation == .cuv ? verseJson.text : "",
                         textCu1: translation == .cu1 ? verseJson.text : "",
                         textKjv: translation == .kjv ? verseJson.text : "",
+                        textWeb: translation == .web ? verseJson.text : "",
+                        textSpa: translation == .spa_r09 ? verseJson.text : "",
+                        textPor: translation == .por_blj ? verseJson.text : "",
                         testament: BibleData.book(named: book)?.testament.rawValue ?? ""
                     )
                 }
@@ -150,6 +162,9 @@ class BibleService {
                 textCuv: primaryVerse.textCuv.isEmpty ? secondaryVerse.textCuv : primaryVerse.textCuv,
                 textCu1: primaryVerse.textCu1.isEmpty ? secondaryVerse.textCu1 : primaryVerse.textCu1,
                 textKjv: primaryVerse.textKjv.isEmpty ? secondaryVerse.textKjv : primaryVerse.textKjv,
+                textWeb: primaryVerse.textWeb.isEmpty ? secondaryVerse.textWeb : primaryVerse.textWeb,
+                textSpa: primaryVerse.textSpa.isEmpty ? secondaryVerse.textSpa : primaryVerse.textSpa,
+                textPor: primaryVerse.textPor.isEmpty ? secondaryVerse.textPor : primaryVerse.textPor,
                 testament: primaryVerse.testament
             )
         }

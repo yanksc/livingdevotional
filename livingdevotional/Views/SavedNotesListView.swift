@@ -32,7 +32,7 @@ struct SavedNotesListView: View {
                 }
             }
         }
-        .navigationTitle("Saved Notes")
+        .navigationTitle(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "我的筆記" : "My Notes")
         .navigationBarTitleDisplayMode(.large)
     }
     
@@ -71,11 +71,11 @@ struct SavedNotesListView: View {
                 .font(.system(size: 50))
                 .foregroundColor(AppTheme.secondaryText)
             
-            Text(selectedLabel == nil ? "No saved verses" : "No verses with this label")
-                .font(.headline)
+            Text(selectedLabel == nil ? (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有保存的經文" : "No saved verses") : (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有此標籤的經文" : "No verses with this label"))
+                .font(AppFont.serif.font(size: 18, weight: .semibold))
                 .foregroundColor(AppTheme.secondaryText)
             
-            Text("Save verses while reading to see them here")
+            Text(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "閱讀時保存經文即可在此查看" : "Save verses while reading to see them here")
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -108,6 +108,8 @@ struct SavedNoteRow: View {
     @ObservedObject var noteStore = NoteStore.shared
     @ObservedObject var router: AppRouter
     @State private var showDeleteConfirmation = false
+    @State private var verseText: String? = nil
+    @State private var isLoadingVerse = false
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -118,7 +120,7 @@ struct SavedNoteRow: View {
                 // Verse reference (localized based on primary language)
             HStack {
                     Text(localizedVerseReference)
-                    .font(.headline)
+                    .font(AppFont.serif.font(size: 18, weight: .semibold))
                     .foregroundColor(AppTheme.accentColor)
                 
                 Spacer()
@@ -141,8 +143,16 @@ struct SavedNoteRow: View {
                 }
             }
             
-            // Verse text (if available)
-            if let verseText = getVerseText() {
+            // Verse text snippet (if available)
+            if isLoadingVerse {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "載入中..." : "Loading...")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+            } else if let verseText = verseText {
                 Text(verseText)
                     .font(.body)
                     .foregroundColor(AppTheme.primaryText)
@@ -197,12 +207,40 @@ struct SavedNoteRow: View {
         } message: {
             Text("Are you sure you want to delete this note?")
         }
+        .onAppear {
+            loadVerseText()
+        }
     }
     
-    private func getVerseText() -> String? {
-        // Try to get verse text from BibleService
-        // For now, return nil - could be enhanced to load actual verse text
-        return nil
+    private func loadVerseText() {
+        guard verseText == nil && !isLoadingVerse else { return }
+        
+        isLoadingVerse = true
+        
+        Task {
+            do {
+                let verses = try await BibleService.shared.loadVerses(
+                    book: savedVerse.book,
+                    chapter: savedVerse.chapter,
+                    translation: settingsStore.primaryLanguage
+                )
+                
+                if let verse = verses.first(where: { $0.verseNumber == savedVerse.verse }) {
+                    await MainActor.run {
+                        verseText = verse.text(for: settingsStore.primaryLanguage)
+                        isLoadingVerse = false
+                    }
+                } else {
+                    await MainActor.run {
+                        isLoadingVerse = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingVerse = false
+                }
+            }
+        }
     }
     
     private var localizedVerseReference: String {
@@ -219,61 +257,9 @@ struct SavedNoteRow: View {
     }
     
     private func navigateToVerse() {
-        // #region agent log
-        let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-        let logEntry1: [String: Any] = [
-            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            "location": "SavedNoteRow.navigateToVerse",
-            "message": "navigateToVerse called",
-            "data": [
-                "savedVerse.book": savedVerse.book,
-                "savedVerse.chapter": savedVerse.chapter,
-                "savedVerse.verse": savedVerse.verse,
-                "hypothesisId": "B"
-            ],
-            "sessionId": "debug-session"
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry1),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                fileHandle.seekToEndOfFile()
-                fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                fileHandle.closeFile()
-            } else {
-                try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-            }
-        }
-        // #endregion agent log
-        
         // Convert book string to BibleBook object
         if let book = BibleData.book(named: savedVerse.book) {
             router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
-            
-            // #region agent log
-            let logEntry2: [String: Any] = [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "location": "SavedNoteRow.navigateToVerse",
-                "message": "after navigateToReading, before dismiss",
-                "data": [
-                    "book": book.name,
-                    "chapter": savedVerse.chapter,
-                    "verse": savedVerse.verse,
-                    "hypothesisId": "A"
-                ],
-                "sessionId": "debug-session"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry2),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                    fileHandle.closeFile()
-                } else {
-                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion agent log
-            
             dismiss()
         }
     }
@@ -289,8 +275,7 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
+                .font(AppFont.serif.font(size: 14, weight: isSelected ? .semibold : .regular))
                 .foregroundColor(isSelected ? .white : AppTheme.accentColor)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

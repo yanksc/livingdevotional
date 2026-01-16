@@ -10,7 +10,6 @@ struct OnboardingView: View {
     @State private var selectedMaturity: SpiritualMaturity = .growing
     @State private var selectedGoals: Set<SpiritualGoal> = []
     @State private var selectedTradition: ChristianTradition = .nondenominational
-    @State private var selectedCompanionStyle: AICompanionStyle = .mentor
     @State private var selectedPrimaryLanguage: Language
     @State private var selectedSecondaryLanguage: Language
     @State private var notificationsEnabled: Bool = true
@@ -59,30 +58,6 @@ struct OnboardingView: View {
                     .padding(.horizontal)
                     .padding(.top, 20)
                 
-                // #region agent log
-                let _ = {
-                    let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                    let logEntry: [String: Any] = [
-                        "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                        "location": "OnboardingView.body",
-                        "message": "TabView rendering - checking if disabled modifier is causing touch issues",
-                        "data": ["currentStep": currentStep, "hypothesisId": "A"],
-                        "sessionId": "debug-session",
-                        "runId": "touch-debug"
-                    ]
-                    if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-                       let jsonString = String(data: jsonData, encoding: .utf8) {
-                        if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                            fileHandle.seekToEndOfFile()
-                            fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                            fileHandle.closeFile()
-                        } else {
-                            try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                        }
-                    }
-                }()
-                // #endregion agent log
-                
                 TabView(selection: $currentStep) {
                     step1Welcome.tag(0)
                     step2Journey.tag(1)
@@ -112,28 +87,6 @@ struct OnboardingView: View {
             Spacer()
             
             Button(action: {
-                // #region agent log
-                let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                let logEntry: [String: Any] = [
-                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                    "location": "OnboardingView.navigationButtons.NextButton",
-                    "message": "Next button tapped",
-                    "data": ["currentStep": currentStep, "canProceed": canProceed, "hypothesisId": "A"],
-                    "sessionId": "debug-session",
-                    "runId": "touch-debug"
-                ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-                   let jsonString = String(data: jsonData, encoding: .utf8) {
-                    if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                        fileHandle.seekToEndOfFile()
-                        fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                        fileHandle.closeFile()
-                    } else {
-                        try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                    }
-                }
-                // #endregion agent log
-                
                 if currentStep < totalSteps - 1 {
                     withAnimation { currentStep += 1 }
                 } else {
@@ -179,29 +132,6 @@ struct OnboardingView: View {
                     TextField(isChinese ? "輸入您的名字" : "Enter your name", text: $name)
                         .textFieldStyle(.roundedBorder)
                         .autocapitalization(.words)
-                        .onTapGesture {
-                            // #region agent log
-                            let logPath = "/Users/yhuang10/Code/livingdevotional/.cursor/debug.log"
-                            let logEntry: [String: Any] = [
-                                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                                "location": "OnboardingView.step1Welcome.TextField",
-                                "message": "TextField tapped - touch IS working",
-                                "data": ["hypothesisId": "A"],
-                                "sessionId": "debug-session",
-                                "runId": "touch-debug"
-                            ]
-                            if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry),
-                               let jsonString = String(data: jsonData, encoding: .utf8) {
-                                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
-                                    fileHandle.seekToEndOfFile()
-                                    fileHandle.write((jsonString + "\n").data(using: .utf8)!)
-                                    fileHandle.closeFile()
-                                } else {
-                                    try? (jsonString + "\n").write(toFile: logPath, atomically: true, encoding: .utf8)
-                                }
-                            }
-                            // #endregion agent log
-                        }
                     
                     Text(isChinese ? "您的名字幫助我們個人化禱告和訊息。" : "Your name helps us personalize prayers and messages.")
                         .font(.caption)
@@ -316,39 +246,22 @@ struct OnboardingView: View {
         }
     }
     
-    // MARK: - Step 5: Companion & Settings
+    // MARK: - Step 5: Settings
     
     private var step5Companion: some View {
         ScrollView {
             VStack(spacing: 24) {
                 stepHeader(
-                    title: isChinese ? "您的屬靈夥伴" : "Your Spiritual Companion",
-                    subtitle: isChinese ? "您希望您的屬靈夥伴如何引導您？" : "How would you like your Spiritual Companion to guide you?",
-                    caption: isChinese ? "選擇您的屬靈夥伴如何與您對話。" : "Choose how your spiritual companion speaks to you."
+                    title: isChinese ? "設定" : "Settings",
+                    subtitle: isChinese ? "完成您的個人化設定" : "Complete your personalization",
+                    caption: isChinese ? "選擇您的聖經譯本和通知偏好。" : "Choose your Bible translations and notification preferences."
                 )
                 
-                companionStyleButtons
                 bibleTranslationSection
                 notificationSection
             }
             .padding(.bottom, 100)
         }
-    }
-    
-    private var companionStyleButtons: some View {
-        VStack(spacing: 16) {
-            ForEach(AICompanionStyle.allCases) { style in
-                CompanionStyleButton(
-                    style: style,
-                    isSelected: selectedCompanionStyle == style,
-                    isChinese: isChinese
-                ) {
-                    selectedCompanionStyle = style
-                }
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
     }
     
     private var bibleTranslationSection: some View {
@@ -421,8 +334,7 @@ struct OnboardingView: View {
             name: name.trimmingCharacters(in: .whitespaces),
             spiritualMaturity: selectedMaturity,
             spiritualGoals: Array(selectedGoals),
-            tradition: selectedTradition,
-            companionStyle: selectedCompanionStyle
+            tradition: selectedTradition
         )
         
         settingsStore.primaryLanguage = selectedPrimaryLanguage
@@ -463,53 +375,6 @@ private struct SelectionButton: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.white)
                 }
-            }
-            .padding()
-            .background(buttonBackground)
-            .overlay(buttonBorder)
-            .cornerRadius(10)
-        }
-    }
-    
-    @ViewBuilder
-    private var buttonBackground: some View {
-        if isSelected {
-            AppTheme.buttonGradient
-        } else {
-            Color.clear
-        }
-    }
-    
-    private var buttonBorder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .stroke(isSelected ? Color.clear : AppTheme.accentColor.opacity(0.3), lineWidth: 1)
-    }
-}
-
-// MARK: - Companion Style Button
-
-private struct CompanionStyleButton: View {
-    let style: AICompanionStyle
-    let isSelected: Bool
-    let isChinese: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(isChinese ? style.displayNameChinese : style.displayName)
-                        .font(.headline)
-                        .foregroundColor(isSelected ? .white : AppTheme.primaryText)
-                    Spacer()
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.white)
-                    }
-                }
-                Text(isChinese ? style.descriptionChinese : style.description)
-                    .font(.caption)
-                    .foregroundColor(isSelected ? .white.opacity(0.9) : AppTheme.secondaryText)
             }
             .padding()
             .background(buttonBackground)

@@ -1,4 +1,4 @@
-// MemoryInfoView - Display what your companion knows about you
+// MemoryInfoView - Display what your assistant knows about you
 
 import SwiftUI
 
@@ -8,9 +8,16 @@ struct MemoryInfoView: View {
     @ObservedObject private var chatStore = ChatStore.shared
     @Environment(\.dismiss) var dismiss
     
+    @State private var isEditing = false
+    @State private var editedName: String = ""
+    @State private var selectedMaturity: SpiritualMaturity = .growing
+    @State private var selectedGoals: Set<SpiritualGoal> = []
+    @State private var selectedTradition: ChristianTradition = .nondenominational
+    @State private var selectedCompanionStyle: AICompanionStyle = .mentor
+    
     private var isChinese: Bool {
-        settingsStore.appLanguage == .chineseTraditional || 
-        (settingsStore.appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
+        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
+        return languageCode == "zh-Hans" || languageCode == "zh-Hant"
     }
     
     var body: some View {
@@ -20,50 +27,66 @@ struct MemoryInfoView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text(isChinese ? "屬靈夥伴知道什麼" : "What Your Companion Knows")
+                    Text(isChinese ? "個人資料" : "Personal Data")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .foregroundColor(AppTheme.primaryText)
                         .padding(.top, 20)
                     
-                    Text(isChinese ? "以下是您的屬靈夥伴目前了解的資訊：" : "Here's what your spiritual companion currently knows:")
+                    Text(isChinese ? "以下是目前儲存的資訊：" : "Here's what is currently stored:")
                         .font(.subheadline)
                         .foregroundColor(AppTheme.secondaryText)
                     
                     VStack(alignment: .leading, spacing: 16) {
-                        infoRow(
+                        editableInfoRow(
                             title: isChinese ? "名字" : "Name",
-                            value: profileStore.profile.name.isEmpty ? (isChinese ? "未設定" : "Not Set") : profileStore.profile.name
+                            value: profileStore.profile.name.isEmpty ? (isChinese ? "未設定" : "Not Set") : profileStore.profile.name,
+                            isEditing: isEditing,
+                            textBinding: $editedName
                         )
                         
-                        infoRow(
+                        editablePickerRow(
                             title: isChinese ? "屬靈階段" : "Spiritual Stage",
                             value: isChinese ? 
                                 profileStore.profile.spiritualMaturity.displayNameChinese : 
-                                profileStore.profile.spiritualMaturity.displayName
+                                profileStore.profile.spiritualMaturity.displayName,
+                            isEditing: isEditing,
+                            selection: $selectedMaturity,
+                            options: SpiritualMaturity.allCases,
+                            displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
                         )
                         
-                        infoRow(
+                        editableGoalsRow(
                             title: isChinese ? "目標" : "Goals",
                             value: profileStore.profile.spiritualGoals.isEmpty ? 
                                 (isChinese ? "無" : "None") :
                                 profileStore.profile.spiritualGoals.map { 
                                     isChinese ? $0.displayNameChinese : $0.displayName 
-                                }.joined(separator: ", ")
+                                }.joined(separator: ", "),
+                            isEditing: isEditing,
+                            selectedGoals: $selectedGoals
                         )
                         
-                        infoRow(
+                        editablePickerRow(
                             title: isChinese ? "教會背景" : "Church Background",
                             value: isChinese ? 
                                 profileStore.profile.tradition.displayNameChinese : 
-                                profileStore.profile.tradition.displayName
+                                profileStore.profile.tradition.displayName,
+                            isEditing: isEditing,
+                            selection: $selectedTradition,
+                            options: ChristianTradition.allCases,
+                            displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
                         )
                         
-                        infoRow(
-                            title: isChinese ? "屬靈夥伴風格" : "Spiritual Companion Style",
+                        editablePickerRow(
+                            title: isChinese ? "互動風格" : "Interaction Style",
                             value: isChinese ? 
                                 profileStore.profile.companionStyle.displayNameChinese : 
-                                profileStore.profile.companionStyle.displayName
+                                profileStore.profile.companionStyle.displayName,
+                            isEditing: isEditing,
+                            selection: $selectedCompanionStyle,
+                            options: AICompanionStyle.allCases,
+                            displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
                         )
                         
                         infoRow(
@@ -89,11 +112,55 @@ struct MemoryInfoView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(isChinese ? "完成" : "Done") {
-                    dismiss()
+                if isEditing {
+                    Button(isChinese ? "儲存" : "Save") {
+                        saveChanges()
+                        isEditing = false
+                    }
+                } else {
+                    Button(isChinese ? "編輯" : "Edit") {
+                        startEditing()
+                        isEditing = true
+                    }
+                }
+            }
+            ToolbarItem(placement: .navigationBarLeading) {
+                if isEditing {
+                    Button(isChinese ? "取消" : "Cancel") {
+                        cancelEditing()
+                        isEditing = false
+                    }
+                } else {
+                    Button(isChinese ? "完成" : "Done") {
+                        dismiss()
+                    }
                 }
             }
         }
+    }
+    
+    private func startEditing() {
+        editedName = profileStore.profile.name
+        selectedMaturity = profileStore.profile.spiritualMaturity
+        selectedGoals = Set(profileStore.profile.spiritualGoals)
+        selectedTradition = profileStore.profile.tradition
+        selectedCompanionStyle = profileStore.profile.companionStyle
+    }
+    
+    private func cancelEditing() {
+        editedName = profileStore.profile.name
+        selectedMaturity = profileStore.profile.spiritualMaturity
+        selectedGoals = Set(profileStore.profile.spiritualGoals)
+        selectedTradition = profileStore.profile.tradition
+        selectedCompanionStyle = profileStore.profile.companionStyle
+    }
+    
+    private func saveChanges() {
+        profileStore.profile.name = editedName.trimmingCharacters(in: .whitespaces)
+        profileStore.profile.spiritualMaturity = selectedMaturity
+        profileStore.profile.spiritualGoals = Array(selectedGoals)
+        profileStore.profile.tradition = selectedTradition
+        profileStore.profile.companionStyle = selectedCompanionStyle
     }
     
     private func infoRow(title: String, value: String) -> some View {
@@ -104,6 +171,97 @@ struct MemoryInfoView: View {
             Text(value)
                 .font(.body)
                 .foregroundColor(AppTheme.primaryText)
+        }
+    }
+    
+    @ViewBuilder
+    private func editableInfoRow(title: String, value: String, isEditing: Bool, textBinding: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+            
+            if isEditing {
+                TextField(title, text: textBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body)
+                    .foregroundColor(AppTheme.primaryText)
+            } else {
+                Text(value)
+                    .font(.body)
+                    .foregroundColor(AppTheme.primaryText)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func editablePickerRow<T: Hashable & Identifiable>(
+        title: String,
+        value: String,
+        isEditing: Bool,
+        selection: Binding<T>,
+        options: [T],
+        displayName: @escaping (T) -> String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+            
+            if isEditing {
+                Picker(title, selection: selection) {
+                    ForEach(options) { option in
+                        Text(displayName(option))
+                            .tag(option)
+                    }
+                }
+                .tint(AppTheme.accentColor)
+                .font(.body)
+            } else {
+                Text(value)
+                    .font(.body)
+                    .foregroundColor(AppTheme.primaryText)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func editableGoalsRow(
+        title: String,
+        value: String,
+        isEditing: Bool,
+        selectedGoals: Binding<Set<SpiritualGoal>>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+            
+            if isEditing {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(SpiritualGoal.allCases) { goal in
+                        Toggle(
+                            isChinese ? goal.displayNameChinese : goal.displayName,
+                            isOn: Binding(
+                                get: { selectedGoals.wrappedValue.contains(goal) },
+                                set: { isOn in
+                                    if isOn {
+                                        selectedGoals.wrappedValue.insert(goal)
+                                    } else {
+                                        selectedGoals.wrappedValue.remove(goal)
+                                    }
+                                }
+                            )
+                        )
+                        .tint(AppTheme.accentColor)
+                        .font(.body)
+                    }
+                }
+            } else {
+                Text(value)
+                    .font(.body)
+                    .foregroundColor(AppTheme.primaryText)
+            }
         }
     }
 }

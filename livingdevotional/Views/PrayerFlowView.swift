@@ -491,6 +491,9 @@ struct PrayerFlowView: View {
             textCuv: verse.textCuv,
             textCu1: verse.textCu1,
             textKjv: verse.textKjv,
+            textWeb: verse.textWeb,
+            textSpa: verse.textSpa,
+            textPor: verse.textPor,
             reference: "\(option.book) \(option.chapter):\(option.verseNumber)",
             selectedDate: dateString
         )
@@ -512,13 +515,27 @@ struct PrayerFlowView: View {
         
         // Build custom prayer prompt if user entered a custom topic
         let customPrayerPrompt: String?
-        let isChinese = settingsStore.appLanguage == .chineseTraditional
+        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
+        let isSimplified = languageCode == "zh-Hans"
+        let isChinese = languageCode == "zh-Hans" || languageCode == "zh-Hant"
         
         if selectedFocus == .custom && !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let topic = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
             let needText = emotionalNeed?.displayName ?? ""
             
-            if isChinese {
+            if isSimplified {
+                customPrayerPrompt = """
+                请根据这节经文撰写一篇简短而深刻的祷告文，特别针对以下主题：「\(topic)」
+                \(needText.isEmpty ? "" : "读者现在需要：\(needText)")
+                
+                请简洁地包含：
+                1. 感谢神在这节经文中显明的真理
+                2. 为「\(topic)」这个主题向神祷告
+                3. 祈求神帮助我们活出这节经文的教导
+                
+                请用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 80-120 字以内，精简而深刻。
+                """
+            } else if isChinese {
                 customPrayerPrompt = """
                 請根據這節經文撰寫一篇簡短而深刻的禱告文，特別針對以下主題：「\(topic)」
                 \(needText.isEmpty ? "" : "讀者現在需要：\(needText)")

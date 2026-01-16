@@ -2,247 +2,565 @@
 
 import SwiftUI
 
+// MARK: - Helper Components
+
+struct SettingsCard<Content: View>: View {
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content
+        }
+        .cardStyle()
+        .padding(.horizontal, 20)
+    }
+}
+
+struct SettingsSectionHeader: View {
+    let title: String
+    let icon: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(AppTheme.accentColor)
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppTheme.primaryText)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 12)
+    }
+}
+
+struct SettingsRow<Content: View>: View {
+    let icon: String
+    let title: String
+    let content: Content
+    
+    init(icon: String, title: String, @ViewBuilder content: () -> Content) {
+        self.icon = icon
+        self.title = title
+        self.content = content()
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 24)
+            
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.primaryText)
+            
+            Spacer()
+            
+            content
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+}
+
+struct SettingsToggleRow: View {
+    let icon: String
+    let title: String
+    @Binding var isOn: Bool
+    let onChange: ((Bool) -> Void)?
+    
+    init(icon: String, title: String, isOn: Binding<Bool>, onChange: ((Bool) -> Void)? = nil) {
+        self.icon = icon
+        self.title = title
+        self._isOn = isOn
+        self.onChange = onChange
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 24)
+            
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.primaryText)
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .tint(AppTheme.accentColor)
+                .labelsHidden()
+                .onChange(of: isOn) { _, newValue in
+                    onChange?(newValue)
+                }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+}
+
+struct SettingsNavigationRow: View {
+    let icon: String
+    let title: String
+    let badge: String?
+    let action: () -> Void
+    
+    init(icon: String, title: String, badge: String? = nil, action: @escaping () -> Void) {
+        self.icon = icon
+        self.title = title
+        self.badge = badge
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(AppTheme.accentColor)
+                    .frame(width: 24)
+                
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
+                
+                if let badge = badge {
+                    Text(badge)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .padding(.trailing, 8)
+                }
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+    }
+}
+
+struct SettingsCenteredNavigationRow: View {
+    let icon: String
+    let title: String
+    let badge: String?
+    let action: () -> Void
+    
+    init(icon: String, title: String, badge: String? = nil, action: @escaping () -> Void) {
+        self.icon = icon
+        self.title = title
+        self.badge = badge
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(AppTheme.accentColor)
+                    .frame(width: 24)
+                
+                Spacer()
+                
+                Text(title)
+                    .font(AppFont.serif.font(size: 16, weight: .medium))
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
+                
+                if let badge = badge {
+                    Text(badge)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .padding(.trailing, 8)
+                }
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+    }
+}
+
+struct SettingsActionRow: View {
+    let icon: String
+    let title: String
+    let titleColor: Color
+    let action: () -> Void
+    
+    init(icon: String, title: String, titleColor: Color = AppTheme.primaryText, action: @escaping () -> Void) {
+        self.icon = icon
+        self.title = title
+        self.titleColor = titleColor
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(titleColor == .red ? .red : AppTheme.accentColor)
+                    .frame(width: 24)
+                
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundColor(titleColor)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+    }
+}
+
+struct SettingsPickerRow<T: Hashable & Identifiable>: View {
+    let icon: String
+    let title: String
+    let selection: Binding<T>
+    let options: [T]
+    let displayName: (T) -> String
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 24)
+            
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.primaryText)
+            
+            Spacer()
+            
+            Picker("", selection: selection) {
+                ForEach(options) { option in
+                    Text(displayName(option))
+                        .tag(option)
+                }
+            }
+            .tint(AppTheme.accentColor)
+            .labelsHidden()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+}
+
+struct SettingsProfileRow: View {
+    let name: String
+    let maturity: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(AppTheme.accentColor)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(name.isEmpty ? "Not Set" : name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppTheme.primaryText)
+                    Text(maturity)
+                        .font(.system(size: 14))
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+    }
+}
+
+// MARK: - Main Settings View
+
 struct SettingsView: View {
     @ObservedObject var settingsStore = SettingsStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
     @ObservedObject private var profileStore = UserProfileStore.shared
+    @ObservedObject private var prayerLogStore = PrayerLogStore.shared
     @EnvironmentObject var router: AppRouter
     @State private var showSavedNotes = false
     @State private var showChatHistory = false
     @State private var showProfileEditor = false
-    @State private var showMemoryInfo = false
+    @State private var showReadingHistory = false
+    @State private var showPrayerHistory = false
     
-    // Helper to determine if Chinese should be shown (handles .system case)
-    private var isChinese: Bool {
-        switch settingsStore.appLanguage {
-        case .chineseTraditional:
-            return true
-        case .english:
-            return false
-        case .system:
-            // Resolve system language to check if it's Chinese
-            return settingsStore.appLanguage.resolvedLanguageCode().hasPrefix("zh")
-        }
-    }
     
     var body: some View {
         ZStack {
             AppTheme.backgroundGradient
                 .ignoresSafeArea()
             
-            Form {
-                Section(header: 
-                    Text(isChinese ? "應用程式語言" : "App Language")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    Picker(isChinese ? "應用程式語言" : "App Language", selection: $settingsStore.appLanguage) {
-                        ForEach(AppLanguage.allCases) { appLanguage in
-                            Text(appLanguage.displayName).tag(appLanguage)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Language Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("AppLanguage"),
+                        icon: "globe"
+                    )
+                    
+                    SettingsCard {
+                        SettingsPickerRow(
+                            icon: "textformat",
+                            title: settingsStore.appLanguage.localizedString("AppLanguage"),
+                            selection: $settingsStore.appLanguage,
+                            options: Array(AppLanguage.allCases)
+                        ) { language in
+                            language.displayName
                         }
                     }
-                    .tint(AppTheme.accentColor)
-                }
-                .listRowBackground(Color.clear)
-                
-                Section(header: 
-                    Text(isChinese ? "通知設定" : "Notifications")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    Toggle(
-                        isChinese ? "啟用通知" : "Enable Notifications",
-                        isOn: $settingsStore.notificationsEnabled
+                    
+                    // Profile Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("Profile"),
+                        icon: "person.crop.circle"
                     )
-                    .tint(AppTheme.accentColor)
-                    .onChange(of: settingsStore.notificationsEnabled) { _, enabled in
-                        if enabled {
-                            Task {
-                                let granted = await NotificationManager.shared.requestPermission()
-                                if granted {
-                                    NotificationManager.shared.scheduleAllNotifications()
-                                } else {
-                                    // User denied permission, disable toggle
-                                    await MainActor.run {
-                                        settingsStore.notificationsEnabled = false
+                    
+                    SettingsCard {
+                        SettingsProfileRow(
+                            name: profileStore.profile.name.isEmpty ? settingsStore.appLanguage.localizedString("NotSet") : profileStore.profile.name,
+                            maturity: profileStore.profile.spiritualMaturity.localizedDisplayName(for: settingsStore.appLanguage),
+                            action: {
+                                showProfileEditor = true
+                            }
+                        )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsActionRow(
+                            icon: "arrow.counterclockwise",
+                            title: settingsStore.appLanguage.localizedString("ResetProfile"),
+                            titleColor: .red,
+                            action: {
+                                profileStore.resetOnboarding()
+                            }
+                        )
+                    }
+                    
+                    // History & My Notes Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("HistoryAndMyNotes"),
+                        icon: "bookmark"
+                    )
+                    
+                    SettingsCard {
+                        SettingsNavigationRow(
+                            icon: "clock.arrow.circlepath",
+                            title: settingsStore.appLanguage.localizedString("ReadingHistory"),
+                            action: {
+                                showReadingHistory = true
+                            }
+                        )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsActionRow(
+                            icon: "trash",
+                            title: settingsStore.appLanguage.localizedString("ClearChatHistory"),
+                            action: {
+                                ChatStore.shared.sessions.removeAll()
+                            }
+                        )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsNavigationRow(
+                            icon: "book.fill",
+                            title: settingsStore.appLanguage.localizedString("MyNotes"),
+                            badge: noteStore.savedVerses.isEmpty ? nil : "\(noteStore.savedVerses.count)",
+                            action: {
+                                showSavedNotes = true
+                            }
+                        )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsNavigationRow(
+                            icon: "bubble.left.and.bubble.right",
+                            title: settingsStore.appLanguage.localizedString("QAHistory"),
+                            action: {
+                                showChatHistory = true
+                            }
+                        )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsNavigationRow(
+                            icon: "hands.sparkles.fill",
+                            title: settingsStore.appLanguage.localizedString("PrayerRecords"),
+                            badge: prayerLogStore.logs.isEmpty ? nil : "\(prayerLogStore.logs.count)",
+                            action: {
+                                showPrayerHistory = true
+                            }
+                        )
+                    }
+                    
+                    // Notifications Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("Notifications"),
+                        icon: "bell"
+                    )
+                    
+                    SettingsCard {
+                        SettingsToggleRow(
+                            icon: "bell.badge",
+                            title: settingsStore.appLanguage.localizedString("EnableNotifications"),
+                            isOn: $settingsStore.notificationsEnabled
+                        ) { enabled in
+                            if enabled {
+                                Task {
+                                    let granted = await NotificationManager.shared.requestPermission()
+                                    if granted {
+                                        NotificationManager.shared.scheduleAllNotifications()
+                                    } else {
+                                        await MainActor.run {
+                                            settingsStore.notificationsEnabled = false
+                                        }
                                     }
                                 }
+                            } else {
+                                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                             }
-                        } else {
-                            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-                        }
-                    }
-                    
-                    if settingsStore.notificationsEnabled {
-                        DatePicker(
-                            isChinese ? "早晨靈修提醒" : "Morning Devotional",
-                            selection: $settingsStore.morningTime,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .tint(AppTheme.accentColor)
-                        .onChange(of: settingsStore.morningTime) { _, _ in
-                            NotificationManager.shared.refreshNotifications()
                         }
                         
-                        DatePicker(
-                            isChinese ? "禱告提醒" : "Prayer Reminder",
-                            selection: $settingsStore.eveningTime,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .tint(AppTheme.accentColor)
-                        .onChange(of: settingsStore.eveningTime) { _, _ in
-                            NotificationManager.shared.refreshNotifications()
-                        }
-                        
-                        Toggle(
-                            isChinese ? "連續紀錄提醒" : "Streak Alerts",
-                            isOn: $settingsStore.streakProtectionEnabled
-                        )
-                        .tint(AppTheme.accentColor)
-                        .onChange(of: settingsStore.streakProtectionEnabled) { _, _ in
-                            NotificationManager.shared.refreshNotifications()
-                        }
-                    }
-                }
-                .listRowBackground(Color.clear)
-                
-                Section(header: 
-                    Text(isChinese ? "我的屬靈檔案" : "My Spiritual Profile")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    Button(action: {
-                        showProfileEditor = true
-                    }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(profileStore.profile.name.isEmpty ? (isChinese ? "未設定" : "Not Set") : profileStore.profile.name)
-                                    .font(.headline)
+                        if settingsStore.notificationsEnabled {
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            HStack(spacing: 16) {
+                                Image(systemName: "sunrise")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                Text(settingsStore.appLanguage.localizedString("MorningDevotional"))
+                                    .font(.system(size: 16))
                                     .foregroundColor(AppTheme.primaryText)
-                                Text(isChinese ? 
-                                     profileStore.profile.spiritualMaturity.displayNameChinese : 
-                                     profileStore.profile.spiritualMaturity.displayName)
-                                    .font(.caption)
-                                    .foregroundColor(AppTheme.secondaryText)
+                                
+                                Spacer()
+                                
+                                DatePicker(
+                                    "",
+                                    selection: $settingsStore.morningTime,
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .tint(AppTheme.accentColor)
+                                .labelsHidden()
+                                .onChange(of: settingsStore.morningTime) { _, _ in
+                                    NotificationManager.shared.refreshNotifications()
+                                }
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.secondaryText)
-                        }
-                    }
-                    
-                    Picker(
-                        isChinese ? "屬靈夥伴風格" : "Spiritual Companion Style",
-                        selection: $profileStore.profile.companionStyle
-                    ) {
-                        ForEach(AICompanionStyle.allCases) { style in
-                            Text(isChinese ? style.displayNameChinese : style.displayName)
-                                .tag(style)
-                        }
-                    }
-                    .tint(AppTheme.accentColor)
-                    .onChange(of: profileStore.profile.companionStyle) { _, _ in
-                        // Profile is auto-saved via @Published
-                    }
-                }
-                .listRowBackground(Color.clear)
-                
-                Section(header: 
-                    Text(isChinese ? "資料與記憶" : "Data & Memory")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    Button(action: {
-                        showMemoryInfo = true
-                    }) {
-                        HStack {
-                            Text(isChinese ? "屬靈夥伴知道什麼" : "What Your Companion Knows")
-                                .foregroundColor(AppTheme.primaryText)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.secondaryText)
-                        }
-                    }
-                    
-                    Button(action: {
-                        ChatStore.shared.sessions.removeAll()
-                    }) {
-                        HStack {
-                            Text(isChinese ? "清除聊天記錄" : "Clear Chat History")
-                                .foregroundColor(AppTheme.primaryText)
-                            Spacer()
-                        }
-                    }
-                    
-                    Button(action: {
-                        profileStore.resetOnboarding()
-                    }) {
-                        HStack {
-                            Text(isChinese ? "重置個人檔案" : "Reset Profile")
-                                .foregroundColor(.red)
-                            Spacer()
-                        }
-                    }
-                }
-                .listRowBackground(Color.clear)
-                
-                Section(header: 
-                    Text(isChinese ? "已儲存的筆記" : "Saved Notes")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    Button(action: {
-                        showSavedNotes = true
-                    }) {
-                        HStack {
-                            Text(isChinese ? "我的儲存經文" : "My Saved Verses")
-                                .foregroundColor(AppTheme.primaryText)
-                            Spacer()
-                            if !noteStore.savedVerses.isEmpty {
-                                Text("\(noteStore.savedVerses.count)")
-                                    .foregroundColor(AppTheme.secondaryText)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            HStack(spacing: 16) {
+                                Image(systemName: "moon.stars")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                Text(settingsStore.appLanguage.localizedString("PrayerReminder"))
+                                    .font(.system(size: 16))
+                                    .foregroundColor(AppTheme.primaryText)
+                                
+                                Spacer()
+                                
+                                DatePicker(
+                                    "",
+                                    selection: $settingsStore.eveningTime,
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .tint(AppTheme.accentColor)
+                                .labelsHidden()
+                                .onChange(of: settingsStore.eveningTime) { _, _ in
+                                    NotificationManager.shared.refreshNotifications()
+                                }
                             }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.secondaryText)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            SettingsToggleRow(
+                                icon: "flame",
+                                title: settingsStore.appLanguage.localizedString("StreakAlerts"),
+                                isOn: $settingsStore.streakProtectionEnabled
+                            ) { _ in
+                                NotificationManager.shared.refreshNotifications()
+                            }
                         }
                     }
                     
-                    Button(action: {
-                        showChatHistory = true
-                    }) {
-                        HStack {
-                            Text(isChinese ? "問答記錄" : "Q&A History")
+                    // About Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("About"),
+                        icon: "info.circle.fill"
+                    )
+                    
+                    SettingsCard {
+                        HStack(spacing: 16) {
+                            Image(systemName: "app.badge")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(AppTheme.accentColor)
+                                .frame(width: 24)
+                            
+                            Text(settingsStore.appLanguage.localizedString("Version"))
+                                .font(.system(size: 16))
                                 .foregroundColor(AppTheme.primaryText)
+                            
                             Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
+                            
+                            Text("1.0.0")
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(AppTheme.secondaryText)
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                     }
+                    
+                    // Bottom padding
+                    Spacer()
+                        .frame(height: 32)
                 }
-                .listRowBackground(Color.clear)
-                
-                Section(header: 
-                    Text(isChinese ? "關於" : "About")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                ) {
-                    HStack {
-                        Text(isChinese ? "版本" : "Version")
-                            .foregroundColor(AppTheme.primaryText)
-                        Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(AppTheme.secondaryText)
-                    }
-                }
-                .listRowBackground(Color.clear)
             }
-            .scrollContentBackground(.hidden)
         }
-        .navigationTitle(isChinese ? "設定" : "Settings")
+        .navigationTitle(settingsStore.appLanguage.localizedString("Settings"))
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showSavedNotes) {
             NavigationStack {
@@ -265,9 +583,15 @@ struct SettingsView: View {
                     .environmentObject(router)
             }
         }
-        .sheet(isPresented: $showMemoryInfo) {
+        .sheet(isPresented: $showReadingHistory) {
             NavigationStack {
-                MemoryInfoView()
+                ReadingHistoryView()
+                    .environmentObject(router)
+            }
+        }
+        .sheet(isPresented: $showPrayerHistory) {
+            NavigationStack {
+                PrayerHistoryView()
                     .environmentObject(router)
             }
         }

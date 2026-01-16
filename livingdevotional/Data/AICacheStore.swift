@@ -74,4 +74,30 @@ class AICacheStore: ObservableObject {
         cache.removeAll()
         saveCache()
     }
+    
+    // MARK: - Chapter-level caching
+    
+    // Generate cache key for chapter context/summary
+    private func chapterCacheKey(book: String, chapter: Int, mode: String, appLanguage: AppLanguage) -> String {
+        return "chapter_\(book)_\(chapter)_\(mode)_\(appLanguage.rawValue)"
+    }
+    
+    // Get cached chapter content
+    func getCachedChapterContent(book: String, chapter: Int, mode: String, appLanguage: AppLanguage) -> String? {
+        let key = chapterCacheKey(book: book, chapter: chapter, mode: mode, appLanguage: appLanguage)
+        return cache[key]?.content
+    }
+    
+    // Cache chapter content
+    func cacheChapterContent(book: String, chapter: Int, mode: String, appLanguage: AppLanguage, content: String) {
+        let key = chapterCacheKey(book: book, chapter: chapter, mode: mode, appLanguage: appLanguage)
+        let entry = AICacheEntry(
+            verseId: "\(book)_\(chapter)",
+            mode: mode,
+            content: content,
+            timestamp: Date()
+        )
+        cache[key] = entry
+        saveCache()
+    }
 }

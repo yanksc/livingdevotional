@@ -10,12 +10,17 @@ struct HomeView: View {
     @ObservedObject private var settingsStore = SettingsStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
     @ObservedObject private var checkInStore = CheckInStore.shared
+    @ObservedObject private var progressStore = ProgressStore.shared
     @State private var showSavedNotes = false
     @State private var showChatHistory = false
+    @State private var showPrayerFlow = false
+    @State private var showVerseSearch = false
+    @State private var showReadingHistory = false
+    @State private var showJourney = false
     
     var body: some View {
         ZStack {
-            AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode)
+            AppTheme.backgroundGradient
                 .ignoresSafeArea()
             
             ScrollView {
@@ -29,11 +34,14 @@ struct HomeView: View {
                     // Daily Check-in
                     CheckInCard(checkInStore: checkInStore)
                     
+                    // Journey Card
+                    JourneyCard(showJourney: $showJourney)
+                    
                     // Quick actions
                     quickActionsSection
                     
-                    // Recent reading
-                    recentReadingSection
+                    // Recent history
+                    recentHistorySection
                     
                     // Saved notes preview
                     savedNotesPreviewSection
@@ -44,7 +52,7 @@ struct HomeView: View {
         }
         .navigationTitle(settingsStore.appLanguage.localizedString("Home"))
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(AppTheme.backgroundGradient(darkMode: settingsStore.isDarkMode), for: .navigationBar)
+        .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
             viewModel.loadHomeData()
@@ -64,21 +72,37 @@ struct HomeView: View {
                     .environmentObject(router)
             }
         }
+        .fullScreenCover(isPresented: $showPrayerFlow) {
+            PrayerFlowView()
+        }
+        .sheet(isPresented: $showVerseSearch) {
+            VerseSearchView(settingsStore: settingsStore)
+                .environmentObject(router)
+        }
+        .sheet(isPresented: $showReadingHistory) {
+            NavigationStack {
+                ReadingHistoryView()
+                    .environmentObject(router)
+            }
+        }
+        .sheet(isPresented: $showJourney) {
+            JourneyView()
+        }
     }
     
     // MARK: - View Components
     
     private var welcomeSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(settingsStore.appLanguage.localizedString("Welcome"))
+        VStack(alignment: .center, spacing: 8) {
+            Text("Living Path")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.primaryText)
+                .foregroundColor(AppTheme.accentColor)
             Text(settingsStore.appLanguage.localizedString("WelcomeSubtitle"))
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     private var verseOfTheDaySection: some View {
@@ -104,14 +128,14 @@ struct HomeView: View {
                     // Verse text
                     VStack(alignment: .leading, spacing: 12) {
                         Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(.system(size: 18, weight: .medium, design: .serif))
+                            .font(settingsStore.selectedFont.font(size: 18, weight: .medium))
                             .foregroundColor(AppTheme.primaryText)
                             .lineSpacing(6)
                             .multilineTextAlignment(.leading)
                         
                         if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
                             Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(.system(size: 16, weight: .regular, design: .serif))
+                                .font(settingsStore.selectedFont.font(size: 16))
                                 .foregroundColor(AppTheme.secondaryText)
                                 .lineSpacing(4)
                                 .multilineTextAlignment(.leading)
@@ -150,7 +174,7 @@ struct HomeView: View {
                 .padding(20)
                 .background(
                     ZStack {
-                        AppTheme.cardGradient(darkMode: settingsStore.isDarkMode)
+                        AppTheme.cardGradient
                         
                         // Subtle background decoration
                         GeometryReader { proxy in
@@ -166,14 +190,14 @@ struct HomeView: View {
             } else if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 150)
-                    .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
+                    .background(AppTheme.cardGradient)
                     .cornerRadius(16)
             } else {
                 Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
                     .foregroundColor(AppTheme.secondaryText)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
+                    .background(AppTheme.cardGradient)
                     .cornerRadius(12)
             }
         }
@@ -185,82 +209,26 @@ struct HomeView: View {
                 .font(.headline)
                 .foregroundColor(AppTheme.primaryText)
             
-            HStack(spacing: 12) {
-                quickActionButton(title: settingsStore.appLanguage.localizedString("ReadBible"), icon: "book.fill", color: AppTheme.primaryBlue) {
-                    router.selectedTab = 1 // Switch to Bible tab
-                }
-                
-                quickActionButton(title: settingsStore.appLanguage.localizedString("MyNotes"), icon: "bookmark.fill", color: AppTheme.accentColor) {
-                    showSavedNotes = true
-                }
-                
-                quickActionButton(title: settingsStore.appLanguage == .chineseTraditional ? "問答記錄" : "Q&A History", icon: "bubble.left.and.bubble.right.fill", color: AppTheme.primaryPurple) {
-                    showChatHistory = true
-                }
-            }
-        }
-    }
-    
-    private var recentReadingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(settingsStore.appLanguage.localizedString("ContinueReading"))
-                .font(.headline)
-                .foregroundColor(AppTheme.primaryText)
-            
-            if let recent = viewModel.recentReading,
-               let book = BibleData.book(named: recent.book) {
-                
-                Button {
-                    router.navigateToReading(book: book, chapter: recent.chapter, verse: recent.lastVerse)
-                } label: {
-                    HStack(spacing: 16) {
-                        // Icon
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.accentColor.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                            
-                            Image(systemName: "bookmark.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(AppTheme.accentColor)
-                        }
-                        
-                        // Text info - use primaryLanguage for book/chapter names
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(BibleData.localizedBookName(recent.book, language: settingsStore.primaryLanguage))
-                                .font(.headline)
-                                .foregroundColor(AppTheme.primaryText)
-                            
-                            let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
-                            Text(chapterPrefix == "第" ? "\(chapterPrefix)\(recent.chapter)章" : "\(chapterPrefix) \(recent.chapter)")
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.secondaryText)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                            .font(.system(size: 14, weight: .semibold))
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    quickActionButton(title: settingsStore.appLanguage.localizedString("Pray"), icon: "hands.sparkles.fill", color: AppTheme.accentColor) {
+                        showPrayerFlow = true
                     }
-                    .padding(16)
-                    .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
-                    .cornerRadius(16)
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    
+                    quickActionButton(title: settingsStore.appLanguage.localizedString("FindVerse"), icon: "magnifyingglass", color: AppTheme.primaryPurple) {
+                        showVerseSearch = true
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
                 
-            } else {
-                HStack {
-                    Image(systemName: "book.closed")
-                        .foregroundColor(AppTheme.secondaryText)
-                    Text(settingsStore.appLanguage.localizedString("NoRecentReading"))
-                        .foregroundColor(AppTheme.secondaryText)
+                HStack(spacing: 12) {
+                    quickActionButton(title: settingsStore.appLanguage.localizedString("MyNotes"), icon: "bookmark.fill", color: AppTheme.accentColor) {
+                        showSavedNotes = true
+                    }
+                    
+                    quickActionButton(title: settingsStore.appLanguage.localizedString("QAHistory"), icon: "bubble.left.and.bubble.right.fill", color: AppTheme.primaryPurple) {
+                        showChatHistory = true
+                    }
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
-                .cornerRadius(12)
             }
         }
     }
@@ -270,13 +238,16 @@ struct HomeView: View {
             VStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.title2)
+                    .frame(height: 28)
                     .foregroundColor(.white)
                 Text(title)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 90)
             .padding(.vertical, 16)
             .background(
                 LinearGradient(
@@ -301,14 +272,53 @@ struct HomeView: View {
     private func formatVerseForShare(_ verse: DailyVerse) -> String {
         let text = verse.text(for: settingsStore.primaryLanguage)
         let reference = localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber)
-        return "\"\(text)\"\n- \(reference)\n\nShared from Living Devotional"
+        return "\"\(text)\"\n- \(reference)\n\nShared from Living Path"
+    }
+    
+    private var recentHistorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(settingsStore.appLanguage.localizedString("RecentHistory"))
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
+                
+                Button(settingsStore.appLanguage.localizedString("ViewAll")) {
+                    showReadingHistory = true
+                }
+                .font(.subheadline)
+                .foregroundColor(AppTheme.accentColor)
+            }
+            
+            let recentItems = progressStore.getRecentHistory(limit: 3)
+            
+            if recentItems.isEmpty {
+                HStack {
+                    Image(systemName: "clock")
+                        .foregroundColor(AppTheme.secondaryText)
+                    Text(settingsStore.appLanguage.localizedString("NoReadingHistory"))
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(AppTheme.cardGradient)
+                .cornerRadius(12)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(recentItems) { item in
+                        HistoryPreviewRow(item: item, settingsStore: settingsStore, router: router)
+                    }
+                }
+            }
+        }
     }
     
     private var savedNotesPreviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(settingsStore.appLanguage.localizedString("SavedNotes"))
-                    .font(.headline)
+                    .font(AppFont.serif.font(size: 18, weight: .semibold))
                     .foregroundColor(AppTheme.primaryText)
                 
                 Spacer()
@@ -325,7 +335,7 @@ struct HomeView: View {
                     .foregroundColor(AppTheme.secondaryText)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(AppTheme.cardGradient(darkMode: settingsStore.isDarkMode))
+                    .background(AppTheme.cardGradient)
                     .cornerRadius(12)
             } else {
                 VStack(spacing: 8) {
@@ -337,11 +347,7 @@ struct HomeView: View {
                         Button(action: {
                             showSavedNotes = true
                         }) {
-                            let moreCount = noteStore.savedVerses.count - 3
-                            let viewMoreText = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" 
-                                ? "查看其他 \(moreCount) 項..." 
-                                : "View \(moreCount) more..."
-                            Text(viewMoreText)
+                            Text(viewMoreText(count: noteStore.savedVerses.count - 3))
                                 .font(.subheadline)
                                 .foregroundColor(AppTheme.accentColor)
                                 .frame(maxWidth: .infinity)
@@ -350,6 +356,17 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private func viewMoreText(count: Int) -> String {
+        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hans" {
+            return "查看其他 \(count) 项..."
+        } else if languageCode == "zh-Hant" {
+            return "查看其他 \(count) 項..."
+        } else {
+            return "View \(count) more..."
         }
     }
 }
@@ -392,7 +409,7 @@ struct SavedNotePreviewRow: View {
                     .foregroundColor(AppTheme.secondaryText.opacity(0.5))
             }
             .padding()
-            .background(AppTheme.cardGradient(darkMode: SettingsStore.shared.isDarkMode))
+            .background(AppTheme.cardGradient)
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
@@ -408,6 +425,71 @@ struct SavedNotePreviewRow: View {
         // Convert book string to BibleBook object
         if let book = BibleData.book(named: savedVerse.book) {
                 router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
+        }
+    }
+}
+
+// MARK: - History Preview Row
+
+struct HistoryPreviewRow: View {
+    let item: ReadingHistoryItem
+    @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var router: AppRouter
+    
+    var body: some View {
+        Button(action: {
+            navigateToChapter()
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "book.fill")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.accentColor)
+                    .frame(width: 20)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localizedBookChapter)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Text(formatTime(item.timestamp))
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+            }
+            .padding()
+            .background(AppTheme.cardGradient)
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var localizedBookChapter: String {
+        let localizedBook = BibleData.localizedBookName(item.book, language: settingsStore.primaryLanguage)
+        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+        if chapterPrefix == "第" {
+            return "\(localizedBook) \(chapterPrefix)\(item.chapter)章"
+        } else {
+            return "\(localizedBook) \(chapterPrefix) \(item.chapter)"
+        }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.locale = settingsStore.appLanguage.resolvedLocale()
+        return formatter.string(from: date)
+    }
+    
+    private func navigateToChapter() {
+        if let book = BibleData.book(named: item.book) {
+            router.navigateToReading(book: book, chapter: item.chapter, verse: nil)
         }
     }
 }

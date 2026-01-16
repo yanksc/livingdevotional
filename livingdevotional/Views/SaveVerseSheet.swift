@@ -261,6 +261,9 @@ struct LabelChip: View {
             textCuv: "神愛世人...",
             textCu1: "神愛世人...",
             textKjv: "For God so loved the world...",
+            textWeb: "For God so loved the world...",
+            textSpa: "Porque de tal manera amó Dios al mundo...",
+            textPor: "Porque Deus amou o mundo de tal maneira...",
             testament: "New"
         ),
         book: BibleBook(name: "John", testament: .new, chapters: 21, hasData: true),
