@@ -42,7 +42,7 @@ struct VerseActionBar: View {
                             Image(systemName: "lightbulb.fill")
                                 .font(.system(size: 12, weight: .semibold))
                                 .frame(width: 14, height: 14)
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "洞察" : "Insight")
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "理解" : "Context")
                                 .font(.system(size: 11, weight: .medium))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)

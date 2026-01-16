@@ -83,6 +83,7 @@ class BibleService {
             
             // The JSON structure may vary - we'll try to decode as an array of verses
             // Common formats: [{"verse": 1, "text": "..."}, ...] or {"verses": [...]}
+            // or API format: {"chapter": {"content": [{"type": "verse", "number": 1, "content": ["..."]}]}}
             let verses = try decoder.decode([BibleVerseJSON].self, from: data)
             
             return verses.map { verseJson in
@@ -125,7 +126,35 @@ class BibleService {
                     )
                 }
             } catch {
-                throw BibleServiceError.decodingError(error)
+                // Try API format: {"chapter": {"content": [{"type": "verse", "number": 1, "content": ["..."]}]}}
+                do {
+                    let data = try Data(contentsOf: url)
+                    let decoder = JSONDecoder()
+                    let apiContainer = try decoder.decode(BibleAPIChapterJSON.self, from: data)
+                    
+                    return apiContainer.chapter.content.compactMap { verseContent in
+                        guard verseContent.type == "verse" else { return nil }
+                        // Join the content array into a single string
+                        let verseText = verseContent.content.joined(separator: " ")
+                        
+                        return BibleVerse(
+                            id: "\(bookId)-\(chapter)-\(verseContent.number)",
+                            book: book,
+                            chapter: chapter,
+                            verseNumber: verseContent.number,
+                            textBsb: translation == .bsb ? verseText : "",
+                            textCuv: translation == .cuv ? verseText : "",
+                            textCu1: translation == .cu1 ? verseText : "",
+                            textKjv: translation == .kjv ? verseText : "",
+                            textWeb: translation == .web ? verseText : "",
+                            textSpa: translation == .spa_r09 ? verseText : "",
+                            textPor: translation == .por_blj ? verseText : "",
+                            testament: BibleData.book(named: book)?.testament.rawValue ?? ""
+                        )
+                    }
+                } catch {
+                    throw BibleServiceError.decodingError(error)
+                }
             }
         }
     }
@@ -180,5 +209,20 @@ private struct BibleVerseJSON: Codable {
 
 private struct BibleChapterJSON: Codable {
     let verses: [BibleVerseJSON]
+}
+
+// API format structure for spa_r09 and por_blj
+private struct BibleAPIChapterJSON: Codable {
+    let chapter: APIChapterContent
+}
+
+private struct APIChapterContent: Codable {
+    let content: [APIVerseContent]
+}
+
+private struct APIVerseContent: Codable {
+    let type: String
+    let number: Int
+    let content: [String]  // Array of strings that need to be joined
 }
 

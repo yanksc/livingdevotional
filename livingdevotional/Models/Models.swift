@@ -12,7 +12,7 @@ enum AIMode: String, CaseIterable {
     
     var displayName: String {
         switch self {
-        case .insight: return "Insight"
+        case .insight: return "Context"
         case .reflect: return "Reflect"
         case .pray: return "Pray"
         }
@@ -204,7 +204,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "Appearance": ["en": "Appearance", "zh-Hant": "外觀", "zh-Hans": "外观", "es": "Apariencia", "pt": "Aparência"],
             "AIExplanation": ["en": "Explanation", "zh-Hant": "解釋", "zh-Hans": "解释", "es": "Explicación", "pt": "Explicação"],
             "GeneratingExplanation": ["en": "Loading explanation...", "zh-Hant": "載入解釋中...", "zh-Hans": "载入解释中...", "es": "Cargando explicación...", "pt": "Carregando explicação..."],
-            "AIInsight": ["en": "Insight", "zh-Hant": "理解", "zh-Hans": "理解", "es": "Comprensión", "pt": "Compreensão"],
+            "AIInsight": ["en": "Context", "zh-Hant": "理解", "zh-Hans": "理解", "es": "Comprensión", "pt": "Compreensão"],
             "AIReflect": ["en": "Reflect", "zh-Hant": "反思", "zh-Hans": "反思", "es": "Reflexionar", "pt": "Refletir"],
             "AIPray": ["en": "Pray", "zh-Hant": "禱告", "zh-Hans": "祷告", "es": "Orar", "pt": "Orar"],
             "Font": ["en": "Font", "zh-Hant": "字體", "zh-Hans": "字体", "es": "Fuente", "pt": "Fonte"],

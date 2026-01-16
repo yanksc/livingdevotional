@@ -1095,7 +1095,7 @@ struct VerseView: View {
                 Button {
                     onLongPress()
                 } label: {
-                    Label("Insight", systemImage: "sparkles")
+                    Label("Context", systemImage: "sparkles")
                 }
             }
         }

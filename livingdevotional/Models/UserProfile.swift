@@ -207,7 +207,7 @@ enum AICompanionStyle: String, Codable, CaseIterable, Identifiable {
     
     var descriptionChinese: String {
         switch self {
-        case .mentor: return "以深度和神學洞察教導聖經真理。"
+        case .mentor: return "以深度和神學理解教導聖經真理。"
         case .shepherd: return "專注於安慰、鼓勵和牧養關懷。"
         case .friend: return "以親切的方式幫助您應用經文和禱告。"
         }
@@ -218,7 +218,7 @@ enum AICompanionStyle: String, Codable, CaseIterable, Identifiable {
         switch languageCode {
         case "zh-Hans":
             switch self {
-            case .mentor: return "以深度和神学洞察教导圣经真理。"
+            case .mentor: return "以深度和神学理解教导圣经真理。"
             case .shepherd: return "专注于安慰、鼓励和牧养关怀。"
             case .friend: return "以亲切的方式帮助您应用经文和祷告。"
             }
