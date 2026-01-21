@@ -19,38 +19,6 @@ enum AIMode: String, CaseIterable {
     }
 }
 
-// MARK: - App Font Enum
-
-enum AppFont: String, Codable, CaseIterable, Identifiable {
-    case system = "system"
-    case serif = "serif"
-    case rounded = "rounded"
-    case sourceHanSerifCN = "sourceHanSerifCN"
-    case sourceHanSerifTC = "sourceHanSerifTC"
-    
-    var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .system: return "System"
-        case .serif: return "Serif"
-        case .rounded: return "Rounded"
-        case .sourceHanSerifCN: return "Source Han Serif CN"
-        case .sourceHanSerifTC: return "Source Han Serif TC"
-        }
-    }
-    
-    func localizedDisplayName(appLanguage: AppLanguage) -> String {
-        switch self {
-        case .system: return appLanguage.localizedString("FontSystem")
-        case .serif: return appLanguage.localizedString("FontSerif")
-        case .rounded: return appLanguage.localizedString("FontRounded")
-        case .sourceHanSerifCN: return "思源宋體 (CN)"
-        case .sourceHanSerifTC: return "思源宋體 (TC)"
-        }
-    }
-}
-
 // MARK: - Language Enum (Bible Translation)
 
 enum Language: String, Codable, CaseIterable, Identifiable {
@@ -175,7 +143,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "Home": ["en": "Home", "zh-Hant": "首頁", "zh-Hans": "首页", "es": "Inicio", "pt": "Início"],
             "Welcome": ["en": "Welcome", "zh-Hant": "歡迎", "zh-Hans": "欢迎", "es": "Bienvenido", "pt": "Bem-vindo"],
             "WelcomeSubtitle": ["en": "Start your daily devotional journey", "zh-Hant": "開始您的每日靈修之旅", "zh-Hans": "开始您的每日灵修之旅", "es": "Comienza tu viaje devocional diario", "pt": "Comece sua jornada devocional diária"],
-            "VerseOfTheDay": ["en": "Verse of the Day", "zh-Hant": "今日金句", "zh-Hans": "今日金句", "es": "Versículo del Día", "pt": "Versículo do Dia"],
+            "VerseOfTheDay": ["en": "Your Verse of the Day", "zh-Hant": "您的今日金句", "zh-Hans": "您的今日金句", "es": "Tu Versículo del Día", "pt": "Seu Versículo do Dia"],
             "QuickActions": ["en": "Quick Actions", "zh-Hant": "快速操作", "zh-Hans": "快速操作", "es": "Acciones Rápidas", "pt": "Ações Rápidas"],
             "ContinueReading": ["en": "Continue Reading", "zh-Hant": "繼續閱讀", "zh-Hans": "继续阅读", "es": "Continuar Leyendo", "pt": "Continuar Lendo"],
             "ReadBible": ["en": "Read Bible", "zh-Hant": "讀經", "zh-Hans": "读经", "es": "Leer Biblia", "pt": "Ler Bíblia"],
@@ -237,7 +205,20 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "Settings": ["en": "Settings", "zh-Hant": "設定", "zh-Hans": "设置", "es": "Configuración", "pt": "Configurações"],
             "Pray": ["en": "Pray", "zh-Hant": "禱告", "zh-Hans": "祷告", "es": "Orar", "pt": "Orar"],
             "FindVerse": ["en": "Find Verse", "zh-Hant": "搜尋經文", "zh-Hans": "搜寻经文", "es": "Buscar Versículo", "pt": "Encontrar Versículo"],
-            "ViewMore": ["en": "View %d more...", "zh-Hant": "查看其他 %d 項...", "zh-Hans": "查看其他 %d 项...", "es": "Ver %d más...", "pt": "Ver %d mais..."]
+            "ViewMore": ["en": "View %d more...", "zh-Hant": "查看其他 %d 項...", "zh-Hans": "查看其他 %d 项...", "es": "Ver %d más...", "pt": "Ver %d mais..."],
+            "ReadingPlans": ["en": "Reading Plans", "zh-Hant": "閱讀計劃", "zh-Hans": "阅读计划", "es": "Planes de Lectura", "pt": "Planos de Leitura"],
+            "Progress": ["en": "Progress", "zh-Hant": "進度", "zh-Hans": "进度", "es": "Progreso", "pt": "Progresso"],
+            "days": ["en": "days", "zh-Hant": "天", "zh-Hans": "天", "es": "días", "pt": "dias"],
+            "DailyReading": ["en": "Daily Reading", "zh-Hant": "每日閱讀", "zh-Hans": "每日阅读", "es": "Lectura Diaria", "pt": "Leitura Diária"],
+            "StartPlan": ["en": "Start Plan", "zh-Hant": "開始計劃", "zh-Hans": "开始计划", "es": "Iniciar Plan", "pt": "Iniciar Plano"],
+            "daysCompleted": ["en": "days completed", "zh-Hant": "天已完成", "zh-Hans": "天已完成", "es": "días completados", "pt": "dias concluídos"],
+            "TodayProgress": ["en": "Today's Progress", "zh-Hant": "今日進度", "zh-Hans": "今日进度", "es": "Progreso de Hoy", "pt": "Progresso de Hoje"],
+            "ChaptersRead": ["en": "Chapters Read", "zh-Hant": "章節閱讀", "zh-Hans": "章节阅读", "es": "Capítulos Leídos", "pt": "Capítulos Lidos"],
+            "PlanDays": ["en": "Plan Days", "zh-Hant": "計劃天數", "zh-Hans": "计划天数", "es": "Días del Plan", "pt": "Dias do Plano"],
+            "GreatStart": ["en": "A good step on your journey", "zh-Hant": "信仰旅途上的好開始", "zh-Hans": "信仰旅途上的好开始", "es": "Un buen paso en tu camino", "pt": "Um bom passo em sua jornada"],
+            "AmazingProgress": ["en": "Growing in faith today", "zh-Hant": "今天在信仰中成長", "zh-Hans": "今天在信仰中成长", "es": "Creciendo en fe hoy", "pt": "Crescendo na fé hoje"],
+            "OnFire": ["en": "Faithful dedication today", "zh-Hant": "今日忠心的投入", "zh-Hans": "今日忠心的投入", "es": "Dedicación fiel hoy", "pt": "Dedicação fiel hoje"],
+            "StartReading": ["en": "Start your reading journey today!", "zh-Hant": "今天開始您的閱讀之旅！", "zh-Hans": "今天开始您的阅读之旅！", "es": "¡Comienza tu viaje de lectura hoy!", "pt": "Comece sua jornada de leitura hoje!"]
         ]
         
         return strings[key]?[languageCode] ?? strings[key]?["en"] ?? key
@@ -431,6 +412,8 @@ struct DailyVerse: Codable {
     let textPor: String
     let reference: String
     let selectedDate: String
+    let reason: String?
+    let source: String?
     
     enum CodingKeys: String, CodingKey {
         case book, chapter, reference
@@ -443,6 +426,25 @@ struct DailyVerse: Codable {
         case textSpa = "text_spa"
         case textPor = "text_por"
         case selectedDate = "selected_date"
+        case reason
+        case source
+    }
+    
+    init(book: String, chapter: Int, verseNumber: Int, textBsb: String, textCuv: String, textCu1: String, textKjv: String, textWeb: String, textSpa: String, textPor: String, reference: String, selectedDate: String, reason: String? = nil, source: String? = nil) {
+        self.book = book
+        self.chapter = chapter
+        self.verseNumber = verseNumber
+        self.textBsb = textBsb
+        self.textCuv = textCuv
+        self.textCu1 = textCu1
+        self.textKjv = textKjv
+        self.textWeb = textWeb
+        self.textSpa = textSpa
+        self.textPor = textPor
+        self.reference = reference
+        self.selectedDate = selectedDate
+        self.reason = reason
+        self.source = source
     }
     
     func text(for language: Language) -> String {

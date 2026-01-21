@@ -17,11 +17,18 @@ class SettingsStore: ObservableObject {
     private let morningTimeKey = "morningTime"
     private let eveningTimeKey = "eveningTime"
     private let streakProtectionEnabledKey = "streakProtectionEnabled"
-    private let selectedFontKey = "selectedFont"
     
     @Published var primaryLanguage: Language {
         didSet {
             savePrimaryLanguage()
+            // If secondary language becomes same as primary, auto-select a different one
+            if secondaryLanguage == primaryLanguage {
+                // Find the first available language that's not primary and not .none
+                let availableLanguages = Language.allCases.filter { $0 != .none && $0 != primaryLanguage }
+                if let firstAvailable = availableLanguages.first {
+                    secondaryLanguage = firstAvailable
+                }
+            }
         }
     }
     
@@ -76,12 +83,6 @@ class SettingsStore: ObservableObject {
     @Published var streakProtectionEnabled: Bool {
         didSet {
             saveStreakProtectionEnabled()
-        }
-    }
-    
-    @Published var selectedFont: AppFont {
-        didSet {
-            saveSelectedFont()
         }
     }
     
@@ -163,12 +164,12 @@ class SettingsStore: ObservableObject {
             self.streakProtectionEnabled = true // Default to enabled
         }
         
-        // Load selectedFont or use default (.serif)
-        if let fontRaw = userDefaults.string(forKey: selectedFontKey),
-           let font = AppFont(rawValue: fontRaw) {
-            self.selectedFont = font
-        } else {
-            self.selectedFont = .serif // Default to serif font
+        // Ensure secondary language is different from primary language
+        if self.secondaryLanguage == self.primaryLanguage {
+            let availableLanguages = Language.allCases.filter { $0 != .none && $0 != self.primaryLanguage }
+            if let firstAvailable = availableLanguages.first {
+                self.secondaryLanguage = firstAvailable
+            }
         }
     }
     
@@ -210,10 +211,6 @@ class SettingsStore: ObservableObject {
     
     private func saveStreakProtectionEnabled() {
         userDefaults.set(streakProtectionEnabled, forKey: streakProtectionEnabledKey)
-    }
-    
-    private func saveSelectedFont() {
-        userDefaults.set(selectedFont.rawValue, forKey: selectedFontKey)
     }
 }
 

@@ -110,31 +110,12 @@ extension View {
     }
 }
 
-// MARK: - AppFont Extension
+// MARK: - Scroll Offset Preference Key
 
-extension AppFont {
-    var design: Font.Design {
-        switch self {
-        case .system:
-            return .default
-        case .serif:
-            return .serif
-        case .rounded:
-            return .rounded
-        default:
-            return .serif
-        }
-    }
-    
-    func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        switch self {
-        case .system, .serif, .rounded:
-            return .system(size: size, weight: weight, design: design)
-        case .sourceHanSerifCN:
-            return .custom("SourceHanSerifCN-Regular", size: size)
-        case .sourceHanSerifTC:
-            return .custom("SourceHanSerifTC-Regular", size: size)
-        }
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

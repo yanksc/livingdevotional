@@ -8,15 +8,9 @@ struct HomeView: View {
     @EnvironmentObject var bibleViewModel: BibleViewModel
     @StateObject private var viewModel = HomeViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
-    @ObservedObject private var noteStore = NoteStore.shared
     @ObservedObject private var checkInStore = CheckInStore.shared
     @ObservedObject private var progressStore = ProgressStore.shared
-    @State private var showSavedNotes = false
-    @State private var showChatHistory = false
-    @State private var showPrayerFlow = false
-    @State private var showVerseSearch = false
-    @State private var showReadingHistory = false
-    @State private var showJourney = false
+    @ObservedObject private var readingPlanStore = ReadingPlanStore.shared
     
     var body: some View {
         ZStack {
@@ -25,75 +19,47 @@ struct HomeView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // Welcome section
+                    // Welcome section with task progress
                     welcomeSection
+                    
+                    // Daily Check-in Calendar
+                    CheckInCard(checkInStore: checkInStore)
                     
                     // Verse of the day
                     verseOfTheDaySection
                     
-                    // Daily Check-in
-                    CheckInCard(checkInStore: checkInStore)
+                    // Daily Tasks Card
+                    DailyTasksCard(checkInStore: checkInStore)
                     
-                    // Journey Card
-                    JourneyCard(showJourney: $showJourney)
-                    
-                    // Quick actions
-                    quickActionsSection
-                    
-                    // Recent history
-                    recentHistorySection
-                    
-                    // Saved notes preview
-                    savedNotesPreviewSection
+                    // Today's Progress Counters (hidden when all tasks completed)
+                    if !allTasksCompleted {
+                        todayProgressSection
+                    }
                 }
                 .padding()
                 .padding(.bottom, 100) // Extra padding for tab bar
             }
         }
-        .navigationTitle(settingsStore.appLanguage.localizedString("Home"))
+        .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "今日" : "Today")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
             viewModel.loadHomeData()
         }
-        .sheet(isPresented: $showSavedNotes) {
-            NavigationStack {
-                SavedNotesListView(
-                    noteStore: noteStore,
-                    settingsStore: settingsStore
-                )
-                .environmentObject(router)
-            }
-        }
-        .sheet(isPresented: $showChatHistory) {
-            NavigationStack {
-                ChatHistoryView()
-                    .environmentObject(router)
-            }
-        }
-        .fullScreenCover(isPresented: $showPrayerFlow) {
-            PrayerFlowView()
-        }
-        .sheet(isPresented: $showVerseSearch) {
-            VerseSearchView(settingsStore: settingsStore)
-                .environmentObject(router)
-        }
-        .sheet(isPresented: $showReadingHistory) {
-            NavigationStack {
-                ReadingHistoryView()
-                    .environmentObject(router)
-            }
-        }
-        .sheet(isPresented: $showJourney) {
-            JourneyView()
-        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    /// Returns true when all 3 daily tasks are completed (Open App is always done)
+    private var allTasksCompleted: Bool {
+        checkInStore.hasReadToday && checkInStore.hasPrayedToday
     }
     
     // MARK: - View Components
     
     private var welcomeSection: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: 12) {
             Text("Living Path")
                 .font(.title)
                 .fontWeight(.bold)
@@ -101,8 +67,139 @@ struct HomeView: View {
             Text(settingsStore.appLanguage.localizedString("WelcomeSubtitle"))
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
+            
+            // Task completion progress indicator (starts at 1 since "Open App" is always completed)
+            let tasksCompleted = 1 + (checkInStore.hasReadToday ? 1 : 0) + (checkInStore.hasPrayedToday ? 1 : 0)
+            HStack(spacing: 8) {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "今日進度" : "Today")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+                Text("\(tasksCompleted)/3")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(AppTheme.accentColor.opacity(0.1))
+            .cornerRadius(12)
         }
         .frame(maxWidth: .infinity, alignment: .center)
+    }
+    
+    private var todayProgressSection: some View {
+        let chaptersRead = progressStore.getTodayReadingCount()
+        let planDaysCompleted = readingPlanStore.getTodayPlanDaysCompleted()
+        let totalProgress = chaptersRead + planDaysCompleted
+        
+        return VStack(spacing: 16) {
+            // Section Header
+            HStack {
+                Text(settingsStore.appLanguage.localizedString("TodayProgress"))
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                Spacer()
+            }
+            
+            // Progress Counters
+            HStack(spacing: 16) {
+                // Chapters Read Counter
+                progressCounter(
+                    value: chaptersRead,
+                    label: settingsStore.appLanguage.localizedString("ChaptersRead"),
+                    icon: "book.fill",
+                    color: AppTheme.accentColor
+                )
+                
+                // Plan Days Completed Counter
+                progressCounter(
+                    value: planDaysCompleted,
+                    label: settingsStore.appLanguage.localizedString("PlanDays"),
+                    icon: "calendar.badge.checkmark",
+                    color: Color.green
+                )
+            }
+            
+            // Encouragement Message
+            if totalProgress > 0 {
+                HStack {
+                    Image(systemName: encouragementIcon(for: totalProgress))
+                        .foregroundColor(encouragementColor(for: totalProgress))
+                    Text(encouragementMessage(for: totalProgress))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppTheme.primaryText)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(encouragementColor(for: totalProgress).opacity(0.1))
+                .cornerRadius(12)
+            }
+        }
+        .padding(16)
+        .background(AppTheme.cardGradient)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+    }
+    
+    private func progressCounter(value: Int, label: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(color)
+                Text("\(value)")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.primaryText)
+            }
+            Text(label)
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.08))
+        .cornerRadius(12)
+    }
+    
+    private func encouragementMessage(for progress: Int) -> String {
+        switch progress {
+        case 1...2:
+            return settingsStore.appLanguage.localizedString("GreatStart")
+        case 3...4:
+            return settingsStore.appLanguage.localizedString("AmazingProgress")
+        case 5...:
+            return settingsStore.appLanguage.localizedString("OnFire")
+        default:
+            return settingsStore.appLanguage.localizedString("StartReading")
+        }
+    }
+    
+    private func encouragementIcon(for progress: Int) -> String {
+        switch progress {
+        case 1...2:
+            return "leaf.fill"
+        case 3...4:
+            return "sun.max.fill"
+        case 5...:
+            return "heart.fill"
+        default:
+            return "book.fill"
+        }
+    }
+    
+    private func encouragementColor(for progress: Int) -> Color {
+        switch progress {
+        case 1...2:
+            return .green
+        case 3...4:
+            return .teal
+        case 5...:
+            return AppTheme.accentColor
+        default:
+            return AppTheme.accentColor
+        }
     }
     
     private var verseOfTheDaySection: some View {
@@ -124,69 +221,78 @@ struct HomeView: View {
             }
             
             if let verse = viewModel.verseOfTheDay {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Verse text
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(settingsStore.selectedFont.font(size: 18, weight: .medium))
-                            .foregroundColor(AppTheme.primaryText)
-                            .lineSpacing(6)
-                            .multilineTextAlignment(.leading)
+                NavigationLink(destination: VerseDetailView(verse: verse)) {
+                    VStack(alignment: .leading, spacing: 16) {
                         
-                        if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
-                            Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(settingsStore.selectedFont.font(size: 16))
-                                .foregroundColor(AppTheme.secondaryText)
-                                .lineSpacing(4)
-                                .multilineTextAlignment(.leading)
-                        }
-                    }
-                    
-                    Divider()
-                        .overlay(AppTheme.accentColor.opacity(0.2))
-                    
-                    // Reference
-                    HStack {
-                        Text(localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.accentColor)
-                        
-                        Spacer()
-                        
-                        Button {
-                            // Navigate to this verse
-                            if let book = BibleData.book(named: verse.book) {
-                                router.navigateToReading(book: book, chapter: verse.chapter, verse: verse.verseNumber)
-                            }
-                        } label: {
-                            Text(settingsStore.appLanguage.localizedString("ReadChapter"))
+                        if let reason = verse.reason {
+                            Text(reason.uppercased())
                                 .font(.caption)
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(AppTheme.accentColor.opacity(0.1))
+                                .fontWeight(.bold)
                                 .foregroundColor(AppTheme.accentColor)
-                                .cornerRadius(12)
                         }
-                    }
-                }
-                .padding(20)
-                .background(
-                    ZStack {
-                        AppTheme.cardGradient
                         
-                        // Subtle background decoration
-                        GeometryReader { proxy in
-                            Image(systemName: "quote.opening")
-                                .font(.system(size: 80))
-                                .foregroundColor(AppTheme.accentColor.opacity(0.05))
-                                .position(x: 40, y: 40)
+                        // Verse text
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(verse.text(for: settingsStore.primaryLanguage))
+                                .font(.system(size: 18, weight: .medium, design: .serif))
+                                .foregroundColor(AppTheme.primaryText)
+                                .lineSpacing(6)
+                                .multilineTextAlignment(.leading)
+                            
+                            if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
+                                Text(verse.text(for: settingsStore.secondaryLanguage))
+                                    .font(.system(size: 16, design: .serif))
+                                    .foregroundColor(AppTheme.secondaryText)
+                                    .lineSpacing(4)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        
+                        Divider()
+                            .overlay(AppTheme.accentColor.opacity(0.2))
+                        
+                        // Reference and CTA
+                        HStack {
+                            Text(localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber))
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(AppTheme.accentColor)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 4) {
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "查看詳情" : "View Details")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(AppTheme.accentColor)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(AppTheme.accentColor.opacity(0.1))
+                            .cornerRadius(12)
                         }
                     }
-                )
-                .cornerRadius(16)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                    .padding(20)
+                    .background(
+                        ZStack {
+                            AppTheme.cardGradient
+                            
+                            // Subtle background decoration
+                            GeometryReader { proxy in
+                                Image(systemName: "quote.opening")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(AppTheme.accentColor.opacity(0.05))
+                                    .position(x: 40, y: 40)
+                            }
+                        }
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
             } else if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 150)
@@ -200,64 +306,6 @@ struct HomeView: View {
                     .background(AppTheme.cardGradient)
                     .cornerRadius(12)
             }
-        }
-    }
-    
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(settingsStore.appLanguage.localizedString("QuickActions"))
-                .font(.headline)
-                .foregroundColor(AppTheme.primaryText)
-            
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("Pray"), icon: "hands.sparkles.fill", color: AppTheme.accentColor) {
-                        showPrayerFlow = true
-                    }
-                    
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("FindVerse"), icon: "magnifyingglass", color: AppTheme.primaryPurple) {
-                        showVerseSearch = true
-                    }
-                }
-                
-                HStack(spacing: 12) {
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("MyNotes"), icon: "bookmark.fill", color: AppTheme.accentColor) {
-                        showSavedNotes = true
-                    }
-                    
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("QAHistory"), icon: "bubble.left.and.bubble.right.fill", color: AppTheme.primaryPurple) {
-                        showChatHistory = true
-                    }
-                }
-            }
-        }
-    }
-    
-    private func quickActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .frame(height: 28)
-                    .foregroundColor(.white)
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity, minHeight: 90)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: [color, color.opacity(0.8)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .cornerRadius(16)
-            .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
     
@@ -275,224 +323,8 @@ struct HomeView: View {
         return "\"\(text)\"\n- \(reference)\n\nShared from Living Path"
     }
     
-    private var recentHistorySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(settingsStore.appLanguage.localizedString("RecentHistory"))
-                    .font(.headline)
-                    .foregroundColor(AppTheme.primaryText)
-                
-                Spacer()
-                
-                Button(settingsStore.appLanguage.localizedString("ViewAll")) {
-                    showReadingHistory = true
-                }
-                .font(.subheadline)
-                .foregroundColor(AppTheme.accentColor)
-            }
-            
-            let recentItems = progressStore.getRecentHistory(limit: 3)
-            
-            if recentItems.isEmpty {
-                HStack {
-                    Image(systemName: "clock")
-                        .foregroundColor(AppTheme.secondaryText)
-                    Text(settingsStore.appLanguage.localizedString("NoReadingHistory"))
-                        .foregroundColor(AppTheme.secondaryText)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(AppTheme.cardGradient)
-                .cornerRadius(12)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(recentItems) { item in
-                        HistoryPreviewRow(item: item, settingsStore: settingsStore, router: router)
-                    }
-                }
-            }
-        }
-    }
-    
-    private var savedNotesPreviewSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(settingsStore.appLanguage.localizedString("SavedNotes"))
-                    .font(AppFont.serif.font(size: 18, weight: .semibold))
-                    .foregroundColor(AppTheme.primaryText)
-                
-                Spacer()
-                
-                Button(settingsStore.appLanguage.localizedString("ViewAll")) {
-                    showSavedNotes = true
-                }
-                .font(.subheadline)
-                .foregroundColor(AppTheme.accentColor)
-            }
-            
-            if noteStore.savedVerses.isEmpty {
-                Text(settingsStore.appLanguage.localizedString("NoSavedVerses"))
-                    .foregroundColor(AppTheme.secondaryText)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(AppTheme.cardGradient)
-                    .cornerRadius(12)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(noteStore.savedVerses.prefix(3)), id: \.id) { savedVerse in
-                        SavedNotePreviewRow(savedVerse: savedVerse)
-                    }
-                    
-                    if noteStore.savedVerses.count > 3 {
-                        Button(action: {
-                            showSavedNotes = true
-                        }) {
-                            Text(viewMoreText(count: noteStore.savedVerses.count - 3))
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.accentColor)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private func viewMoreText(count: Int) -> String {
-        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
-        if languageCode == "zh-Hans" {
-            return "查看其他 \(count) 项..."
-        } else if languageCode == "zh-Hant" {
-            return "查看其他 \(count) 項..."
-        } else {
-            return "View \(count) more..."
-        }
-    }
 }
 
-// MARK: - Saved Note Preview Row
-
-struct SavedNotePreviewRow: View {
-    let savedVerse: SavedVerse
-    @ObservedObject private var settingsStore = SettingsStore.shared
-    @EnvironmentObject var router: AppRouter
-    
-    var body: some View {
-        Button(action: {
-            navigateToVerse()
-        }) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "bookmark.fill")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.accentColor)
-                    .padding(.top, 2)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(localizedVerseReference)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    if !savedVerse.content.isEmpty {
-                        Text(savedVerse.content)
-                            .font(.caption)
-                            .foregroundColor(AppTheme.secondaryText)
-                            .lineLimit(2)
-                    }
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-            }
-            .padding()
-            .background(AppTheme.cardGradient)
-            .cornerRadius(12)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-    
-    private var localizedVerseReference: String {
-        // Get localized book name based on primary language
-        let localizedBook = BibleData.localizedBookName(savedVerse.book, language: settingsStore.primaryLanguage)
-        return "\(localizedBook) \(savedVerse.chapter):\(savedVerse.verse)"
-    }
-    
-    private func navigateToVerse() {
-        // Convert book string to BibleBook object
-        if let book = BibleData.book(named: savedVerse.book) {
-                router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
-        }
-    }
-}
-
-// MARK: - History Preview Row
-
-struct HistoryPreviewRow: View {
-    let item: ReadingHistoryItem
-    @ObservedObject var settingsStore: SettingsStore
-    @ObservedObject var router: AppRouter
-    
-    var body: some View {
-        Button(action: {
-            navigateToChapter()
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: "book.fill")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.accentColor)
-                    .frame(width: 20)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(localizedBookChapter)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Text(formatTime(item.timestamp))
-                        .font(.caption)
-                        .foregroundColor(AppTheme.secondaryText)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-            }
-            .padding()
-            .background(AppTheme.cardGradient)
-            .cornerRadius(12)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-    
-    private var localizedBookChapter: String {
-        let localizedBook = BibleData.localizedBookName(item.book, language: settingsStore.primaryLanguage)
-        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
-        if chapterPrefix == "第" {
-            return "\(localizedBook) \(chapterPrefix)\(item.chapter)章"
-        } else {
-            return "\(localizedBook) \(chapterPrefix) \(item.chapter)"
-        }
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.locale = settingsStore.appLanguage.resolvedLocale()
-        return formatter.string(from: date)
-    }
-    
-    private func navigateToChapter() {
-        if let book = BibleData.book(named: item.book) {
-            router.navigateToReading(book: book, chapter: item.chapter, verse: nil)
-        }
-    }
-}
 
 #Preview {
     NavigationStack {

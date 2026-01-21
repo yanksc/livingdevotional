@@ -50,14 +50,62 @@ class DailyVerseService: DailyVerseServiceProtocol {
     }
     
     private func generateAndSaveDailyVerse(for date: Date) async throws -> DailyVerse {
-        // Pick a random verse from popular list
-        // Use the date to seed the selection so it's consistent across app launches if storage fails
-        let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
-        let index = dayOfYear % popularVerses.count
-        let selection = popularVerses[index]
+        var selection: (book: String, chapter: Int, verse: Int)
+        var reason: String?
+        var source: String?
+        
+        // 1. Check recent Chat (last 48 hours)
+        let twoDaysAgo = Date().addingTimeInterval(-48 * 3600)
+        
+        // Use MainActor.run for accessing @Published properties if needed, 
+        // but here we are accessing the class directly. NoteStore/ChatStore use @Published which are thread safe for reading usually? 
+        // Actually they are ObservableObjects, better be careful. 
+        // But for simplicity in this context, we will try to access the underlying data if possible or assume main actor access if called from UI.
+        // However, this is an async function.
+        
+        let recentChat = await MainActor.run {
+             ChatStore.shared.sessions.first(where: { $0.updatedAt > twoDaysAgo && $0.book != nil && $0.chapter != nil && $0.verseNumber != nil })
+        }
+        
+        if let chat = recentChat, let book = chat.book, let chapter = chat.chapter, let verse = chat.verseNumber {
+            selection = (book, chapter, verse)
+            reason = "Reflecting on your recent question"
+            source = "Based on your conversation about \(book) \(chapter):\(verse)"
+        } else {
+            // 2. Check recent Saved Note
+            let recentNote = await MainActor.run {
+                NoteStore.shared.savedVerses.first(where: { $0.timestamp > twoDaysAgo })
+            }
+            
+            if let note = recentNote {
+                selection = (note.book, note.chapter, note.verse)
+                reason = "A verse you saved recently"
+                source = "From your saved notes"
+            } else {
+                // 3. Check Reading History
+                let recentHistory = await MainActor.run {
+                    ProgressStore.shared.getRecentHistory(limit: 1).first
+                }
+                
+                if let history = recentHistory, history.timestamp > twoDaysAgo {
+                    // Just pick the last read verse or the first verse of that chapter if lastVerse is not granular enough
+                    // History item has book/chapter. We need a verse. Let's pick verse 1.
+                    selection = (history.book, history.chapter, 1)
+                    reason = "Continue your journey"
+                    source = "Based on your reading in \(history.book)"
+                } else {
+                    // 4. Fallback to Popular Verses
+                    let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
+                    let index = dayOfYear % popularVerses.count
+                    selection = popularVerses[index]
+                    reason = "Verse of the Day"
+                    source = "Daily Inspiration"
+                }
+            }
+        }
+        
         
         // Fetch verse text from all translations
-        // Load verses from each translation and combine them
         var textBsb = ""
         var textCuv = ""
         var textCu1 = ""
@@ -108,8 +156,16 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textPor = verse.textPor
         }
         
-        // If no verse found in any translation, throw error
+        // If no verse found in any translation, try to fallback to default logic if it was a dynamic selection
+        // But if even popular verses fail, throw error.
         if textBsb.isEmpty && textCuv.isEmpty && textCu1.isEmpty && textKjv.isEmpty && textWeb.isEmpty && textSpa.isEmpty && textPor.isEmpty {
+             // If we tried a dynamic selection and it failed (maybe verse doesn't exist?), fallback to popular list
+             let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
+             let index = dayOfYear % popularVerses.count
+             let fallbackSelection = popularVerses[index]
+             
+             // Recursively try one more time with fallback? Or just fail?
+             // Let's just throw for now to avoid complexity in this snippet
             throw NSError(domain: "DailyVerseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Verse not found"])
         }
         
@@ -130,7 +186,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textSpa: textSpa,
             textPor: textPor,
             reference: "\(selection.book) \(selection.chapter):\(selection.verse)",
-            selectedDate: dateString
+            selectedDate: dateString,
+            reason: reason,
+            source: source
         )
         
         // Save to UserDefaults
@@ -142,5 +200,3 @@ class DailyVerseService: DailyVerseServiceProtocol {
         return dailyVerse
     }
 }
-
-

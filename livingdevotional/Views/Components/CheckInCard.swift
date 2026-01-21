@@ -19,6 +19,46 @@ struct CheckInCard: View {
                 
                 Spacer()
                 
+                // Dual Streak Info
+                HStack(spacing: 12) {
+                    // App Open Streak
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                        Text("\(checkInStore.currentStreak)")
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "天" : "d")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                    
+                    // Task Completion Streak
+                    if checkInStore.taskCompletionStreak > 0 {
+                        HStack(spacing: 4) {
+                            // Circle with border to match calendar visual
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.purple, lineWidth: 2)
+                                    .frame(width: 14, height: 14)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundColor(.purple)
+                            }
+                            Text("\(checkInStore.taskCompletionStreak)")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.purple)
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "天" : "d")
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                    }
+                }
+                .padding(.trailing, 8)
+                
                 // Small Week/Month Toggle
                 HStack(spacing: 4) {
                     Button {
@@ -53,7 +93,7 @@ struct CheckInCard: View {
                 }
             }
             
-            // Calendar View with Streak & Prayer Status
+            // Calendar View
             CheckInCalendarView(
                 checkInStore: checkInStore,
                 viewMode: calendarViewMode,
@@ -61,43 +101,69 @@ struct CheckInCard: View {
             )
             .padding(.vertical, 4)
             
-            // Prayer Check-in Prompt (only if not prayed)
-            if !checkInStore.hasPrayedToday {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "您今天禱告了嗎？" : "Have you prayed today?")
+            // Task Status Summary
+            if !checkInStore.hasPrayedToday || !checkInStore.hasReadToday {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "今日進度" : "Today's Progress")
                         .font(.subheadline)
                         .foregroundColor(AppTheme.primaryText)
                     
-                    HStack(spacing: 12) {
-                        // Yes Button
-                        Button {
-                            withAnimation {
-                                checkInStore.recordPrayer()
-                            }
-                        } label: {
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "有的" : "Yes")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(AppTheme.accentColor)
-                                .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        // Reading status
+                        HStack(spacing: 4) {
+                            Image(systemName: checkInStore.hasReadToday ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(checkInStore.hasReadToday ? .green : AppTheme.secondaryText)
+                                .font(.caption)
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "讀經" : "Read")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
                         }
                         
-                        // No Button
-                        Button {
-                            showEncouragement = true
-                        } label: {
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "還沒" : "Not yet")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(AppTheme.primaryText)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(AppTheme.secondaryText.opacity(0.1))
-                                .cornerRadius(8)
+                        // Prayer status
+                        HStack(spacing: 4) {
+                            Image(systemName: checkInStore.hasPrayedToday ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(checkInStore.hasPrayedToday ? .green : AppTheme.secondaryText)
+                                .font(.caption)
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "禱告" : "Pray")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
                         }
+                        
+                        Spacer()
+                    }
+                    
+                    // Prayer prompt (only if not prayed)
+                    if !checkInStore.hasPrayedToday {
+                        HStack(spacing: 12) {
+                            Button {
+                                withAnimation {
+                                    checkInStore.recordPrayer()
+                                }
+                            } label: {
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "已禱告" : "Prayed")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(AppTheme.accentColor)
+                                    .cornerRadius(8)
+                            }
+                            
+                            Button {
+                                showEncouragement = true
+                            } label: {
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "稍後" : "Later")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(AppTheme.primaryText)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(AppTheme.secondaryText.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                        }
+                        .padding(.top, 4)
                     }
                 }
             }

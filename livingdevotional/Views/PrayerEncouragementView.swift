@@ -53,7 +53,7 @@ struct PrayerEncouragementView: View {
                         // Show verse in primary language
                         let isChinese = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant"
                         Text(isChinese ? selectedVerse.textZh : selectedVerse.textEn)
-                            .font(settingsStore.selectedFont.font(size: 18, weight: .medium))
+                            .font(.system(size: 18, weight: .medium, design: .serif))
                             .foregroundColor(AppTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineSpacing(6)
@@ -62,7 +62,7 @@ struct PrayerEncouragementView: View {
                         if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
                             let showSecondaryChinese = (settingsStore.secondaryLanguage == .cuv || settingsStore.secondaryLanguage == .cu1)
                             Text(showSecondaryChinese ? selectedVerse.textZh : selectedVerse.textEn)
-                                .font(settingsStore.selectedFont.font(size: 14))
+                                .font(.system(size: 14, design: .serif))
                                 .foregroundColor(AppTheme.secondaryText)
                                 .multilineTextAlignment(.center)
                                 .padding(.top, 4)

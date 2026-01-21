@@ -5,7 +5,7 @@ import SwiftUI
 struct VerseActionBar: View {
     let verse: BibleVerse
     @ObservedObject var settingsStore: SettingsStore
-    let onCopy: () -> Void
+    let onHighlight: () -> Void
     let onShare: () -> Void
     let onAIInsight: () -> Void
     let onAIReflect: () -> Void
@@ -127,13 +127,13 @@ struct VerseActionBar: View {
                 
                 // Bottom row: Action buttons
                 HStack(spacing: 8) {
-                    // Copy button
-                    Button(action: onCopy) {
+                    // Highlight button
+                    Button(action: onHighlight) {
                         HStack(spacing: 4) {
-                            Image(systemName: "doc.on.doc")
+                            Image(systemName: "highlighter")
                                 .font(.system(size: 12, weight: .semibold))
                                 .frame(width: 14, height: 14)
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "複製" : "Copy")
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "標記" : "Highlight")
                                 .font(.system(size: 11, weight: .medium))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)

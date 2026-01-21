@@ -16,7 +16,9 @@ struct livingdevotionalApp: App {
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     init() {
-        setupServices()
+        // Access the singleton directly, not through the @StateObject property wrapper
+        // This avoids "Accessing StateObject's object without being installed on a View" warning
+        ServiceContainer.shared.registerAIService(AIService())
     }
     
     var body: some Scene {
@@ -52,12 +54,5 @@ struct livingdevotionalApp: App {
                 }
         }
         .modelContainer(for: SavedVerse.self)
-    }
-    
-    private func setupServices() {
-        // Register AI service
-        serviceContainer.registerAIService(AIService())
-        // Register future services here when implemented
-        // serviceContainer.registerAuthService(AuthenticationService())
     }
 }

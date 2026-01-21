@@ -11,28 +11,43 @@ struct MainTabView: View {
             get: { currentTab },
             set: { router.navigate(to: tabToRoute($0)) }
         )) {
-            // Home Tab (placeholder for future)
-            HomeView()
+            // Explore Tab (0)
+            ExploreView()
                 .environmentObject(router)
-                .environmentObject(bibleViewModel)
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Explore", systemImage: "safari.fill")
                 }
                 .tag(0)
             
-            // Bible Tab
+            // Bible Tab (1)
             BibleTabView(viewModel: bibleViewModel)
                 .tabItem {
                     Label("Bible", systemImage: "book.fill")
                 }
                 .tag(1)
             
-            // Settings Tab
+            // Today Tab (2)
+            HomeView()
+                .environmentObject(router)
+                .environmentObject(bibleViewModel)
+                .tabItem {
+                    Label("Today", systemImage: "sun.max.fill")
+                }
+                .tag(2)
+            
+            // Path Tab (3)
+            JourneyView()
+                .tabItem {
+                    Label("Path", systemImage: "road.lanes")
+                }
+                .tag(3)
+            
+            // Settings Tab (4)
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
-                .tag(2)
+                .tag(4)
         }
         .tint(AppTheme.accentColor)
         .onChange(of: router.currentRoute) { oldRoute, newRoute in
@@ -46,19 +61,23 @@ struct MainTabView: View {
     
     private var currentTab: Int {
         switch router.currentRoute {
-        case .home: return 0
+        case .explore: return 0
         case .bible, .reading: return 1
-        case .settings, .profile: return 2
-        default: return 1
+        case .home: return 2
+        case .journey: return 3
+        case .settings, .profile: return 4
+        default: return 2
         }
     }
     
     private func tabToRoute(_ tab: Int) -> AppRoute {
         switch tab {
-        case 0: return .home
+        case 0: return .explore
         case 1: return .bible
-        case 2: return .settings
-        default: return .bible
+        case 2: return .home
+        case 3: return .journey
+        case 4: return .settings
+        default: return .home
         }
     }
 }
@@ -109,4 +128,3 @@ enum NavigationDestination: Hashable {
 #Preview {
     MainTabView()
 }
-

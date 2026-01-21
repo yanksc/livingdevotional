@@ -176,7 +176,7 @@ struct SettingsCenteredNavigationRow: View {
                 Spacer()
                 
                 Text(title)
-                    .font(AppFont.serif.font(size: 16, weight: .medium))
+                    .font(.system(size: 16, weight: .medium, design: .serif))
                     .foregroundColor(AppTheme.primaryText)
                 
                 Spacer()
@@ -323,7 +323,7 @@ struct SettingsView: View {
                     // Language Section
                     SettingsSectionHeader(
                         title: settingsStore.appLanguage.localizedString("AppLanguage"),
-                        icon: "globe"
+                        icon: "character"
                     )
                     
                     SettingsCard {
@@ -334,6 +334,46 @@ struct SettingsView: View {
                             options: Array(AppLanguage.allCases)
                         ) { language in
                             language.displayName
+                        }
+                    }
+                    
+                    // Bible Translation Section
+                    SettingsSectionHeader(
+                        title: settingsStore.appLanguage.localizedString("BibleTranslation"),
+                        icon: "book"
+                    )
+                    
+                    SettingsCard {
+                        SettingsPickerRow(
+                            icon: "1.circle",
+                            title: settingsStore.appLanguage.localizedString("PrimaryTranslation"),
+                            selection: $settingsStore.primaryLanguage,
+                            options: Language.allCases.filter { $0 != .none }
+                        ) { language in
+                            language.displayName
+                        }
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        SettingsToggleRow(
+                            icon: "rectangle.on.rectangle",
+                            title: settingsStore.appLanguage.localizedString("ShowSecondLanguage"),
+                            isOn: $settingsStore.showSecondaryLanguage
+                        )
+                        
+                        if settingsStore.showSecondaryLanguage {
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            SettingsPickerRow(
+                                icon: "2.circle",
+                                title: settingsStore.appLanguage.localizedString("SecondaryTranslation"),
+                                selection: $settingsStore.secondaryLanguage,
+                                options: Language.allCases.filter { $0 != .none && $0 != settingsStore.primaryLanguage }
+                            ) { language in
+                                language.displayName
+                            }
                         }
                     }
                     

@@ -338,7 +338,7 @@ struct PrayerGenerationWaitingView: View {
                 if let verse = verse {
                     VStack(spacing: 16) {
                         Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(settingsStore.selectedFont.font(size: 22, weight: .medium))
+                            .font(.system(size: 22, weight: .medium, design: .serif))
                             .foregroundColor(AppTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineSpacing(8)
@@ -346,7 +346,7 @@ struct PrayerGenerationWaitingView: View {
                         
                         if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
                             Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(settingsStore.selectedFont.font(size: 18))
+                                .font(.system(size: 18, design: .serif))
                                 .foregroundColor(AppTheme.secondaryText)
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(6)

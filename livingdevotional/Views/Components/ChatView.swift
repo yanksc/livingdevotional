@@ -3,7 +3,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @StateObject var viewModel: ChatViewModel
+    @ObservedObject var viewModel: ChatViewModel
     @ObservedObject var settingsStore: SettingsStore
     let onClose: () -> Void
     
@@ -30,13 +30,23 @@ struct ChatView: View {
             
             Divider()
             
+            // Pinned verse reference at top (always visible when verse context exists)
+            if viewModel.hasVerseContext {
+                verseReferenceView
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+                
+                Divider()
+                    .padding(.horizontal)
+            }
+            
             // Chat Content
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Show verse reference for new sessions
+                        // Welcome view only for new sessions
                         if viewModel.session?.messages.isEmpty ?? true {
-                            verseReferenceView
                             welcomeView
                         }
                         
@@ -82,38 +92,47 @@ struct ChatView: View {
             
             Divider()
             
-            // Suggested Questions (if empty or just started)
+            // Suggested Questions (if empty or just started) - stacked vertically
             if (viewModel.session?.messages.isEmpty ?? true) && !viewModel.suggestedQuestions.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.suggestedQuestions, id: \.self) { question in
-                            Button {
-                                Task {
-                                    await viewModel.sendMessage(question)
-                                }
-                            } label: {
-                                Text(question)
-                                    .font(.caption)
-                                    .foregroundColor(AppTheme.accentColor)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        Capsule()
-                                            .stroke(AppTheme.accentColor, lineWidth: 1)
-                                            .background(AppTheme.accentColor.opacity(0.05))
-                                    )
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(viewModel.suggestedQuestions, id: \.self) { question in
+                        Button {
+                            Task {
+                                await viewModel.sendMessage(question)
                             }
+                        } label: {
+                            Text(question)
+                                .font(.subheadline)
+                                .foregroundColor(AppTheme.accentColor)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(AppTheme.accentColor.opacity(0.4), lineWidth: 1)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(AppTheme.accentColor.opacity(0.05))
+                                        )
+                                )
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 Divider()
             }
             
             // Input Area
             HStack(spacing: 12) {
-                TextField(settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題..." : "Ask a question about this verse...", text: $viewModel.inputMessage)
+                TextField(
+                    viewModel.book != nil ? 
+                        (settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題..." : "Ask a question about this verse...") :
+                        (settingsStore.appLanguage == .chineseTraditional ? "詢問關於聖經或屬靈成長的問題..." : "Ask a question about the Bible or spiritual growth..."),
+                    text: $viewModel.inputMessage
+                )
                     .font(.system(size: 16))
                     .padding(10)
                     .background(
@@ -151,31 +170,59 @@ struct ChatView: View {
         .background(AppTheme.backgroundGradient)
         .onAppear {
             Task {
+                // Load verse text first if needed (for Ask questions with verse context)
+                await viewModel.loadVerseTextIfNeeded(primaryLanguage: settingsStore.primaryLanguage)
                 await viewModel.loadSuggestions()
+                await viewModel.sendInitialQuestionIfNeeded()
             }
         }
     }
     
     var verseReferenceView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            let localizedBook = BibleData.localizedBookName(viewModel.book, language: settingsStore.primaryLanguage)
-            Text("\(localizedBook) \(viewModel.chapter):\(viewModel.verse)")
-                .font(.headline)
-                .foregroundColor(AppTheme.accentColor)
-            
-            Text(viewModel.verseText)
-                .font(.body)
-                .foregroundColor(AppTheme.primaryText)
-                .lineSpacing(4)
+        VStack(alignment: .leading, spacing: 6) {
+            if let book = viewModel.book, let chapter = viewModel.chapter, let verse = viewModel.verse {
+                // Reference header with book icon
+                HStack(spacing: 8) {
+                    Image(systemName: "book.fill")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.accentColor)
+                    
+                    let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
+                    Text("\(localizedBook) \(chapter):\(verse)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.accentColor)
+                    
+                    Spacer()
+                }
+                
+                // Verse text
+                if let verseText = viewModel.verseText, !verseText.isEmpty {
+                    Text(verseText)
+                        .font(.callout)
+                        .foregroundColor(AppTheme.primaryText)
+                        .lineSpacing(3)
+                        .lineLimit(4) // Limit lines to keep it compact
+                } else {
+                    // Show loading indicator while verse text is being loaded
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "載入經文..." : "Loading verse...")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                }
+            }
         }
-        .padding()
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(AppTheme.accentColor.opacity(0.05))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(AppTheme.accentColor.opacity(0.06))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(AppTheme.accentColor.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppTheme.accentColor.opacity(0.15), lineWidth: 1)
                 )
         )
     }

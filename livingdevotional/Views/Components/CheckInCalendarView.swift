@@ -41,21 +41,45 @@ struct WeekCalendarView: View {
             let dateStr = formatDate(date)
             let record = checkInStore.dailyRecords[dateStr]
             let hasCheckIn = record != nil
+            let hasAppOpen = record?.hasOpenedApp ?? false
+            let hasTaskCompletion = record?.hasCompletedDailyTasks ?? false
             let isToday = calendar.isDateInToday(date)
             
-            // Calculate streak position (counting backwards from today)
-            var streakPosition = 0
-            if hasCheckIn {
+            // Calculate app open streak position
+            var appOpenStreakPosition = 0
+            if hasAppOpen {
                 var checkDate = today
                 var position = checkInStore.currentStreak
                 
                 while position > 0 {
                     let checkDateStr = formatDate(checkDate)
                     if checkDateStr == dateStr {
-                        streakPosition = position
+                        appOpenStreakPosition = position
                         break
                     }
-                    if checkInStore.dailyRecords[checkDateStr] != nil {
+                    if checkInStore.dailyRecords[checkDateStr]?.hasOpenedApp ?? false {
+                        position -= 1
+                    } else {
+                        break
+                    }
+                    guard let prevDate = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                    checkDate = prevDate
+                }
+            }
+            
+            // Calculate task completion streak position
+            var taskStreakPosition = 0
+            if hasTaskCompletion {
+                var checkDate = today
+                var position = checkInStore.taskCompletionStreak
+                
+                while position > 0 {
+                    let checkDateStr = formatDate(checkDate)
+                    if checkDateStr == dateStr {
+                        taskStreakPosition = position
+                        break
+                    }
+                    if checkInStore.dailyRecords[checkDateStr]?.hasCompletedDailyTasks ?? false {
                         position -= 1
                     } else {
                         break
@@ -73,8 +97,12 @@ struct WeekCalendarView: View {
                 dayName: dayName,
                 dayNum: dayNum,
                 hasCheckIn: hasCheckIn,
-                streakPosition: streakPosition,
-                isToday: isToday
+                streakPosition: appOpenStreakPosition, // Keep for backward compatibility
+                isToday: isToday,
+                hasAppOpen: hasAppOpen,
+                hasTaskCompletion: hasTaskCompletion,
+                appOpenStreakPosition: appOpenStreakPosition,
+                taskStreakPosition: taskStreakPosition
             ))
         }
         
@@ -83,86 +111,50 @@ struct WeekCalendarView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // Streak Display - Compact with Prayer Status
-            HStack(spacing: 8) {
-                Image(systemName: "flame.fill")
-                    .foregroundColor(.orange)
-                    .font(.title3)
-                Text("\(checkInStore.currentStreak)")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.orange)
-                Text(settingsStore.appLanguage == .chineseTraditional ? "天連續" : "days")
-                    .font(.subheadline)
-                    .foregroundColor(AppTheme.secondaryText)
-                
-                Spacer()
-                
-                // Prayer Status (small, on the right)
-                if showPrayerStatus && checkInStore.hasPrayedToday {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "已禱告" : "Prayed")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.secondaryText)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(6)
-                }
-            }
-            .padding(.horizontal, 4)
-            
             // Week Grid - Condensed Visual Design
             HStack(spacing: 6) {
                 ForEach(weekDays, id: \.date) { day in
                     VStack(spacing: 4) {
-                        // Visual indicator - filled circle for check-in, empty for missed
+                        // Visual indicator - dual streaks
                         ZStack {
-                            // Background circle with gradient
-                            if day.hasCheckIn {
-                                if day.streakPosition > 0 {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.orange.opacity(0.3), Color.red.opacity(0.2)],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                        )
-                                        .frame(width: 36, height: 36)
-                                } else {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.green.opacity(0.2), Color.green.opacity(0.1)],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                        )
-                                        .frame(width: 36, height: 36)
-                                }
-                            } else {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [AppTheme.secondaryText.opacity(0.1), AppTheme.secondaryText.opacity(0.05)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
+                            // Background circle
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: day.hasTaskCompletion 
+                                            ? [Color.purple.opacity(0.2), Color.purple.opacity(0.1)]
+                                            : day.hasAppOpen
+                                            ? [Color.orange.opacity(0.2), Color.orange.opacity(0.1)]
+                                            : [AppTheme.secondaryText.opacity(0.1), AppTheme.secondaryText.opacity(0.05)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
                                     )
-                                    .frame(width: 36, height: 36)
+                                )
+                                .frame(width: 36, height: 36)
+                            
+                            // Task completion indicator (extra border ring)
+                            if day.hasTaskCompletion {
+                                Circle()
+                                    .stroke(Color.purple, lineWidth: 2.5)
+                                    .frame(width: 32, height: 32)
                             }
                             
-                            // Check-in indicator
-                            if day.hasCheckIn {
+                            // App open streak indicator (flame) - centered
+                            if day.hasAppOpen {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: day.appOpenStreakPosition > 0 ? 14 : 12, weight: .bold))
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            // Task completion only (no app open) - show checkmark
+                            if day.hasTaskCompletion && !day.hasAppOpen {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(day.streakPosition > 0 ? .orange : .green)
-                            } else {
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.purple)
+                            }
+                            
+                            // Empty state indicator
+                            if !day.hasAppOpen && !day.hasTaskCompletion {
                                 Circle()
                                     .stroke(AppTheme.secondaryText.opacity(0.2), lineWidth: 1.5)
                                     .frame(width: 20, height: 20)
@@ -230,8 +222,7 @@ struct MonthCalendarView: View {
         let startingDayOfWeek = calendar.component(.weekday, from: firstDay) - 1
         
         // Days in month
-        guard let range = calendar.range(of: .day, in: .month, for: firstDay),
-              let lastDay = calendar.date(byAdding: .day, value: range.count - 1, to: firstDay) else {
+        guard let range = calendar.range(of: .day, in: .month, for: firstDay) else {
             return MonthData(days: [], monthName: "")
         }
         
@@ -251,21 +242,45 @@ struct MonthCalendarView: View {
             let dateStr = formatDate(date)
             let record = checkInStore.dailyRecords[dateStr]
             let hasCheckIn = record != nil
+            let hasAppOpen = record?.hasOpenedApp ?? false
+            let hasTaskCompletion = record?.hasCompletedDailyTasks ?? false
             let isToday = calendar.isDateInToday(date)
             
-            // Calculate streak position
-            var streakPosition = 0
-            if hasCheckIn {
+            // Calculate app open streak position
+            var appOpenStreakPosition = 0
+            if hasAppOpen {
                 var checkDate = today
                 var position = checkInStore.currentStreak
                 
                 while position > 0 {
                     let checkDateStr = formatDate(checkDate)
                     if checkDateStr == dateStr {
-                        streakPosition = position
+                        appOpenStreakPosition = position
                         break
                     }
-                    if checkInStore.dailyRecords[checkDateStr] != nil {
+                    if checkInStore.dailyRecords[checkDateStr]?.hasOpenedApp ?? false {
+                        position -= 1
+                    } else {
+                        break
+                    }
+                    guard let prevDate = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                    checkDate = prevDate
+                }
+            }
+            
+            // Calculate task completion streak position
+            var taskStreakPosition = 0
+            if hasTaskCompletion {
+                var checkDate = today
+                var position = checkInStore.taskCompletionStreak
+                
+                while position > 0 {
+                    let checkDateStr = formatDate(checkDate)
+                    if checkDateStr == dateStr {
+                        taskStreakPosition = position
+                        break
+                    }
+                    if checkInStore.dailyRecords[checkDateStr]?.hasCompletedDailyTasks ?? false {
                         position -= 1
                     } else {
                         break
@@ -279,8 +294,12 @@ struct MonthCalendarView: View {
                 day: day,
                 date: dateStr,
                 hasCheckIn: hasCheckIn,
-                streakPosition: streakPosition,
-                isToday: isToday
+                streakPosition: appOpenStreakPosition, // Keep for backward compatibility
+                isToday: isToday,
+                hasAppOpen: hasAppOpen,
+                hasTaskCompletion: hasTaskCompletion,
+                appOpenStreakPosition: appOpenStreakPosition,
+                taskStreakPosition: taskStreakPosition
             ))
         }
         
@@ -307,112 +326,143 @@ struct MonthCalendarView: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Streak Display
-            HStack {
-                Spacer()
-                HStack(spacing: 6) {
-                    Image(systemName: "flame.fill")
+        let data = monthData
+        
+        return VStack(spacing: 16) {
+            monthHeader(data: data)
+            weekdayHeaders
+            calendarGrid(data: data)
+        }
+    }
+    
+    private func monthHeader(data: MonthData) -> some View {
+        HStack {
+            Image(systemName: "calendar")
+                .foregroundColor(AppTheme.accentColor)
+                .font(.subheadline)
+            Text(data.monthName)
+                .font(.headline)
+                .foregroundColor(AppTheme.primaryText)
+        }
+    }
+    
+    private var weekdayHeaders: some View {
+        HStack(spacing: 4) {
+            ForEach(weekDayNames, id: \.self) { name in
+                Text(name)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+    
+    private func calendarGrid(data: MonthData) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+            ForEach(Array(data.days.enumerated()), id: \.offset) { index, dayData in
+                dayCell(dayData: dayData)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func dayCell(dayData: MonthDayData?) -> some View {
+        if let day = dayData {
+            VStack(spacing: 4) {
+                Text("\(day.day)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(day.isToday ? AppTheme.accentColor : AppTheme.primaryText)
+                
+                streakIndicators(day: day)
+                streakPositionNumbers(day: day)
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .padding(4)
+            .background(dayBackground(day: day))
+            .overlay(dayBorder(day: day))
+        } else {
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+        }
+    }
+    
+    @ViewBuilder
+    private func streakIndicators(day: MonthDayData) -> some View {
+        ZStack {
+            // Task completion indicator (extra border ring)
+            if day.hasTaskCompletion {
+                Circle()
+                    .stroke(Color.purple, lineWidth: 2)
+                    .frame(width: 20, height: 20)
+            }
+            
+            // App open indicator (flame) - centered
+            if day.hasAppOpen {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(.orange)
+            }
+            
+            // Task completion only (no app open) - show checkmark
+            if day.hasTaskCompletion && !day.hasAppOpen {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.purple)
+            }
+            
+            // Empty state indicator
+            if !day.hasAppOpen && !day.hasTaskCompletion {
+                Circle()
+                    .stroke(AppTheme.secondaryText.opacity(0.1), lineWidth: 1)
+                    .frame(width: 12, height: 12)
+            }
+        }
+        .frame(width: 20, height: 20)
+    }
+    
+    @ViewBuilder
+    private func streakPositionNumbers(day: MonthDayData) -> some View {
+        if day.appOpenStreakPosition > 0 || day.taskStreakPosition > 0 {
+            HStack(spacing: 2) {
+                if day.appOpenStreakPosition > 0 {
+                    Text("#\(day.appOpenStreakPosition)")
+                        .font(.system(size: 6, weight: .bold))
                         .foregroundColor(.orange)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("\(checkInStore.currentStreak)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "天連續" : "days streak")
-                            .font(.caption2)
-                            .foregroundColor(AppTheme.secondaryText)
-                    }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    LinearGradient(
-                        colors: [Color.orange.opacity(0.1), Color.red.opacity(0.1)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-                )
-                Spacer()
-            }
-            
-            // Month Header
-            HStack {
-                Image(systemName: "calendar")
-                    .foregroundColor(AppTheme.accentColor)
-                    .font(.subheadline)
-                Text(monthData.monthName)
-                    .font(.headline)
-                    .foregroundColor(AppTheme.primaryText)
-            }
-            
-            // Weekday Headers
-            HStack(spacing: 4) {
-                ForEach(weekDayNames, id: \.self) { name in
-                    Text(name)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            
-            // Calendar Grid
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
-                ForEach(Array(monthData.days.enumerated()), id: \.offset) { index, dayData in
-                    if let day = dayData {
-                        VStack(spacing: 4) {
-                            Text("\(day.day)")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(day.isToday ? AppTheme.accentColor : AppTheme.primaryText)
-                            
-                            if day.hasCheckIn {
-                                VStack(spacing: 1) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.green)
-                                    
-                                    if day.streakPosition > 0 {
-                                        Text("#\(day.streakPosition)")
-                                            .font(.system(size: 7, weight: .bold))
-                                            .foregroundColor(.orange)
-                                    }
-                                }
-                            } else {
-                                Circle()
-                                    .stroke(AppTheme.secondaryText.opacity(0.1), lineWidth: 1)
-                                    .frame(width: 12, height: 12)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .aspectRatio(1, contentMode: .fit)
-                        .padding(4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(day.isToday ? AppTheme.accentColor.opacity(0.1) : Color.clear)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(day.isToday ? AppTheme.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(day.hasCheckIn ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1.5)
-                        )
-                    } else {
-                        Color.clear
-                            .aspectRatio(1, contentMode: .fit)
-                    }
+                if day.taskStreakPosition > 0 {
+                    Text("#\(day.taskStreakPosition)")
+                        .font(.system(size: 6, weight: .bold))
+                        .foregroundColor(.purple)
                 }
             }
         }
+    }
+    
+    private func dayBackground(day: MonthDayData) -> some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(day.isToday ? AppTheme.accentColor.opacity(0.1) : Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(day.isToday ? AppTheme.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
+            )
+    }
+    
+    private func dayBorder(day: MonthDayData) -> some View {
+        let borderColor: Color = {
+            if day.hasTaskCompletion {
+                return Color.purple.opacity(0.3)
+            } else if day.hasAppOpen {
+                return Color.orange.opacity(0.3)
+            } else {
+                return Color.clear
+            }
+        }()
+        
+        return RoundedRectangle(cornerRadius: 8)
+            .stroke(borderColor, lineWidth: 1.5)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -431,6 +481,10 @@ struct WeekDayData {
     let hasCheckIn: Bool
     let streakPosition: Int
     let isToday: Bool
+    let hasAppOpen: Bool
+    let hasTaskCompletion: Bool
+    let appOpenStreakPosition: Int
+    let taskStreakPosition: Int
 }
 
 struct MonthDayData {
@@ -439,6 +493,10 @@ struct MonthDayData {
     let hasCheckIn: Bool
     let streakPosition: Int
     let isToday: Bool
+    let hasAppOpen: Bool
+    let hasTaskCompletion: Bool
+    let appOpenStreakPosition: Int
+    let taskStreakPosition: Int
 }
 
 struct MonthData {

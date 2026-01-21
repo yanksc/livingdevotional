@@ -338,12 +338,19 @@ struct PrayerFlowView: View {
             // 4. Recent Q&A Verses (last 5)
             let recentQAs = Array(chatStore.sessions.prefix(5))
             for session in recentQAs {
+                // Only include sessions with complete verse context
+                guard let book = session.book,
+                      let chapter = session.chapter,
+                      let verseNumber = session.verseNumber,
+                      let verseText = session.verseText else {
+                    continue
+                }
                 options.append(VerseOption(
                     id: "qa_\(session.id)",
-                    book: session.book,
-                    chapter: session.chapter,
-                    verseNumber: session.verseNumber,
-                    verseText: session.verseText,
+                    book: book,
+                    chapter: chapter,
+                    verseNumber: verseNumber,
+                    verseText: verseText,
                     source: .qaHistory,
                     sourceDescription: isChinese ? "問答記錄" : "From Q&A",
                     timestamp: session.updatedAt
@@ -984,7 +991,7 @@ struct PrayerResultView: View {
                     TypewriterText(
                         text: prayer,
                         speed: 0.05,
-                        font: settingsStore.selectedFont.font(size: 18, weight: .regular)
+                        font: .system(size: 18, weight: .regular, design: .serif)
                     )
                     .foregroundColor(AppTheme.primaryText)
                     .multilineTextAlignment(.center)
@@ -996,14 +1003,14 @@ struct PrayerResultView: View {
                     // Verse display - below prayer text
                     VStack(spacing: 12) {
                         Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(settingsStore.selectedFont.font(size: 20, weight: .medium))
+                            .font(.system(size: 20, weight: .medium, design: .serif))
                             .foregroundColor(AppTheme.primaryText)
                             .multilineTextAlignment(.center)
                             .lineSpacing(6)
                         
                         if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
                             Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(settingsStore.selectedFont.font(size: 18))
+                                .font(.system(size: 18, design: .serif))
                                 .foregroundColor(AppTheme.secondaryText)
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(4)

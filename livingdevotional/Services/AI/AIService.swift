@@ -5,9 +5,9 @@ import Foundation
 class AIService: AIServiceProtocol {
     // Helicone AI Gateway endpoint - only requires Helicone API key
     // Helicone handles OpenAI API key through their gateway
-    private let heliconeBaseURL = "https://ai-gateway.helicone.ai/v1/chat/completions"
-    private let heliconeAPIKey = "sk-helicone-mgqn4ly-q4tuuaq-qggr7va-ppikchq"
-    private let openAIModel = "gpt-4o-mini"
+    private let heliconeBaseURL = AppConfig.heliconeBaseURL
+    private let heliconeAPIKey = AppConfig.heliconeAPIKey
+    private let openAIModel = AppConfig.openAIModel
     
     // MARK: - User Profile Context
     
@@ -894,6 +894,145 @@ class AIService: AIServiceProtocol {
         throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
     
+    func chatGeneral(
+        appLanguage: AppLanguage,
+        conversationHistory: [ChatMessage],
+        userQuestion: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        // Build messages array for OpenAI-compatible API
+        var messages: [[String: Any]] = []
+        
+        // Determine response language based on appLanguage
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        let languageInstruction: String
+        
+        if isSimplified {
+            languageInstruction = "请用简体中文提供简洁且有帮助的回答。"
+        } else if isChinese {
+            languageInstruction = "請用繁體中文（台灣用語）提供簡潔且有幫助的回答。"
+        } else {
+            languageInstruction = "Please provide concise and helpful responses in English."
+        }
+        
+        // Build personalized system message with user context
+        let userContext = buildUserContext(appLanguage: appLanguage)
+        let systemMessage: [String: Any] = [
+            "role": "system",
+            "content": isChinese ? """
+            \(userContext)
+            
+            你是一位溫暖且鼓勵人的屬靈導師，幫助讀者理解聖經、屬靈成長和信仰問題。
+            
+            \(languageInstruction)
+            請保持回答友善、有深度且符合聖經真理。當問題涉及特定經文時，可以引用相關經文來支持你的回答。
+            """ : """
+            \(userContext)
+            
+            You are a warm and encouraging spiritual mentor, helping readers understand the Bible, spiritual growth, and faith questions.
+            
+            \(languageInstruction)
+            Please keep answers friendly, insightful, and biblically accurate. When questions involve specific verses, you may reference relevant verses to support your answers.
+            """
+        ]
+        messages.append(systemMessage)
+        
+        // Add conversation history
+        for msg in conversationHistory {
+            if msg.role != .system {
+                let message: [String: Any] = [
+                    "role": msg.role.rawValue,
+                    "content": msg.content
+                ]
+                messages.append(message)
+            }
+        }
+        
+        // Add current question
+        let userMessage: [String: Any] = [
+            "role": "user",
+            "content": userQuestion
+        ]
+        messages.append(userMessage)
+        
+        // Create request body
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "stream": true,
+            "stream_options": ["include_usage": false],
+            "max_tokens": 1000
+        ]
+        
+        // Create URL request
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        // Return async stream (reusing the streaming logic structure)
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                        continuation.finish(throwing: NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+                        return
+                    }
+                    
+                    var byteBuffer = Data()
+                    for try await byte in asyncBytes {
+                        byteBuffer.append(byte)
+                        
+                        if let decodedString = String(data: byteBuffer, encoding: .utf8) {
+                            var remainingString = decodedString
+                            while let newlineIndex = remainingString.firstIndex(of: "\n") {
+                                let line = String(remainingString[..<newlineIndex])
+                                remainingString.removeSubrange(remainingString.startIndex...newlineIndex)
+                                
+                                if line.hasPrefix("data: ") {
+                                    let jsonString = String(line.dropFirst(6))
+                                    if jsonString.trimmingCharacters(in: .whitespaces) == "[DONE]" {
+                                        continuation.finish()
+                                        return
+                                    }
+                                    
+                                    if let jsonData = jsonString.data(using: .utf8),
+                                       let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                                       let choices = json["choices"] as? [[String: Any]],
+                                       let firstChoice = choices.first,
+                                       let delta = firstChoice["delta"] as? [String: Any],
+                                       let content = delta["content"] as? String {
+                                        continuation.yield(content)
+                                    }
+                                }
+                            }
+                            
+                            if !remainingString.isEmpty {
+                                byteBuffer = remainingString.data(using: .utf8) ?? Data()
+                            } else {
+                                byteBuffer.removeAll()
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
     func summarizeChapter(book: String, chapter: Int, language: Language) async throws -> String {
         // TODO: Implement chapter summary
         // Reference: migration/api/summarize-chapter/route.ts
@@ -1433,12 +1572,50 @@ class AIService: AIServiceProtocol {
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis {
         let isChinese = appLanguage == .chineseTraditional || (appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
         
-        // Build the data summary for AI
+        // Helper function to format intentional actions for prompt
+        func formatIntentionalActions(_ actions: [IntentionalAction], typeLabel: String, isChinese: Bool) -> String {
+            if actions.isEmpty {
+                return isChinese ? "尚無\(typeLabel)" : "No \(typeLabel.lowercased())"
+            }
+            let verseLabel = isChinese ? "經文" : "Verse"
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .short
+            dateFormatter.timeStyle = .none
+            
+            return actions.enumerated().map { index, action in
+                var result = "\(index + 1). \(action.verseReference)"
+                if let content = action.content, !content.isEmpty {
+                    result += ": \(content)"
+                }
+                if !action.verseText.isEmpty {
+                    result += "\n   \(verseLabel): \"\(action.verseText)\""
+                }
+                if let metadata = action.metadata {
+                    result += "\n   (\(metadata))"
+                }
+                // Add date for recent actions to show recency
+                if typeLabel.contains("Recent") || typeLabel.contains("最近") {
+                    result += "\n   \(isChinese ? "日期" : "Date"): \(dateFormatter.string(from: action.date))"
+                }
+                return result
+            }.joined(separator: "\n\n")
+        }
+        
+        // Build prioritized data summary for AI
         let readingBooksStr = data.readingHistory.isEmpty ? (isChinese ? "尚無閱讀記錄" : "No reading history yet") : data.readingHistory.joined(separator: ", ")
         let savedBooksStr = data.savedVerseBooks.isEmpty ? (isChinese ? "尚無保存經文" : "No saved verses yet") : data.savedVerseBooks.joined(separator: ", ")
         let labelsStr = data.savedVerseLabels.isEmpty ? (isChinese ? "無標籤" : "No labels") : data.savedVerseLabels.joined(separator: ", ")
-        let topicsStr = data.questionTopics.isEmpty ? (isChinese ? "尚無問題記錄" : "No questions asked yet") : data.questionTopics.joined(separator: ", ")
         let goalsStr = data.spiritualGoals.isEmpty ? (isChinese ? "尚未設定目標" : "No goals set") : data.spiritualGoals.joined(separator: ", ")
+        
+        // Format intentional actions by priority
+        let customPrayersStr = formatIntentionalActions(data.customPrayers, typeLabel: isChinese ? "自訂禱告" : "Custom Prayers", isChinese: isChinese)
+        let prayerTopicsStr = formatIntentionalActions(data.prayerTopics, typeLabel: isChinese ? "禱告主題" : "Prayer Topics", isChinese: isChinese)
+        let questionsStr = formatIntentionalActions(data.questions, typeLabel: isChinese ? "提問" : "Questions", isChinese: isChinese)
+        let savedNotesWithContentStr = formatIntentionalActions(data.savedNotesWithContent, typeLabel: isChinese ? "有筆記的保存經文" : "Saved Notes with Content", isChinese: isChinese)
+        let savedNotesWithoutContentStr = formatIntentionalActions(data.savedNotesWithoutContent, typeLabel: isChinese ? "無筆記的保存經文" : "Saved Notes (no content)", isChinese: isChinese)
+        
+        // Format recent 5 actions (most important for status generation)
+        let recentActionsStr = formatIntentionalActions(data.recentActions, typeLabel: isChinese ? "最近5個行動" : "Recent 5 Actions", isChinese: isChinese)
         
         let prompt: String
         if isChinese {
@@ -1450,47 +1627,70 @@ class AIService: AIServiceProtocol {
             - 靈命階段：\(data.spiritualMaturity)
             - 目標：\(goalsStr)
 
-            使用數據：
-            - 總共閱讀章數：\(data.stats.totalChaptersRead)
+            **【最重要】最近5個行動 - 這些最能反映用戶目前的屬靈狀態和關注焦點：**
+            \(recentActionsStr)
+
+            **請優先分析用戶的「有意識行為」，這些行為更能反映他們的屬靈狀態和成長：**
+
+            【優先級1 - 自訂禱告】（最重要，反映用戶的具體需要和與神的互動）
+            \(customPrayersStr)
+
+            【優先級2 - 禱告主題】（反映用戶的禱告模式）
+            \(prayerTopicsStr)
+
+            【優先級3 - 提問】（反映用戶的思考和探索）
+            \(questionsStr)
+
+            【優先級4 - 有筆記的保存經文】（反映用戶對經文的深入思考）
+            \(savedNotesWithContentStr)
+
+            【優先級5 - 無筆記的保存經文】（反映用戶感興趣的經文）
+            \(savedNotesWithoutContentStr)
+
+            【背景數據】（參考用，權重較低）
+            - 總共閱讀章數：\(data.stats.totalChaptersRead)（用戶可能只是快速瀏覽，不要過度解讀）
             - 保存經文數：\(data.stats.totalVersesSaved)
             - 連續簽到天數：\(data.currentStreak)
-            - 提問次數：\(data.stats.questionsAsked)
             - 總活躍天數：\(data.totalDaysActive)
             - 閱讀過的書卷：\(readingBooksStr)
             - 保存經文的書卷：\(savedBooksStr)
             - 使用的標籤：\(labelsStr)
-            - 問過的主題：\(topicsStr)
-            - 禱告主題：\(data.prayerTopics.isEmpty ? (isChinese ? "尚無禱告記錄" : "No prayer logs yet") : data.prayerTopics.joined(separator: ", "))
 
             請生成以下內容（以JSON格式回應）：
 
             {
-              "encouragement": "一段溫暖的鼓勵話語（50-80字），直接稱呼用戶，肯定他們的努力和成長",
-              "journeySummary": "簡短總結用戶的信仰歷程特點（30-50字）",
-              "readingPersonality": {
-                "title": "閱讀性格類型（如：智慧追尋者、詩篇愛好者、福音探索者等）",
-                "description": "解釋為什麼是這個類型（20-30字）",
-                "iconName": "SF Symbol 名稱（如 book.fill, heart.fill, lightbulb.fill, star.fill, flame.fill）"
+              "encouragement": "一段溫暖的鼓勵話語（50-80字），直接稱呼用戶，肯定他們的努力和成長。要特別關注他們的有意識行為（禱告、提問、筆記），而不是只讀章節數",
+              "journeySummary": "簡短總結用戶的信仰歷程特點（30-50字），重點分析他們與經文的互動模式和屬靈狀態",
+              "pathStatus": {
+                "title": "路上的你 - 必須基於最近5個行動中的實際經文內容和用戶行為，創造一個具體、有創意、令人印象深刻的狀態描述。例如：如果用戶最近保存了約翰福音3:16並寫了關於愛的筆記，可以說「在愛的真理中扎根」；如果最近為焦慮禱告並使用腓立比書4:6-7，可以說「在憂慮中尋求平安」。絕對不要用模糊的詞彙如「成長中」、「理解中」等。要具體引用經文主題或用戶關注的屬靈主題。",
+                "description": "解釋為什麼是這個狀態（20-30字），必須引用最近5個行動中的具體經文或主題，說明這些行動如何反映用戶目前的屬靈狀態",
+                "iconName": "SF Symbol 名稱（如 figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill）"
               },
               "recommendedVerse": {
                 "reference": "推薦經文出處（英文書名 章:節，如 Philippians 4:13）",
                 "text": "經文內容（繁體中文）",
-                "reason": "為什麼推薦這節經文（15-25字）"
+                "reason": "為什麼推薦這節經文（15-25字），要與用戶的屬靈狀態和需要相關"
               },
-              "funFacts": [
-                {"emoji": "📖", "fact": "有趣的閱讀習慣觀察（15-25字）"},
-                {"emoji": "⭐", "fact": "另一個有趣發現（15-25字）"}
+              "pathHighlights": [
+                {"emoji": "📖", "fact": "第一個路徑亮點（15-25字），基於用戶的有意識行為"},
+                {"emoji": "⭐", "fact": "第二個路徑亮點（15-25字），觀察他們的屬靈成長模式"},
+                {"emoji": "✨", "fact": "第三個路徑亮點（15-25字），鼓勵或洞察"}
               ],
-              "nextStep": "下一步建議（20-30字），具體且可執行"
+              "nextStep": "下一步建議（20-30字），具體且可執行，要與用戶目前的狀態相關"
             }
 
             **重要規則：**
             1. 語氣要溫暖、鼓勵、正面
-            2. 根據實際數據給出個人化內容，不要太籠統
-            3. 如果數據很少，要鼓勵用戶開始他們的旅程
-            4. 如果用戶有禱告記錄，可以在 funFacts 或 journeySummary 中提及他們的禱告主題模式（例如：經常為工作、家庭、健康等主題禱告）
-            5. recommendedVerse 的 reference 必須用英文書名
-            6. 只回傳JSON，不要其他文字
+            2. **pathStatus的title必須基於最近5個行動的實際內容**：仔細閱讀最近5個行動中的經文內容、筆記、禱告主題，創造一個具體、有創意、令人印象深刻的狀態描述
+            3. **絕對避免模糊詞彙**：不要用「成長中」、「理解中」、「學習中」等泛泛而談的詞。要具體引用經文主題、屬靈主題或用戶關注的焦點
+            4. **必須引用具體內容**：如果用戶最近保存了某節經文，pathStatus應該反映那節經文的主題；如果最近為某個主題禱告，應該反映那個主題；如果有筆記，應該反映筆記中的思考
+            5. 優先分析用戶的「有意識行為」（自訂禱告、提問、筆記），這些比單純閱讀更能反映屬靈狀態
+            6. 仔細閱讀用戶保存的經文內容和筆記，分析他們關注的主題和屬靈需要
+            7. 「pathStatus」要描述用戶「在路徑上的狀態」，而不是「性格類型」。要反映他們如何與神的話語互動，以及目前的屬靈狀態
+            8. 如果用戶有自訂禱告或筆記，要特別關注這些內容，分析他們關注的主題和需要
+            9. 閱讀章節數只是背景資訊，不要過度解讀（用戶可能只是快速瀏覽）
+            10. recommendedVerse 的 reference 必須用英文書名
+            11. 只回傳JSON，不要其他文字
             """
         } else {
             prompt = """
@@ -1501,47 +1701,70 @@ class AIService: AIServiceProtocol {
             - Stage: \(data.spiritualMaturity)
             - Goals: \(goalsStr)
 
-            Usage Data:
-            - Total chapters read: \(data.stats.totalChaptersRead)
+            **[MOST IMPORTANT] Recent 5 Actions - These best reflect user's current spiritual state and focus:**
+            \(recentActionsStr)
+
+            **IMPORTANT: Prioritize analyzing user's "intentional actions" - these better reflect their spiritual state and growth:**
+
+            [Priority 1 - Custom Prayers] (Most important - reflects user's specific needs and interaction with God)
+            \(customPrayersStr)
+
+            [Priority 2 - Prayer Topics] (Reflects user's prayer patterns)
+            \(prayerTopicsStr)
+
+            [Priority 3 - Questions] (Reflects user's thinking and exploration)
+            \(questionsStr)
+
+            [Priority 4 - Saved Notes with Content] (Reflects user's deep reflection on verses)
+            \(savedNotesWithContentStr)
+
+            [Priority 5 - Saved Notes without Content] (Reflects verses user is interested in)
+            \(savedNotesWithoutContentStr)
+
+            [Background Data] (Reference only, lower weight)
+            - Total chapters read: \(data.stats.totalChaptersRead) (User may have just skimmed, don't over-interpret)
             - Verses saved: \(data.stats.totalVersesSaved)
             - Current streak: \(data.currentStreak) days
-            - Questions asked: \(data.stats.questionsAsked)
             - Total active days: \(data.totalDaysActive)
             - Books read: \(readingBooksStr)
             - Books with saved verses: \(savedBooksStr)
             - Labels used: \(labelsStr)
-            - Topics asked about: \(topicsStr)
-            - Prayer topics: \(data.prayerTopics.isEmpty ? "No prayer logs yet" : data.prayerTopics.joined(separator: ", "))
 
             Please generate the following content (respond in JSON format):
 
             {
-              "encouragement": "A warm encouraging message (50-80 words), address the user directly, affirm their effort and growth",
-              "journeySummary": "Brief summary of the user's journey characteristics (20-40 words)",
-              "readingPersonality": {
-                "title": "Reading personality type (e.g., Wisdom Seeker, Psalm Lover, Gospel Explorer)",
-                "description": "Explain why this type fits (15-25 words)",
-                "iconName": "SF Symbol name (e.g., book.fill, heart.fill, lightbulb.fill, star.fill, flame.fill)"
+              "encouragement": "A warm encouraging message (50-80 words), address the user directly, affirm their effort and growth. Pay special attention to their intentional actions (prayers, questions, notes), not just chapter counts",
+              "journeySummary": "Brief summary of the user's journey characteristics (20-40 words), focus on their interaction patterns with Scripture and spiritual state",
+              "pathStatus": {
+                "title": "Along the Path - MUST be based on actual verse content and user actions from the recent 5 actions. Create a specific, creative, and impressive status description. For example: if user recently saved John 3:16 with a note about love, say 'Rooted in Love's Truth'; if recently prayed about anxiety using Philippians 4:6-7, say 'Seeking Peace in Worry'. NEVER use vague terms like 'growing', 'understanding', 'learning'. Must specifically reference verse themes or spiritual themes the user is focusing on.",
+                "description": "Explain why this status fits (20-30 words), MUST reference specific verses or themes from the recent 5 actions, explaining how these actions reflect user's current spiritual state",
+                "iconName": "SF Symbol name (e.g., figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill)"
               },
               "recommendedVerse": {
                 "reference": "Recommended verse reference (English book name Chapter:Verse, e.g., Philippians 4:13)",
                 "text": "The verse text in English",
-                "reason": "Why this verse is recommended (15-25 words)"
+                "reason": "Why this verse is recommended (15-25 words), should relate to user's spiritual state and needs"
               },
-              "funFacts": [
-                {"emoji": "📖", "fact": "An interesting observation about their reading habits (15-25 words)"},
-                {"emoji": "⭐", "fact": "Another interesting discovery (15-25 words)"}
+              "pathHighlights": [
+                {"emoji": "📖", "fact": "First path highlight (15-25 words), based on user's intentional actions"},
+                {"emoji": "⭐", "fact": "Second path highlight (15-25 words), observe their spiritual growth patterns"},
+                {"emoji": "✨", "fact": "Third path highlight (15-25 words), encouragement or insight"}
               ],
-              "nextStep": "Suggested next step (15-25 words), specific and actionable"
+              "nextStep": "Suggested next step (15-25 words), specific and actionable, should relate to user's current state"
             }
 
             **Important Rules:**
             1. Tone should be warm, encouraging, and positive
-            2. Provide personalized content based on actual data, avoid being too generic
-            3. If data is sparse, encourage user to begin their journey
-            4. If user has prayer logs, you can mention their prayer topic patterns in funFacts or journeySummary (e.g., frequently praying for work, family, health, etc.)
-            5. recommendedVerse reference must use English book names
-            6. Return only JSON, no other text
+            2. **pathStatus title MUST be based on actual content from recent 5 actions**: Carefully read the verse content, notes, and prayer topics from the recent 5 actions, create a specific, creative, and impressive status description
+            3. **Absolutely avoid vague terms**: Don't use generic phrases like "growing", "understanding", "learning". Must specifically reference verse themes, spiritual themes, or focus areas the user is engaging with
+            4. **Must reference specific content**: If user recently saved a verse, pathStatus should reflect that verse's theme; if recently prayed about a topic, should reflect that topic; if has notes, should reflect the thoughts in those notes
+            5. Prioritize analyzing user's "intentional actions" (custom prayers, questions, notes) - these better reflect spiritual state than just reading
+            6. Carefully read the verse content and notes user saved, analyze themes they're focusing on and spiritual needs
+            7. "pathStatus" should describe user's "status along the path", NOT a "personality type". Reflect how they interact with God's Word and their current spiritual state
+            8. If user has custom prayers or notes, pay special attention to these contents, analyze themes and needs they're focusing on
+            9. Chapter reading count is just background info, don't over-interpret (user may have just skimmed)
+            10. recommendedVerse reference must use English book names
+            11. Return only JSON, no other text
             """
         }
         
@@ -1597,13 +1820,20 @@ class AIService: AIServiceProtocol {
         let journeySummary = analysisJson["journeySummary"] as? String ?? ""
         let nextStep = analysisJson["nextStep"] as? String ?? ""
         
-        // Parse reading personality
-        var readingPersonality = ReadingPersonality(title: "Explorer", description: "Beginning your journey", iconName: "figure.walk")
-        if let personalityJson = analysisJson["readingPersonality"] as? [String: Any] {
-            readingPersonality = ReadingPersonality(
-                title: personalityJson["title"] as? String ?? "Explorer",
+        // Parse path status (formerly readingPersonality)
+        var pathStatus = PathStatus(title: "Along the Path", description: "Beginning your journey", iconName: "figure.walk")
+        if let statusJson = analysisJson["pathStatus"] as? [String: Any] {
+            pathStatus = PathStatus(
+                title: statusJson["title"] as? String ?? "Along the Path",
+                description: statusJson["description"] as? String ?? "",
+                iconName: statusJson["iconName"] as? String ?? "figure.walk"
+            )
+        } else if let personalityJson = analysisJson["readingPersonality"] as? [String: Any] {
+            // Fallback for old format
+            pathStatus = PathStatus(
+                title: personalityJson["title"] as? String ?? "Along the Path",
                 description: personalityJson["description"] as? String ?? "",
-                iconName: personalityJson["iconName"] as? String ?? "book.fill"
+                iconName: personalityJson["iconName"] as? String ?? "figure.walk"
             )
         }
         
@@ -1617,11 +1847,19 @@ class AIService: AIServiceProtocol {
             )
         }
         
-        // Parse fun facts
-        var funFacts: [FunFact] = []
-        if let factsJson = analysisJson["funFacts"] as? [[String: Any]] {
-            funFacts = factsJson.map { factJson in
-                FunFact(
+        // Parse path highlights (formerly funFacts)
+        var pathHighlights: [PathHighlight] = []
+        if let highlightsJson = analysisJson["pathHighlights"] as? [[String: Any]] {
+            pathHighlights = highlightsJson.map { highlightJson in
+                PathHighlight(
+                    emoji: highlightJson["emoji"] as? String ?? "✨",
+                    fact: highlightJson["fact"] as? String ?? ""
+                )
+            }
+        } else if let factsJson = analysisJson["funFacts"] as? [[String: Any]] {
+            // Fallback for old format
+            pathHighlights = factsJson.map { factJson in
+                PathHighlight(
                     emoji: factJson["emoji"] as? String ?? "✨",
                     fact: factJson["fact"] as? String ?? ""
                 )
@@ -1631,9 +1869,9 @@ class AIService: AIServiceProtocol {
         return AIJourneyAnalysis(
             encouragement: encouragement,
             journeySummary: journeySummary,
-            readingPersonality: readingPersonality,
+            pathStatus: pathStatus,
             recommendedVerse: recommendedVerse,
-            funFacts: funFacts,
+            pathHighlights: pathHighlights,
             nextStep: nextStep
         )
     }

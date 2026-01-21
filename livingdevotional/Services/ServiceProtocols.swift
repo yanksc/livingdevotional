@@ -27,6 +27,7 @@ protocol AIServiceProtocol {
     func searchBible(query: String, language: Language) async throws -> [SearchResult]
     func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage) async throws -> DailyVerse
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis
+    func chatGeneral(appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
 }
 
 // MARK: - User Service Protocol
@@ -158,9 +159,9 @@ struct AIJourneyAnalysis: Codable, Identifiable {
     let id: String
     let encouragement: String
     let journeySummary: String
-    let readingPersonality: ReadingPersonality
+    let pathStatus: PathStatus
     let recommendedVerse: RecommendedVerse?
-    let funFacts: [FunFact]
+    let pathHighlights: [PathHighlight]
     let nextStep: String
     let generatedAt: Date
     
@@ -168,24 +169,24 @@ struct AIJourneyAnalysis: Codable, Identifiable {
         id: String = UUID().uuidString,
         encouragement: String,
         journeySummary: String,
-        readingPersonality: ReadingPersonality,
+        pathStatus: PathStatus,
         recommendedVerse: RecommendedVerse?,
-        funFacts: [FunFact],
+        pathHighlights: [PathHighlight],
         nextStep: String,
         generatedAt: Date = Date()
     ) {
         self.id = id
         self.encouragement = encouragement
         self.journeySummary = journeySummary
-        self.readingPersonality = readingPersonality
+        self.pathStatus = pathStatus
         self.recommendedVerse = recommendedVerse
-        self.funFacts = funFacts
+        self.pathHighlights = pathHighlights
         self.nextStep = nextStep
         self.generatedAt = generatedAt
     }
 }
 
-struct ReadingPersonality: Codable {
+struct PathStatus: Codable {
     let title: String
     let description: String
     let iconName: String
@@ -209,7 +210,7 @@ struct RecommendedVerse: Codable {
     }
 }
 
-struct FunFact: Codable, Identifiable {
+struct PathHighlight: Codable, Identifiable {
     let id: String
     let emoji: String
     let fact: String
@@ -224,16 +225,44 @@ struct FunFact: Codable, Identifiable {
 // Input data structure for AI analysis
 struct JourneyDataForAI {
     let stats: JourneyStats
-    let readingHistory: [String] // Book names read
+    let readingHistory: [String] // Book names read (low priority)
+    
+    // Priority 1: Custom prayers with verse context
+    let customPrayers: [IntentionalAction]
+    
+    // Priority 2: Prayer topics with verse context
+    let prayerTopics: [IntentionalAction]
+    
+    // Priority 3: Questions with verse context
+    let questions: [IntentionalAction]
+    
+    // Priority 4: Saved notes with note content
+    let savedNotesWithContent: [IntentionalAction]
+    
+    // Priority 5: Saved notes without content (just verse reference)
+    let savedNotesWithoutContent: [IntentionalAction]
+    
+    // Recent 5 actions (most important for status generation)
+    let recentActions: [IntentionalAction]
+    
+    // Additional metadata
     let savedVerseBooks: [String] // Books where verses were saved
     let savedVerseLabels: [String] // Labels used
-    let questionTopics: [String] // Topics from Q&A
-    let prayerTopics: [String] // Topics from prayer logs
     let currentStreak: Int
     let totalDaysActive: Int
     let userName: String
     let spiritualMaturity: String
     let spiritualGoals: [String]
+}
+
+// Represents an intentional user action with verse context
+struct IntentionalAction: Codable {
+    let type: String // "customPrayer", "prayerTopic", "question", "savedNote"
+    let verseReference: String // e.g., "John 3:16"
+    let verseText: String // Actual verse text
+    let content: String? // Custom topic, question text, or note content
+    let metadata: String? // Additional context like emotional need, labels, etc.
+    let date: Date
 }
 
 

@@ -139,17 +139,20 @@ class NotificationContentGenerator {
         content.sound = .default
         
         // Priority 1: Recent chat sessions (within 7 days)
-        if let recentSession = chatStore.sessions.first {
+        if let recentSession = chatStore.sessions.first,
+           let book = recentSession.book,
+           let chapter = recentSession.chapter,
+           let verseNumber = recentSession.verseNumber {
             let daysSince = Calendar.current.dateComponents([.day], from: recentSession.updatedAt, to: Date()).day ?? 0
             if daysSince <= 7 {
-                let localizedBook = BibleData.localizedBookName(recentSession.book, language: settingsStore.primaryLanguage)
+                let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
                 
                 if isChinese {
                     content.title = "繼續您的對話"
-                    content.body = "還在思考 \(localizedBook) \(recentSession.chapter):\(recentSession.verseNumber) 嗎？問另一個問題"
+                    content.body = "還在思考 \(localizedBook) \(chapter):\(verseNumber) 嗎？問另一個問題"
                 } else {
                     content.title = "Continue Your Conversation"
-                    content.body = "Still thinking about \(localizedBook) \(recentSession.chapter):\(recentSession.verseNumber)? Ask another question"
+                    content.body = "Still thinking about \(localizedBook) \(chapter):\(verseNumber)? Ask another question"
                 }
                 return content
             }

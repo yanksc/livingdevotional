@@ -6,8 +6,12 @@ import SwiftUI
 struct JourneyView: View {
     @StateObject private var viewModel = JourneyViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
-    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var progressStore = ProgressStore.shared
+    @ObservedObject private var noteStore = NoteStore.shared
+    @EnvironmentObject var router: AppRouter
     @State private var showTimeline = false
+    @State private var showRecentHistory = false
+    @State private var showMyNotes = false
     
     var body: some View {
         NavigationStack {
@@ -24,8 +28,8 @@ struct JourneyView: View {
                             // Hero Encouragement
                             EncouragementHeroView(encouragement: analysis.encouragement)
                             
-                            // Reading Personality Card
-                            PersonalityCardView(personality: analysis.readingPersonality)
+                            // Path Status Card
+                            PathStatusCardView(pathStatus: analysis.pathStatus)
                             
                             // Stats Row
                             if let stats = viewModel.stats {
@@ -42,9 +46,9 @@ struct JourneyView: View {
                                 RecommendedVerseView(verse: verse)
                             }
                             
-                            // Fun Facts
-                            if !analysis.funFacts.isEmpty {
-                                FunFactsView(facts: analysis.funFacts)
+                            // Path Highlights
+                            if !analysis.pathHighlights.isEmpty {
+                                PathHighlightsView(highlights: analysis.pathHighlights)
                             }
                             
                             // Next Step CTA
@@ -65,11 +69,34 @@ struct JourneyView: View {
                                 JourneyStatsView(stats: stats)
                             }
                         } else {
-                            // Initial loading state
+                            // No analysis data - show start view
+                            JourneyStartView {
+                                Task {
+                                    await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
+                                }
+                            }
+                            
+                            // Show basic stats if available
                             if let stats = viewModel.stats {
                                 JourneyStatsView(stats: stats)
                             }
                         }
+                        
+                        // Recent History Section (Collapsible)
+                        RecentHistorySectionView(
+                            historyItems: progressStore.getRecentHistory(limit: 5),
+                            isExpanded: $showRecentHistory,
+                            settingsStore: settingsStore,
+                            router: router
+                        )
+                        
+                        // My Notes Section (Collapsible)
+                        MyNotesSectionView(
+                            savedVerses: Array(noteStore.savedVerses.prefix(5)),
+                            isExpanded: $showMyNotes,
+                            settingsStore: settingsStore,
+                            router: router
+                        )
                         
                         // Timeline Section (Collapsible)
                         TimelineSectionView(
@@ -83,7 +110,7 @@ struct JourneyView: View {
                     .padding()
                 }
             }
-            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "我的旅程" : "My Journey")
+            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "路徑" : "Path")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -98,13 +125,6 @@ struct JourneyView: View {
                             .foregroundColor(AppTheme.accentColor)
                     }
                     .disabled(viewModel.isLoadingAI)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(settingsStore.appLanguage == .chineseTraditional ? "完成" : "Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.accentColor)
                 }
             }
             .onAppear {
@@ -207,43 +227,55 @@ struct EncouragementHeroView: View {
     }
 }
 
-// MARK: - Personality Card View
+// MARK: - Path Status Card View
 
-struct PersonalityCardView: View {
-    let personality: ReadingPersonality
+struct PathStatusCardView: View {
+    let pathStatus: PathStatus
+    @ObservedObject private var settingsStore = SettingsStore.shared
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [AppTheme.accentColor, AppTheme.primaryBlue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 56, height: 56)
-                
-                Image(systemName: personality.iconName)
-                    .font(.system(size: 24))
-                    .foregroundColor(.white)
-            }
-            
-            // Text
-            VStack(alignment: .leading, spacing: 4) {
-                Text(personality.title)
-                    .font(.headline)
-                    .foregroundColor(AppTheme.primaryText)
-                
-                Text(personality.description)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "路上的你" : "Along the Path")
                     .font(.caption)
+                    .fontWeight(.semibold)
                     .foregroundColor(AppTheme.secondaryText)
-                    .lineLimit(2)
+                    .textCase(.uppercase)
+                Spacer()
             }
             
-            Spacer()
+            HStack(spacing: 16) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [AppTheme.accentColor, AppTheme.primaryBlue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                    
+                    Image(systemName: pathStatus.iconName)
+                        .font(.system(size: 24))
+                        .foregroundColor(.white)
+                }
+                
+                // Text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(pathStatus.title)
+                        .font(.headline)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Text(pathStatus.description)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+            }
         }
         .padding(16)
         .background(AppTheme.cardGradient)
@@ -334,27 +366,27 @@ struct RecommendedVerseView: View {
     }
 }
 
-// MARK: - Fun Facts View
+// MARK: - Path Highlights View
 
-struct FunFactsView: View {
-    let facts: [FunFact]
+struct PathHighlightsView: View {
+    let highlights: [PathHighlight]
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(settingsStore.appLanguage == .chineseTraditional ? "有趣發現" : "Fun Facts")
+            Text(settingsStore.appLanguage == .chineseTraditional ? "路徑亮點" : "Path Highlights")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(AppTheme.secondaryText)
                 .textCase(.uppercase)
             
             VStack(spacing: 10) {
-                ForEach(facts) { fact in
+                ForEach(highlights) { highlight in
                     HStack(alignment: .top, spacing: 12) {
-                        Text(fact.emoji)
+                        Text(highlight.emoji)
                             .font(.title3)
                         
-                        Text(fact.fact)
+                        Text(highlight.fact)
                             .font(.subheadline)
                             .foregroundColor(AppTheme.primaryText)
                             .lineSpacing(2)
@@ -511,6 +543,59 @@ struct AIErrorView: View {
     }
 }
 
+// MARK: - Journey Start View
+
+struct JourneyStartView: View {
+    let onStart: () -> Void
+    @ObservedObject private var settingsStore = SettingsStore.shared
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(AppTheme.accentColor.opacity(0.1))
+                    .frame(width: 100, height: 100)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 48))
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            
+            // Title
+            Text(settingsStore.appLanguage == .chineseTraditional ? "開始您的旅程" : "Start Your Journey")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(AppTheme.primaryText)
+            
+            // Description
+            Text(settingsStore.appLanguage == .chineseTraditional ? "讓我們分析您的閱讀歷程，為您提供個人化的屬靈洞察" : "Let's analyze your reading journey and provide personalized spiritual insights")
+                .font(.subheadline)
+                .foregroundColor(AppTheme.secondaryText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            // Start Button
+            Button(action: onStart) {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "開始分析" : "Start Analysis")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 14)
+                    .background(AppTheme.buttonGradient)
+                    .cornerRadius(12)
+                    .shadow(color: AppTheme.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity)
+        .background(AppTheme.cardGradient)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+    }
+}
+
 // MARK: - Stats View
 
 struct JourneyStatsView: View {
@@ -564,5 +649,322 @@ struct StatBox: View {
         .background(AppTheme.cardGradient)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Recent History Section View
+
+struct RecentHistorySectionView: View {
+    let historyItems: [ReadingHistoryItem]
+    @Binding var isExpanded: Bool
+    @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var router: AppRouter
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Header
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundColor(AppTheme.accentColor)
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "最近閱讀" : "Recent History")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Spacer()
+                    
+                    Text("\(historyItems.count)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.sectionBackground)
+                        .cornerRadius(8)
+                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+            }
+            
+            // Content
+            if isExpanded {
+                if historyItems.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "book.closed")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "開始閱讀聖經！" : "Start reading!")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                    .padding(.vertical, 20)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(historyItems) { item in
+                            RecentHistoryRow(
+                                item: item,
+                                settingsStore: settingsStore,
+                                router: router
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(AppTheme.cardGradient)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+}
+
+// MARK: - Recent History Row
+
+struct RecentHistoryRow: View {
+    let item: ReadingHistoryItem
+    @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var router: AppRouter
+    
+    var body: some View {
+        Button(action: {
+            navigateToChapter()
+        }) {
+            HStack(spacing: 12) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.accentColor.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: "book.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+                
+                // Book and chapter info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizedBookChapter)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Text(formatTime(item.timestamp))
+                        .font(.caption2)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+            }
+            .padding(12)
+            .background(AppTheme.sectionBackground.opacity(0.3))
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var localizedBookChapter: String {
+        let localizedBook = BibleData.localizedBookName(item.book, language: settingsStore.primaryLanguage)
+        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+        if chapterPrefix == "第" {
+            return "\(localizedBook) \(chapterPrefix)\(item.chapter)章"
+        } else {
+            return "\(localizedBook) \(chapterPrefix) \(item.chapter)"
+        }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let itemDate = calendar.startOfDay(for: date)
+        
+        let isChinese = settingsStore.appLanguage == .chineseTraditional
+        
+        if calendar.isDateInToday(date) {
+            let formatter = DateFormatter()
+            formatter.timeStyle = .short
+            formatter.locale = settingsStore.appLanguage.resolvedLocale()
+            return isChinese ? "今天 \(formatter.string(from: date))" : "Today \(formatter.string(from: date))"
+        } else if calendar.isDateInYesterday(date) {
+            return isChinese ? "昨天" : "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.locale = settingsStore.appLanguage.resolvedLocale()
+            return formatter.string(from: date)
+        }
+    }
+    
+    private func navigateToChapter() {
+        if let book = BibleData.book(named: item.book) {
+            router.navigateToReading(book: book, chapter: item.chapter, verse: nil)
+        }
+    }
+}
+
+// MARK: - My Notes Section View
+
+struct MyNotesSectionView: View {
+    let savedVerses: [SavedVerse]
+    @Binding var isExpanded: Bool
+    @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var router: AppRouter
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Header
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "book.fill")
+                        .foregroundColor(AppTheme.accentColor)
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "我的筆記" : "My Notes")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Spacer()
+                    
+                    Text("\(savedVerses.count)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.sectionBackground)
+                        .cornerRadius(8)
+                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+            }
+            
+            // Content
+            if isExpanded {
+                if savedVerses.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "bookmark")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "保存經文以在此查看！" : "Save verses to see them here!")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                    .padding(.vertical, 20)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(savedVerses, id: \.id) { verse in
+                            SavedNoteCompactRow(
+                                savedVerse: verse,
+                                settingsStore: settingsStore,
+                                router: router
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(AppTheme.cardGradient)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+}
+
+// MARK: - Saved Note Compact Row
+
+struct SavedNoteCompactRow: View {
+    let savedVerse: SavedVerse
+    @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var router: AppRouter
+    
+    var body: some View {
+        Button(action: {
+            navigateToVerse()
+        }) {
+            HStack(spacing: 12) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.accentColor.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+                
+                // Verse info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizedVerseReference)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    if !savedVerse.content.isEmpty {
+                        Text(savedVerse.content)
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                            .lineLimit(1)
+                    } else {
+                        Text(formatDate(savedVerse.timestamp))
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                }
+                
+                Spacer()
+                
+                // Labels indicator
+                if !savedVerse.labels.isEmpty {
+                    Text("\(savedVerse.labels.count)")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.accentColor.opacity(0.15))
+                        .cornerRadius(4)
+                }
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+            }
+            .padding(12)
+            .background(AppTheme.sectionBackground.opacity(0.3))
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var localizedVerseReference: String {
+        let localizedBook = BibleData.localizedBookName(savedVerse.book, language: settingsStore.primaryLanguage)
+        return "\(localizedBook) \(savedVerse.chapter):\(savedVerse.verse)"
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.locale = settingsStore.appLanguage.resolvedLocale()
+        return formatter.string(from: date)
+    }
+    
+    private func navigateToVerse() {
+        if let book = BibleData.book(named: savedVerse.book) {
+            router.navigateToReading(book: book, chapter: savedVerse.chapter, verse: savedVerse.verse)
+        }
     }
 }

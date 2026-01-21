@@ -118,6 +118,28 @@ class ProgressStore: ObservableObject {
     func getRecentHistory(limit: Int = 3) -> [ReadingHistoryItem] {
         return Array(readingHistory.prefix(limit))
     }
+    
+    // MARK: - Today's Reading Stats
+    
+    /// Get count of unique chapters read today
+    func getTodayReadingCount() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return readingHistory.filter { item in
+            calendar.isDate(item.timestamp, inSameDayAs: today)
+        }.count
+    }
+    
+    /// Get all readings from today
+    func getTodayReadings() -> [ReadingHistoryItem] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return readingHistory.filter { item in
+            calendar.isDate(item.timestamp, inSameDayAs: today)
+        }
+    }
 }
 
 

@@ -53,7 +53,7 @@ struct JourneyCard: View {
                 
                 // Content based on AI analysis or fallback
                 if let analysis = viewModel.aiAnalysis {
-                    // Show AI personality type as teaser
+                    // Show AI path status as teaser
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -66,13 +66,13 @@ struct JourneyCard: View {
                                 )
                                 .frame(width: 44, height: 44)
                             
-                            Image(systemName: analysis.readingPersonality.iconName)
+                            Image(systemName: analysis.pathStatus.iconName)
                                 .font(.system(size: 18))
                                 .foregroundColor(AppTheme.accentColor)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(analysis.readingPersonality.title)
+                            Text(analysis.pathStatus.title)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(AppTheme.primaryText)

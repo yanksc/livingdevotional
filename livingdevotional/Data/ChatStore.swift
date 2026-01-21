@@ -5,10 +5,10 @@ import Combine
 
 struct ChatSession: Codable, Identifiable {
     let id: String
-    let book: String
-    let chapter: Int
-    let verseNumber: Int
-    let verseText: String
+    let book: String?
+    let chapter: Int?
+    let verseNumber: Int?
+    let verseText: String?
     var messages: [ChatMessage]
     var updatedAt: Date
     
@@ -17,10 +17,17 @@ struct ChatSession: Codable, Identifiable {
         if let firstQuestion = messages.first(where: { $0.role == .user })?.content {
             return firstQuestion
         }
-        return "Conversation on \(book) \(chapter):\(verseNumber)"
+        if let book = book, let chapter = chapter, let verseNumber = verseNumber {
+            return "Conversation on \(book) \(chapter):\(verseNumber)"
+        }
+        return "General Conversation"
     }
     
-    init(id: String = UUID().uuidString, book: String, chapter: Int, verseNumber: Int, verseText: String, messages: [ChatMessage] = []) {
+    var isGeneralChat: Bool {
+        return book == nil && chapter == nil && verseNumber == nil
+    }
+    
+    init(id: String = UUID().uuidString, book: String? = nil, chapter: Int? = nil, verseNumber: Int? = nil, verseText: String? = nil, messages: [ChatMessage] = []) {
         self.id = id
         self.book = book
         self.chapter = chapter
@@ -52,7 +59,7 @@ class ChatStore: ObservableObject {
     
     // MARK: - CRUD Operations
     
-    func createSession(book: String, chapter: Int, verseNumber: Int, verseText: String) -> ChatSession {
+    func createSession(book: String? = nil, chapter: Int? = nil, verseNumber: Int? = nil, verseText: String? = nil) -> ChatSession {
         let newSession = ChatSession(
             book: book,
             chapter: chapter,

@@ -28,10 +28,13 @@ struct ChatHistoryView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             // Navigate to reading view and open chat with this session
-                            if let book = BibleData.book(named: session.book) {
+                            if let bookName = session.book,
+                               let chapter = session.chapter,
+                               let verseNumber = session.verseNumber,
+                               let book = BibleData.book(named: bookName) {
                                 // Set the pending chat session ID in the router's bibleViewModel
                                 // We'll need to access it through the environment
-                                router.navigateToReading(book: book, chapter: session.chapter, verse: session.verseNumber)
+                                router.navigateToReading(book: book, chapter: chapter, verse: verseNumber)
                                 // The session ID will be passed via a notification or environment
                                 // For now, we'll use a simpler approach: store it in a shared location
                                 // and ReadingView will check for it
@@ -82,7 +85,7 @@ struct ChatHistoryRow: View {
             }
             
             // Show verse text
-            Text(session.verseText)
+            Text(session.verseText ?? "")
                 .font(.caption)
                 .foregroundColor(AppTheme.secondaryText)
                 .lineLimit(1)
@@ -124,7 +127,12 @@ struct ChatHistoryRow: View {
     }
     
     private var localizedReference: String {
-        let localizedBook = BibleData.localizedBookName(session.book, language: settingsStore.primaryLanguage)
-        return "\(localizedBook) \(session.chapter):\(session.verseNumber)"
+        guard let book = session.book,
+              let chapter = session.chapter,
+              let verseNumber = session.verseNumber else {
+            return "General Conversation"
+        }
+        let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
+        return "\(localizedBook) \(chapter):\(verseNumber)"
     }
 }

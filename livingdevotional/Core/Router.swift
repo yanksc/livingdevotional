@@ -3,9 +3,11 @@
 import SwiftUI
 
 enum AppRoute: Hashable {
-    case home
+    case explore
     case bible
     case reading(book: BibleBook, chapter: Int, verse: Int? = nil)
+    case home
+    case journey
     case settings
     case profile
     case login
@@ -13,14 +15,14 @@ enum AppRoute: Hashable {
 }
 
 class AppRouter: ObservableObject {
-    @Published var currentRoute: AppRoute = .bible
+    @Published var currentRoute: AppRoute = .home
     @Published var navigationPath = NavigationPath()
-    @Published var selectedTab: Int = 1 {
+    @Published var selectedTab: Int = 2 {
         didSet {
             // Update route based on selected tab
             // But preserve .reading routes when switching to Bible tab
             switch selectedTab {
-            case 0: currentRoute = .home
+            case 0: currentRoute = .explore
             case 1:
                 // Only set to .bible if not already a .reading route
                 if case .reading = currentRoute {
@@ -28,8 +30,10 @@ class AppRouter: ObservableObject {
                 } else {
                     currentRoute = .bible
                 }
-            case 2: currentRoute = .settings
-            default: currentRoute = .bible
+            case 2: currentRoute = .home
+            case 3: currentRoute = .journey
+            case 4: currentRoute = .settings
+            default: currentRoute = .home
             }
         }
     }

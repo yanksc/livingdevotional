@@ -72,7 +72,7 @@ struct SavedNotesListView: View {
                 .foregroundColor(AppTheme.secondaryText)
             
             Text(selectedLabel == nil ? (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有保存的經文" : "No saved verses") : (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有此標籤的經文" : "No verses with this label"))
-                .font(AppFont.serif.font(size: 18, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold, design: .serif))
                 .foregroundColor(AppTheme.secondaryText)
             
             Text(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "閱讀時保存經文即可在此查看" : "Save verses while reading to see them here")
@@ -120,7 +120,7 @@ struct SavedNoteRow: View {
                 // Verse reference (localized based on primary language)
             HStack {
                     Text(localizedVerseReference)
-                    .font(AppFont.serif.font(size: 18, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold, design: .serif))
                     .foregroundColor(AppTheme.accentColor)
                 
                 Spacer()
@@ -275,7 +275,7 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(AppFont.serif.font(size: 14, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular, design: .serif))
                 .foregroundColor(isSelected ? .white : AppTheme.accentColor)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
