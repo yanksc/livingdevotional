@@ -392,6 +392,59 @@ struct SettingsView: View {
                             }
                         )
                         
+                        if !profileStore.profile.spiritualGoals.isEmpty || !profileStore.profile.lifeFocusAreas.isEmpty {
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            if !profileStore.profile.spiritualGoals.isEmpty {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "target")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(AppTheme.accentColor)
+                                        .frame(width: 24)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(settingsStore.appLanguage == .chineseTraditional ? "目標" : "Goals")
+                                            .font(.caption)
+                                            .foregroundColor(AppTheme.secondaryText)
+                                        Text(profileStore.profile.spiritualGoals.prefix(2).map { 
+                                            settingsStore.appLanguage == .chineseTraditional ? $0.displayNameChinese : $0.displayName 
+                                        }.joined(separator: ", ") + (profileStore.profile.spiritualGoals.count > 2 ? "..." : ""))
+                                            .font(.system(size: 14))
+                                            .foregroundColor(AppTheme.primaryText)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                            }
+                            
+                            if !profileStore.profile.lifeFocusAreas.isEmpty {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "heart")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(AppTheme.accentColor)
+                                        .frame(width: 24)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(settingsStore.appLanguage == .chineseTraditional ? "生活焦點" : "Life Focus")
+                                            .font(.caption)
+                                            .foregroundColor(AppTheme.secondaryText)
+                                        Text(profileStore.profile.lifeFocusAreas.prefix(2).map { 
+                                            settingsStore.appLanguage == .chineseTraditional ? $0.displayNameChinese : $0.displayName 
+                                        }.joined(separator: ", ") + (profileStore.profile.lifeFocusAreas.count > 2 ? "..." : ""))
+                                            .font(.system(size: 14))
+                                            .foregroundColor(AppTheme.primaryText)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                            }
+                        }
+                        
                         Divider()
                             .padding(.horizontal, 20)
                         

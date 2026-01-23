@@ -230,6 +230,184 @@ enum AICompanionStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Life Focus Area
+
+enum LifeFocusArea: String, Codable, CaseIterable, Identifiable {
+    case work = "work"
+    case family = "family"
+    case relationships = "relationships"
+    case health = "health"
+    case finances = "finances"
+    case personalGrowth = "personalGrowth"
+    case servingOthers = "servingOthers"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .work: return "Work"
+        case .family: return "Family"
+        case .relationships: return "Relationships"
+        case .health: return "Health"
+        case .finances: return "Finances"
+        case .personalGrowth: return "Personal growth"
+        case .servingOthers: return "Serving others"
+        }
+    }
+    
+    var displayNameChinese: String {
+        switch self {
+        case .work: return "工作"
+        case .family: return "家庭"
+        case .relationships: return "關係"
+        case .health: return "健康"
+        case .finances: return "財務"
+        case .personalGrowth: return "個人成長"
+        case .servingOthers: return "服務他人"
+        }
+    }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .work: return "工作"
+            case .family: return "家庭"
+            case .relationships: return "关系"
+            case .health: return "健康"
+            case .finances: return "财务"
+            case .personalGrowth: return "个人成长"
+            case .servingOthers: return "服务他人"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
+}
+
+// MARK: - Daily Time Commitment
+
+enum DailyTimeCommitment: String, Codable, CaseIterable, Identifiable {
+    case fewMinutes = "fewMinutes"
+    case tenMinutes = "tenMinutes"
+    case twentyMinutes = "twentyMinutes"
+    case thirtyPlus = "thirtyPlus"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .fewMinutes: return "Just a few minutes"
+        case .tenMinutes: return "About 10 minutes"
+        case .twentyMinutes: return "Around 20 minutes"
+        case .thirtyPlus: return "30 minutes or more"
+        }
+    }
+    
+    var displayNameChinese: String {
+        switch self {
+        case .fewMinutes: return "幾分鐘"
+        case .tenMinutes: return "約10分鐘"
+        case .twentyMinutes: return "約20分鐘"
+        case .thirtyPlus: return "30分鐘以上"
+        }
+    }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .fewMinutes: return "几分钟"
+            case .tenMinutes: return "约10分钟"
+            case .twentyMinutes: return "约20分钟"
+            case .thirtyPlus: return "30分钟以上"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
+}
+
+// MARK: - Explanation Depth
+
+enum ExplanationDepth: String, Codable, CaseIterable, Identifiable {
+    case simple = "simple"
+    case someBackground = "someBackground"
+    case deeper = "deeper"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .simple: return "Keep it simple"
+        case .someBackground: return "Some background"
+        case .deeper: return "Go deeper"
+        }
+    }
+    
+    var displayDescription: String {
+        switch self {
+        case .simple: return "Everyday language, easy to digest"
+        case .someBackground: return "A bit of context when helpful"
+        case .deeper: return "More historical and scholarly detail"
+        }
+    }
+    
+    var displayNameChinese: String {
+        switch self {
+        case .simple: return "保持簡單"
+        case .someBackground: return "一些背景"
+        case .deeper: return "深入探索"
+        }
+    }
+    
+    var displayDescriptionChinese: String {
+        switch self {
+        case .simple: return "日常語言，易於理解"
+        case .someBackground: return "需要時提供一些背景"
+        case .deeper: return "更多歷史和學術細節"
+        }
+    }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .simple: return "保持简单"
+            case .someBackground: return "一些背景"
+            case .deeper: return "深入探索"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        default:
+            return displayName
+        }
+    }
+    
+    func localizedDescription(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .simple: return "日常语言，易于理解"
+            case .someBackground: return "需要时提供一些背景"
+            case .deeper: return "更多历史和学术细节"
+            }
+        case "zh-Hant":
+            return displayDescriptionChinese
+        default:
+            return displayDescription
+        }
+    }
+}
+
 // MARK: - User Profile
 
 struct UserProfile: Codable {
@@ -238,18 +416,27 @@ struct UserProfile: Codable {
     var spiritualGoals: [SpiritualGoal]
     var tradition: ChristianTradition
     var companionStyle: AICompanionStyle
+    var lifeFocusAreas: [LifeFocusArea]
+    var dailyTimeCommitment: DailyTimeCommitment
+    var explanationDepth: ExplanationDepth
     
     init(
         name: String = "",
         spiritualMaturity: SpiritualMaturity = .growing,
         spiritualGoals: [SpiritualGoal] = [],
         tradition: ChristianTradition = .nondenominational,
-        companionStyle: AICompanionStyle = .mentor
+        companionStyle: AICompanionStyle = .mentor,
+        lifeFocusAreas: [LifeFocusArea] = [],
+        dailyTimeCommitment: DailyTimeCommitment = .tenMinutes,
+        explanationDepth: ExplanationDepth = .someBackground
     ) {
         self.name = name
         self.spiritualMaturity = spiritualMaturity
         self.spiritualGoals = spiritualGoals
         self.tradition = tradition
         self.companionStyle = companionStyle
+        self.lifeFocusAreas = lifeFocusAreas
+        self.dailyTimeCommitment = dailyTimeCommitment
+        self.explanationDepth = explanationDepth
     }
 }
