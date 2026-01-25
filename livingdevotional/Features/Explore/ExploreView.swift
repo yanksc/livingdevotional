@@ -40,11 +40,6 @@ struct ExploreView: View {
                                 .foregroundColor(AppTheme.accentColor)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .opacity(largeTitleOpacity)
-                                .padding(.bottom, 12)
-                            
-                            // Horizontal divider below title
-                            Divider()
-                                .background(AppTheme.primaryText.opacity(0.2))
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
@@ -112,11 +107,21 @@ struct ExploreView: View {
             
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("Pray"), icon: "hands.sparkles.fill", color: AppTheme.accentColor) {
+                    quickActionButtonWithImage(
+                        title: settingsStore.appLanguage.localizedString("Pray"),
+                        icon: "hands.sparkles.fill",
+                        backgroundImage: "PrayButtonBackground",
+                        fallbackColor: AppTheme.accentColor
+                    ) {
                         showPrayerFlow = true
                     }
                     
-                    quickActionButton(title: settingsStore.appLanguage.localizedString("FindVerse"), icon: "magnifyingglass", color: AppTheme.primaryPurple) {
+                    quickActionButtonWithImage(
+                        title: settingsStore.appLanguage.localizedString("FindVerse"),
+                        icon: "magnifyingglass",
+                        backgroundImage: "SearchButtonBackground",
+                        fallbackColor: AppTheme.primaryPurple
+                    ) {
                         showVerseSearch = true
                     }
                 }
@@ -189,6 +194,47 @@ struct ExploreView: View {
             )
             .cornerRadius(16)
             .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+    }
+    
+    private func quickActionButtonWithImage(title: String, icon: String, backgroundImage: String, fallbackColor: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .frame(height: 28)
+                    .foregroundColor(.white)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 90)
+            .padding(.vertical, 16)
+            .background(
+                ZStack {
+                    // Serene image background
+                    Image(backgroundImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                    
+                    // Subtle dark overlay for text readability
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.3),
+                            Color.black.opacity(0.15),
+                            Color.black.opacity(0.3)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            )
+            .cornerRadius(16)
+            .clipped()
+            .shadow(color: fallbackColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
     

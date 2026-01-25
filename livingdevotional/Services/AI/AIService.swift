@@ -398,6 +398,11 @@ class AIService: AIServiceProtocol {
             
             \(languageInstruction)
             請保持回答友善、有深度且符合聖經真理。
+            
+            **重要規則：**
+            - 回答請簡潔扼要，控制在 100-150 字以內
+            - 直接回答問題，不需要重複經文內容
+            - 如果引用其他經文，請使用標準格式如「約翰福音 3:16」或「John 3:16」
             """ : """
             \(userContext)
             
@@ -410,6 +415,11 @@ class AIService: AIServiceProtocol {
             
             \(languageInstruction)
             Please keep answers friendly, insightful, and biblically accurate.
+            
+            **Important rules:**
+            - Keep responses concise, around 80-120 words
+            - Answer directly without repeating the verse content
+            - When referencing other verses, use standard format like "John 3:16" or "Genesis 1:1"
             """
         ]
         messages.append(systemMessage)
@@ -432,13 +442,13 @@ class AIService: AIServiceProtocol {
         ]
         messages.append(userMessage)
         
-        // Create request body
+        // Create request body - limit to 500 tokens for concise responses
         let requestBody: [String: Any] = [
             "model": openAIModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 800
+            "max_tokens": 500
         ]
         
         // Create URL request
@@ -872,7 +882,7 @@ class AIService: AIServiceProtocol {
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
-            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to complete search. Please try again."])
         }
         
         // Parse JSON response
@@ -880,12 +890,242 @@ class AIService: AIServiceProtocol {
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         
-        guard let jsonData2 = cleanedContent.data(using: .utf8),
-              let searchResponse = try? JSONDecoder().decode(VerseSearchResponse.self, from: jsonData2) else {
-            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        guard let jsonData2 = cleanedContent.data(using: .utf8) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to process search results. Please try again."])
         }
         
-        return searchResponse
+        // Try to decode with more flexibility
+        do {
+            let searchResponse = try JSONDecoder().decode(VerseSearchResponse.self, from: jsonData2)
+            return searchResponse
+        } catch {
+            // Try manual parsing as fallback
+            if let jsonObj = try? JSONSerialization.jsonObject(with: jsonData2) as? [String: Any] {
+                let interpretation = jsonObj["interpretation"] as? String ?? ""
+                var verses: [RelatedVerse] = []
+                
+                if let resultsArray = jsonObj["results"] as? [[String: Any]] {
+                    for result in resultsArray {
+                        let book = result["book"] as? String ?? ""
+                        let chapter = (result["chapter"] as? Int) ?? Int(result["chapter"] as? String ?? "1") ?? 1
+                        let verse = (result["verse"] as? Int) ?? Int(result["verse"] as? String ?? "1") ?? 1
+                        let reference = result["reference"] as? String ?? "\(book) \(chapter):\(verse)"
+                        let text = result["text"] as? String ?? ""
+                        let relevance = result["relevance"] as? String ?? ""
+                        
+                        if !book.isEmpty && !text.isEmpty {
+                            verses.append(RelatedVerse(book: book, chapter: chapter, verse: verse, reference: reference, text: text, relevance: relevance))
+                        }
+                    }
+                }
+                
+                if !verses.isEmpty {
+                    return VerseSearchResponse(interpretation: interpretation, results: verses)
+                }
+            }
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to process search results. Please try a different search term."])
+        }
+    }
+    
+    func searchMoreVerses(query: String, excludeReferences: [String], appLanguage: AppLanguage) async throws -> VerseSearchResponse {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let excludeList = excludeReferences.joined(separator: ", ")
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            你是一位圣经学者专家。用户问了以下问题或搜索：
+            
+            问题：「\(query)」
+            
+            请推荐 3 节相关的圣经经文来回答这个问题。
+            
+            **重要**：请不要推荐以下已经找到的经文：\(excludeList)
+            
+            请选择其他相关且重要的经文：
+            - 经典且广为人知的经文
+            - 与主题直接相关的重要经文
+            - 能帮助读者深入理解的关键经文
+            
+            对于每一节经文，请提供：
+            1. 经文出处（英文书卷名 章:节，例如 "John 3:16"）
+            2. 经文内容（完整的经文文字）
+            3. 相关性说明（简短，不超过 10 个字）
+            
+            请以JSON格式回应，结构如下：
+            {
+              "interpretation": "",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "完整的经文内容",
+                  "relevance": "相关性说明"
+                }
+              ]
+            }
+            
+            **重要**: 书卷名称必须使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            使用简体中文书写。只回传JSON，不要其他文字。
+            """
+        } else if isChinese {
+            prompt = """
+            你是一位聖經學者專家。用戶問了以下問題或搜尋：
+            
+            問題：「\(query)」
+            
+            請推薦 3 節相關的聖經經文來回答這個問題。
+            
+            **重要**：請不要推薦以下已經找到的經文：\(excludeList)
+            
+            請選擇其他相關且重要的經文：
+            - 經典且廣為人知的經文
+            - 與主題直接相關的重要經文
+            - 能幫助讀者深入理解的關鍵經文
+            
+            對於每一節經文，請提供：
+            1. 經文出處（英文書卷名 章:節，例如 "John 3:16"）
+            2. 經文內容（完整的經文文字）
+            3. 相關性說明（簡短，不超過 10 個字）
+            
+            請以JSON格式回應，結構如下：
+            {
+              "interpretation": "",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "完整的經文內容",
+                  "relevance": "相關性說明"
+                }
+              ]
+            }
+            
+            **重要**: 書卷名稱必須使用英文，例如: Matthew, Mark, Luke, John, Romans, Genesis, Psalms 等。
+            使用繁體中文（台灣用語）書寫。只回傳JSON，不要其他文字。
+            """
+        } else {
+            prompt = """
+            You are a Bible scholar expert. A user asked the following question or search:
+            
+            Query: "\(query)"
+            
+            Please recommend 3 relevant Bible verses to answer this question.
+            
+            **Important**: Do NOT recommend these verses that were already found: \(excludeList)
+            
+            Choose other relevant and important verses:
+            - Classic and well-known verses
+            - Important verses directly related to the theme
+            - Key verses that help readers understand deeply
+            
+            For each verse, please provide:
+            1. Verse reference (English book name Chapter:Verse, e.g., "John 3:16")
+            2. Verse text (complete verse content)
+            3. Relevance explanation (Brief, max 10 words)
+            
+            Please respond in JSON format:
+            {
+              "interpretation": "",
+              "results": [
+                {
+                  "book": "Book",
+                  "chapter": 3,
+                  "verse": 16,
+                  "reference": "Book 3:16",
+                  "text": "Complete verse text",
+                  "relevance": "Relevance explanation"
+                }
+              ]
+            }
+            
+            **Important**: Book names must be in English, e.g., Matthew, Mark, Luke, John, Romans, Genesis, Psalms, etc.
+            Return only JSON, no other text.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.5,
+            "max_tokens": 1200
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to find more verses. Please try again."])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to process results."])
+        }
+        
+        // Try to decode with more flexibility
+        do {
+            let searchResponse = try JSONDecoder().decode(VerseSearchResponse.self, from: jsonData2)
+            return searchResponse
+        } catch {
+            // Try manual parsing as fallback
+            if let jsonObj = try? JSONSerialization.jsonObject(with: jsonData2) as? [String: Any] {
+                var verses: [RelatedVerse] = []
+                
+                if let resultsArray = jsonObj["results"] as? [[String: Any]] {
+                    for result in resultsArray {
+                        let book = result["book"] as? String ?? ""
+                        let chapter = (result["chapter"] as? Int) ?? Int(result["chapter"] as? String ?? "1") ?? 1
+                        let verse = (result["verse"] as? Int) ?? Int(result["verse"] as? String ?? "1") ?? 1
+                        let reference = result["reference"] as? String ?? "\(book) \(chapter):\(verse)"
+                        let text = result["text"] as? String ?? ""
+                        let relevance = result["relevance"] as? String ?? ""
+                        
+                        if !book.isEmpty && !text.isEmpty {
+                            verses.append(RelatedVerse(book: book, chapter: chapter, verse: verse, reference: reference, text: text, relevance: relevance))
+                        }
+                    }
+                }
+                
+                if !verses.isEmpty {
+                    return VerseSearchResponse(interpretation: "", results: verses)
+                }
+            }
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to find more verses."])
+        }
     }
     
     func askQuestion(question: String, context: String?) async throws -> String {
@@ -926,6 +1166,11 @@ class AIService: AIServiceProtocol {
             
             \(languageInstruction)
             請保持回答友善、有深度且符合聖經真理。當問題涉及特定經文時，可以引用相關經文來支持你的回答。
+            
+            **重要規則：**
+            - 回答請簡潔扼要，控制在 100-150 字以內
+            - 直接回答問題，不要長篇大論
+            - 如果引用經文，請使用標準格式如「約翰福音 3:16」或「John 3:16」
             """ : """
             \(userContext)
             
@@ -933,6 +1178,11 @@ class AIService: AIServiceProtocol {
             
             \(languageInstruction)
             Please keep answers friendly, insightful, and biblically accurate. When questions involve specific verses, you may reference relevant verses to support your answers.
+            
+            **Important rules:**
+            - Keep responses concise, around 80-120 words
+            - Answer directly without being verbose
+            - When referencing verses, use standard format like "John 3:16" or "Genesis 1:1"
             """
         ]
         messages.append(systemMessage)
@@ -955,13 +1205,13 @@ class AIService: AIServiceProtocol {
         ]
         messages.append(userMessage)
         
-        // Create request body
+        // Create request body - limit to 500 tokens for concise responses
         let requestBody: [String: Any] = [
             "model": openAIModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 1000
+            "max_tokens": 500
         ]
         
         // Create URL request
@@ -1094,11 +1344,10 @@ class AIService: AIServiceProtocol {
             经卷：\(book)
             章：\(chapter)
             
-            请用2-3段简短的段落（总共约150-200字）概述这一章的内容，包括：
+            请用1-2段简短的段落（总共约120-170字）概述这一章的内容，包括：
             
             1. 主要主题和中心思想
-            2. 重要事件或教导
-            3. 这一章在圣经脉络中的意义
+            2. 重要事件或教导的精华
             
             请直接开始摘要，不需要标题或开场白。使用简体中文书写。
             """
@@ -1109,11 +1358,10 @@ class AIService: AIServiceProtocol {
             經卷：\(book)
             章：\(chapter)
             
-            請用2-3段簡短的段落（總共約150-200字）概述這一章的內容，包括：
+            請用1-2段簡短的段落（總共約120-170字）概述這一章的內容，包括：
             
             1. 主要主題和中心思想
-            2. 重要事件或教導
-            3. 這一章在聖經脈絡中的意義
+            2. 重要事件或教導的精華
             
             請直接開始摘要，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
             """
@@ -1124,13 +1372,12 @@ class AIService: AIServiceProtocol {
             Book: \(book)
             Chapter: \(chapter)
             
-            Please summarize this chapter in 2-3 short paragraphs (approximately 150-200 words total), including:
+            Please summarize this chapter in 1-2 short paragraphs (approximately 80-110 words total), including:
             
             1. Main themes and central ideas
-            2. Important events or teachings
-            3. The significance of this chapter in the biblical context
+            2. Key events or teachings
             
-            Please start directly with the summary, no title or introduction. Write in English.
+            Please start directly with the summary, no title or introduction. Write in English. Keep it concise.
             """
         }
         
@@ -1146,7 +1393,7 @@ class AIService: AIServiceProtocol {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 600
+            "max_tokens": 400
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {
@@ -1271,13 +1518,12 @@ class AIService: AIServiceProtocol {
             经卷：\(book)
             章：\(chapter)
             
-            请包含：
-            1. 这卷书的作者和写作背景
-            2. 这一章的历史背景和文化脉络
-            3. 写作目的和主要受众
-            4. 这一章在整卷书中的位置和重要性
+            请简要包含：
+            1. 作者和写作背景
+            2. 历史背景和文化脉络要点
+            3. 这一章的核心位置和重要性
             
-            请用2-3段简短的段落（总共约150-200字）说明，直接开始，不需要标题或开场白。使用简体中文书写。
+            请用1-2段简短的段落（总共约120-170字）说明，直接开始，不需要标题或开场白。使用简体中文书写。
             """
         } else if isChinese {
             prompt = """
@@ -1286,13 +1532,12 @@ class AIService: AIServiceProtocol {
             經卷：\(book)
             章：\(chapter)
             
-            請包含：
-            1. 這卷書的作者和寫作背景
-            2. 這一章的歷史背景和文化脈絡
-            3. 寫作目的和主要受眾
-            4. 這一章在整卷書中的位置和重要性
+            請簡要包含：
+            1. 作者和寫作背景
+            2. 歷史背景和文化脈絡要點
+            3. 這一章的核心位置和重要性
             
-            請用2-3段簡短的段落（總共約150-200字）說明，直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            請用1-2段簡短的段落（總共約120-170字）說明，直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
             """
         } else {
             prompt = """
@@ -1301,13 +1546,12 @@ class AIService: AIServiceProtocol {
             Book: \(book)
             Chapter: \(chapter)
             
-            Please include:
-            1. The author of this book and writing background
-            2. The historical background and cultural context of this chapter
-            3. The purpose of writing and main audience
-            4. The position and importance of this chapter within the entire book
+            Please briefly include:
+            1. Author and writing background
+            2. Key historical and cultural context
+            3. Position and importance of this chapter
             
-            Please explain in 2-3 short paragraphs (approximately 150-200 words total), start directly without title or introduction. Write in English.
+            Please explain in 1-2 short paragraphs (approximately 80-110 words total), start directly without title or introduction. Write in English. Keep it concise.
             """
         }
         
@@ -1323,7 +1567,7 @@ class AIService: AIServiceProtocol {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 600
+            "max_tokens": 400
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {

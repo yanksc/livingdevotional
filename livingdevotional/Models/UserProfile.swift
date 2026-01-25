@@ -17,7 +17,7 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
         case .seeker: return "Curious Seeker"
         case .newBeliever: return "New Believer"
         case .growing: return "Growing in Faith"
-        case .mature: return "Mature/Leader"
+        case .mature: return "Mature in Faith"
         }
     }
     
@@ -26,7 +26,7 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
         case .seeker: return "尋求者"
         case .newBeliever: return "初信者"
         case .growing: return "成長中"
-        case .mature: return "成熟/領袖"
+        case .mature: return "成熟穩健"
         }
     }
     
@@ -38,7 +38,7 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
             case .seeker: return "寻求者"
             case .newBeliever: return "初信者"
             case .growing: return "成长中"
-            case .mature: return "成熟/领袖"
+            case .mature: return "成熟稳健"
             }
         case "zh-Hant":
             return displayNameChinese
@@ -56,6 +56,12 @@ enum SpiritualGoal: String, Codable, CaseIterable, Identifiable {
     case habit = "habit"
     case healing = "healing"
     case deepStudy = "deepStudy"
+    case community = "community"
+    case guidance = "guidance"
+    case comfort = "comfort"
+    case purpose = "purpose"
+    case gratitude = "gratitude"
+    case forgiveness = "forgiveness"
     
     var id: String { rawValue }
     
@@ -66,6 +72,12 @@ enum SpiritualGoal: String, Codable, CaseIterable, Identifiable {
         case .habit: return "Building a Habit"
         case .healing: return "Healing"
         case .deepStudy: return "Deep Study"
+        case .community: return "Growing in Community"
+        case .guidance: return "Seeking Guidance"
+        case .comfort: return "Finding Comfort"
+        case .purpose: return "Discovering Purpose"
+        case .gratitude: return "Cultivating Gratitude"
+        case .forgiveness: return "Experiencing Forgiveness"
         }
     }
     
@@ -76,6 +88,12 @@ enum SpiritualGoal: String, Codable, CaseIterable, Identifiable {
         case .habit: return "建立習慣"
         case .healing: return "醫治"
         case .deepStudy: return "深入研讀"
+        case .community: return "在群體中成長"
+        case .guidance: return "尋求指引"
+        case .comfort: return "尋找安慰"
+        case .purpose: return "發現意義"
+        case .gratitude: return "培養感恩"
+        case .forgiveness: return "經歷寬恕"
         }
     }
     
@@ -89,6 +107,12 @@ enum SpiritualGoal: String, Codable, CaseIterable, Identifiable {
             case .habit: return "建立习惯"
             case .healing: return "医治"
             case .deepStudy: return "深入研读"
+            case .community: return "在群体中成长"
+            case .guidance: return "寻求指引"
+            case .comfort: return "寻找安慰"
+            case .purpose: return "发现意义"
+            case .gratitude: return "培养感恩"
+            case .forgiveness: return "经历宽恕"
             }
         case "zh-Hant":
             return displayNameChinese
@@ -119,7 +143,7 @@ enum ChristianTradition: String, Codable, CaseIterable, Identifiable {
         case .mainline: return "Mainline Protestant"
         case .charismatic: return "Charismatic"
         case .nondenominational: return "Nondenominational"
-        case .none: return "None / Not Applicable"
+        case .none: return "Prefer not to say"
         }
     }
     
@@ -131,7 +155,7 @@ enum ChristianTradition: String, Codable, CaseIterable, Identifiable {
         case .mainline: return "主流新教"
         case .charismatic: return "靈恩派"
         case .nondenominational: return "非宗派"
-        case .none: return "無/不適用"
+        case .none: return "暫不回答"
         }
     }
     
@@ -146,7 +170,7 @@ enum ChristianTradition: String, Codable, CaseIterable, Identifiable {
             case .mainline: return "主流新教"
             case .charismatic: return "灵恩派"
             case .nondenominational: return "非宗派"
-            case .none: return "无/不适用"
+            case .none: return "暂不回答"
             }
         case "zh-Hant":
             return displayNameChinese
@@ -300,18 +324,18 @@ enum DailyTimeCommitment: String, Codable, CaseIterable, Identifiable {
     
     var displayName: String {
         switch self {
-        case .fewMinutes: return "Just a few minutes"
-        case .tenMinutes: return "About 10 minutes"
-        case .twentyMinutes: return "Around 20 minutes"
-        case .thirtyPlus: return "30 minutes or more"
+        case .fewMinutes: return "A few minutes"
+        case .tenMinutes: return "10 minutes"
+        case .twentyMinutes: return "20 minutes"
+        case .thirtyPlus: return "30+ minutes"
         }
     }
     
     var displayNameChinese: String {
         switch self {
         case .fewMinutes: return "幾分鐘"
-        case .tenMinutes: return "約10分鐘"
-        case .twentyMinutes: return "約20分鐘"
+        case .tenMinutes: return "10分鐘"
+        case .twentyMinutes: return "20分鐘"
         case .thirtyPlus: return "30分鐘以上"
         }
     }
@@ -322,8 +346,8 @@ enum DailyTimeCommitment: String, Codable, CaseIterable, Identifiable {
         case "zh-Hans":
             switch self {
             case .fewMinutes: return "几分钟"
-            case .tenMinutes: return "约10分钟"
-            case .twentyMinutes: return "约20分钟"
+            case .tenMinutes: return "10分钟"
+            case .twentyMinutes: return "20分钟"
             case .thirtyPlus: return "30分钟以上"
             }
         case "zh-Hant":

@@ -54,52 +54,74 @@ class DailyVerseService: DailyVerseServiceProtocol {
         var reason: String?
         var source: String?
         
-        // 1. Check recent Chat (last 48 hours)
+        // Check recent activity (last 48 hours)
         let twoDaysAgo = Date().addingTimeInterval(-48 * 3600)
         
-        // Use MainActor.run for accessing @Published properties if needed, 
-        // but here we are accessing the class directly. NoteStore/ChatStore use @Published which are thread safe for reading usually? 
-        // Actually they are ObservableObjects, better be careful. 
-        // But for simplicity in this context, we will try to access the underlying data if possible or assume main actor access if called from UI.
-        // However, this is an async function.
+        // Priority order: Prayer > Ask (Chat) > Note > Reading Plan > Reading History > Popular Verses
         
-        let recentChat = await MainActor.run {
-             ChatStore.shared.sessions.first(where: { $0.updatedAt > twoDaysAgo && $0.book != nil && $0.chapter != nil && $0.verseNumber != nil })
+        // 1. Check recent Prayer (highest priority - most intimate activity)
+        let recentPrayer = await MainActor.run {
+            PrayerLogStore.shared.logs.first(where: { $0.date > twoDaysAgo })
         }
         
-        if let chat = recentChat, let book = chat.book, let chapter = chat.chapter, let verse = chat.verseNumber {
-            selection = (book, chapter, verse)
-            reason = "Reflecting on your recent question"
-            source = "Based on your conversation about \(book) \(chapter):\(verse)"
+        if let prayer = recentPrayer {
+            // Use the verse from the prayer
+            selection = (prayer.verseBook, prayer.verseChapter, prayer.verseNumber)
+            let topicDisplay = prayer.customTopicText ?? prayer.topic
+            reason = "From your recent prayer"
+            source = "Based on your prayer about \(topicDisplay)"
         } else {
-            // 2. Check recent Saved Note
-            let recentNote = await MainActor.run {
-                NoteStore.shared.savedVerses.first(where: { $0.timestamp > twoDaysAgo })
+            // 2. Check recent Chat/Ask (exploring questions)
+            let recentChat = await MainActor.run {
+                ChatStore.shared.sessions.first(where: { $0.updatedAt > twoDaysAgo && $0.book != nil && $0.chapter != nil && $0.verseNumber != nil })
             }
             
-            if let note = recentNote {
-                selection = (note.book, note.chapter, note.verse)
-                reason = "A verse you saved recently"
-                source = "From your saved notes"
+            if let chat = recentChat, let book = chat.book, let chapter = chat.chapter, let verse = chat.verseNumber {
+                selection = (book, chapter, verse)
+                reason = "From your recent question"
+                source = "Based on your conversation about \(book) \(chapter):\(verse)"
             } else {
-                // 3. Check Reading History
-                let recentHistory = await MainActor.run {
-                    ProgressStore.shared.getRecentHistory(limit: 1).first
+                // 3. Check recent Saved Note
+                let recentNote = await MainActor.run {
+                    NoteStore.shared.savedVerses.first(where: { $0.timestamp > twoDaysAgo })
                 }
                 
-                if let history = recentHistory, history.timestamp > twoDaysAgo {
-                    // Just pick the last read verse or the first verse of that chapter if lastVerse is not granular enough
-                    // History item has book/chapter. We need a verse. Let's pick verse 1.
-                    selection = (history.book, history.chapter, 1)
-                    reason = "Continue your journey"
-                    source = "Based on your reading in \(history.book)"
+                if let note = recentNote {
+                    selection = (note.book, note.chapter, note.verse)
+                    reason = "A verse you saved"
+                    source = "From your notes on \(note.book) \(note.chapter):\(note.verse)"
                 } else {
-                    // 4. Fallback to Popular Verses
-                    let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
-                    let index = dayOfYear % popularVerses.count
-                    selection = popularVerses[index]
-                    reason = "Verse of the Day"
-                    source = "Daily Inspiration"
+                    // 4. Check Active Reading Plan
+                    let activePlan = await MainActor.run {
+                        ReadingPlanStore.shared.getActivePlans().first
+                    }
+                    
+                    if let (plan, _) = activePlan,
+                       let currentDay = ReadingPlanStore.shared.getCurrentDay(for: plan.id) {
+                        // Get first verse of the current reading day
+                        let verseNum = currentDay.verseStart ?? 1
+                        selection = (currentDay.book, currentDay.chapter, verseNum)
+                        reason = "From your reading plan"
+                        source = "Today's reading: \(plan.title)"
+                    } else {
+                        // 5. Check Reading History
+                        let recentHistory = await MainActor.run {
+                            ProgressStore.shared.getRecentHistory(limit: 1).first
+                        }
+                        
+                        if let history = recentHistory, history.timestamp > twoDaysAgo {
+                            selection = (history.book, history.chapter, 1)
+                            reason = "Continue your journey"
+                            source = "Based on your reading in \(history.book)"
+                        } else {
+                            // 6. Fallback to Popular Verses
+                            let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
+                            let index = dayOfYear % popularVerses.count
+                            selection = popularVerses[index]
+                            reason = "Daily inspiration"
+                            source = nil
+                        }
+                    }
                 }
             }
         }

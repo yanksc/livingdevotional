@@ -20,6 +20,14 @@ class JourneyService: JourneyServiceProtocol {
     private var lastAnalysisDate: Date?
     private let cacheExpirationHours: Int = 6 // Refresh every 6 hours
     
+    var hasValidCache: Bool {
+        guard let cached = cachedAnalysis,
+              let lastDate = lastAnalysisDate else {
+            return false
+        }
+        return Date().timeIntervalSince(lastDate) < Double(cacheExpirationHours * 3600)
+    }
+    
     init(
         progressStore: ProgressStore = .shared,
         noteStore: NoteStore = .shared,

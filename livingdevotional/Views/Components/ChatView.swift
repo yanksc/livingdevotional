@@ -5,6 +5,7 @@ import SwiftUI
 struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @ObservedObject var settingsStore: SettingsStore
+    @EnvironmentObject var router: AppRouter
     let onClose: () -> Void
     
     @FocusState private var isInputFocused: Bool
@@ -251,6 +252,7 @@ struct ChatView: View {
 struct ChatMessageView: View {
     let message: ChatMessage
     @ObservedObject var settingsStore: SettingsStore
+    @EnvironmentObject var router: AppRouter
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -264,14 +266,31 @@ struct ChatMessageView: View {
             }
             
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
+                if message.role == .assistant {
+                    // Use markdown rendering for assistant messages with clickable verses
+                    MarkdownVerseTextView(
+                        text: message.content,
+                        onVerseTap: { book, chapter, verse in
+                            navigateToVerse(book: book, chapter: chapter, verse: verse)
+                        }
+                    )
                     .font(.system(size: 15))
-                    .foregroundColor(message.role == .user ? .white : AppTheme.primaryText)
+                    .foregroundColor(AppTheme.primaryText)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(message.role == .user ? AppTheme.accentColor : Color.gray.opacity(0.1))
+                            .fill(Color.gray.opacity(0.1))
                     )
+                } else {
+                    Text(message.content)
+                        .font(.system(size: 15))
+                        .foregroundColor(.white)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(AppTheme.accentColor)
+                        )
+                }
                 
                 if let date = message.createdAt {
                     Text(date.formatted(date: .omitted, time: .shortened))
@@ -289,5 +308,207 @@ struct ChatMessageView: View {
                 Spacer()
             }
         }
+    }
+    
+    private func navigateToVerse(book: String, chapter: Int, verse: Int) {
+        if let bibleBook = BibleData.book(named: book) {
+            router.navigateToReading(book: bibleBook, chapter: chapter, verse: verse)
+        }
+    }
+}
+
+// MARK: - Markdown Text View with Clickable Verses
+
+struct MarkdownVerseTextView: View {
+    let text: String
+    let onVerseTap: (String, Int, Int) -> Void
+    
+    // Regex pattern for verse references like "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1"
+    // Also supports Chinese book names with numbers like "約翰福音 3:16"
+    private static let versePattern = #"(\d?\s*[A-Za-z]+(?:\s+[A-Za-z]+)?|\d?\s*[一-龥]+)\s*(\d+):(\d+)(?:-\d+)?"#
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            let components = parseTextWithVerses(text)
+            
+            // Use a flow layout approach with Text concatenation
+            components.reduce(Text("")) { result, component in
+                switch component {
+                case .text(let str):
+                    return result + Text(formatMarkdown(str))
+                case .verse(let reference, let book, let chapter, let verse):
+                    // Verses shown as tappable inline text
+                    return result + Text(reference)
+                        .foregroundColor(AppTheme.accentColor)
+                        .underline()
+                }
+            }
+        }
+        .environment(\.openURL, OpenURLAction { url in
+            if url.scheme == "verse",
+               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               let book = components.queryItems?.first(where: { $0.name == "book" })?.value,
+               let chapterStr = components.queryItems?.first(where: { $0.name == "chapter" })?.value,
+               let verseStr = components.queryItems?.first(where: { $0.name == "verse" })?.value,
+               let chapter = Int(chapterStr),
+               let verse = Int(verseStr) {
+                onVerseTap(book, chapter, verse)
+                return .handled
+            }
+            return .systemAction
+        })
+    }
+    
+    private enum TextComponent {
+        case text(String)
+        case verse(reference: String, book: String, chapter: Int, verse: Int)
+    }
+    
+    private func parseTextWithVerses(_ text: String) -> [TextComponent] {
+        var components: [TextComponent] = []
+        var currentIndex = text.startIndex
+        
+        guard let regex = try? NSRegularExpression(pattern: Self.versePattern, options: []) else {
+            return [.text(text)]
+        }
+        
+        let nsRange = NSRange(text.startIndex..., in: text)
+        let matches = regex.matches(in: text, options: [], range: nsRange)
+        
+        for match in matches {
+            guard let matchRange = Range(match.range, in: text) else { continue }
+            
+            // Add text before this match
+            if currentIndex < matchRange.lowerBound {
+                let beforeText = String(text[currentIndex..<matchRange.lowerBound])
+                components.append(.text(beforeText))
+            }
+            
+            // Extract verse components
+            let fullMatch = String(text[matchRange])
+            
+            if let bookRange = Range(match.range(at: 1), in: text),
+               let chapterRange = Range(match.range(at: 2), in: text),
+               let verseRange = Range(match.range(at: 3), in: text) {
+                let book = String(text[bookRange]).trimmingCharacters(in: .whitespaces)
+                if let chapter = Int(String(text[chapterRange])),
+                   let verse = Int(String(text[verseRange])) {
+                    components.append(.verse(reference: fullMatch, book: book, chapter: chapter, verse: verse))
+                } else {
+                    components.append(.text(fullMatch))
+                }
+            } else {
+                components.append(.text(fullMatch))
+            }
+            
+            currentIndex = matchRange.upperBound
+        }
+        
+        // Add remaining text
+        if currentIndex < text.endIndex {
+            let remainingText = String(text[currentIndex...])
+            components.append(.text(remainingText))
+        }
+        
+        return components
+    }
+    
+    /// Format markdown by converting **bold** and *italic* to attributed string
+    private func formatMarkdown(_ str: String) -> AttributedString {
+        var result = str
+        
+        // Convert **bold** to SwiftUI markdown syntax (keep as is for AttributedString)
+        // AttributedString supports markdown natively
+        
+        do {
+            // Try to parse as markdown
+            return try AttributedString(markdown: result, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+        } catch {
+            // Fallback to plain text
+            return AttributedString(str)
+        }
+    }
+}
+
+// MARK: - Interactive Markdown View with Verse Taps
+
+struct InteractiveMarkdownView: View {
+    let text: String
+    let onVerseTap: (String, Int, Int) -> Void
+    
+    private static let versePattern = #"(\d?\s*[A-Za-z]+(?:\s+[A-Za-z]+)?)\s*(\d+):(\d+)(?:-\d+)?"#
+    
+    var body: some View {
+        let parsedContent = parseContent()
+        
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(parsedContent.indices, id: \.self) { index in
+                let item = parsedContent[index]
+                switch item {
+                case .text(let str):
+                    if let attributed = try? AttributedString(markdown: str, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                        Text(attributed)
+                    } else {
+                        Text(str)
+                    }
+                case .verse(let reference, let book, let chapter, let verse):
+                    Button {
+                        onVerseTap(book, chapter, verse)
+                    } label: {
+                        Text(reference)
+                            .foregroundColor(AppTheme.accentColor)
+                            .underline()
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    
+    private enum ContentItem {
+        case text(String)
+        case verse(reference: String, book: String, chapter: Int, verse: Int)
+    }
+    
+    private func parseContent() -> [ContentItem] {
+        var items: [ContentItem] = []
+        var currentIndex = text.startIndex
+        
+        guard let regex = try? NSRegularExpression(pattern: Self.versePattern, options: []) else {
+            return [.text(text)]
+        }
+        
+        let nsRange = NSRange(text.startIndex..., in: text)
+        let matches = regex.matches(in: text, options: [], range: nsRange)
+        
+        for match in matches {
+            guard let matchRange = Range(match.range, in: text) else { continue }
+            
+            if currentIndex < matchRange.lowerBound {
+                items.append(.text(String(text[currentIndex..<matchRange.lowerBound])))
+            }
+            
+            let fullMatch = String(text[matchRange])
+            
+            if let bookRange = Range(match.range(at: 1), in: text),
+               let chapterRange = Range(match.range(at: 2), in: text),
+               let verseRange = Range(match.range(at: 3), in: text) {
+                let book = String(text[bookRange]).trimmingCharacters(in: .whitespaces)
+                if let chapter = Int(String(text[chapterRange])),
+                   let verse = Int(String(text[verseRange])) {
+                    items.append(.verse(reference: fullMatch, book: book, chapter: chapter, verse: verse))
+                } else {
+                    items.append(.text(fullMatch))
+                }
+            }
+            
+            currentIndex = matchRange.upperBound
+        }
+        
+        if currentIndex < text.endIndex {
+            items.append(.text(String(text[currentIndex...])))
+        }
+        
+        return items
     }
 }

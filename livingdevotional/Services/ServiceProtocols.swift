@@ -20,6 +20,7 @@ protocol AIServiceProtocol {
     func explainVerse(book: String, chapter: Int, verse: Int, verseText: String, language: Language, mode: AIMode, appLanguage: AppLanguage, conversationHistory: [ChatMessage]?, userPrompt: String?) async throws -> AsyncThrowingStream<String, Error>
     func findRelatedVerses(book: String, chapter: Int, verse: Int, text: String, appLanguage: AppLanguage) async throws -> [RelatedVerse]
     func searchVerses(query: String, appLanguage: AppLanguage) async throws -> VerseSearchResponse
+    func searchMoreVerses(query: String, excludeReferences: [String], appLanguage: AppLanguage) async throws -> VerseSearchResponse
     func askQuestion(question: String, context: String?) async throws -> String
     func summarizeChapter(book: String, chapter: Int, language: Language) async throws -> String
     func summarizeChapterStream(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
@@ -65,6 +66,7 @@ protocol CheckInServiceProtocol {
 // MARK: - Journey Service Protocol
 
 protocol JourneyServiceProtocol {
+    var hasValidCache: Bool { get }
     func getJourneyStats() async throws -> JourneyStats
     func getMilestones(limit: Int) async throws -> [JourneyMilestone]
     func getDailyInsight() async throws -> JourneyInsight

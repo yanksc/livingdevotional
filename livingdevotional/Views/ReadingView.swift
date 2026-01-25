@@ -46,6 +46,7 @@ struct ReadingView: View {
     @State private var showRelatedVersesSheet = false
     @State private var showChapterContextSheet = false
     @State private var showChapterSummarySheet = false
+    @State private var showVerseSearch = false
     
     // Verse selection state
     @State private var selectedVerseId: String? = nil
@@ -826,6 +827,13 @@ struct ReadingView: View {
     @ViewBuilder
     private var toolbarTrailingButtons: some View {
         Button {
+            showVerseSearch = true
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(AppTheme.accentColor)
+        }
+        
+        Button {
             showViewSettings = true
         } label: {
             Image(systemName: "slider.horizontal.3")
@@ -874,6 +882,7 @@ struct ReadingView: View {
                     pendingChatSessionId = nil
                 }
             )
+            .environmentObject(router)
             .presentationDetents([.fraction(0.8), .large])
             .presentationDragIndicator(.visible)
         }
@@ -1049,6 +1058,10 @@ struct ReadingView: View {
             .sheet(isPresented: $showChatSheet) { chatSheetContent }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenChatSession")), perform: handleOpenChatSession)
             .sheet(isPresented: $showViewSettings) { ReadingSettingsView(isPresented: $showViewSettings) }
+            .sheet(isPresented: $showVerseSearch) {
+                VerseSearchView(settingsStore: settingsStore)
+                    .environmentObject(router)
+            }
             .fullScreenCover(isPresented: $showPrayerFlow) { prayerFlowContent }
             .sheet(isPresented: $showSaveSheet) { saveSheetContent }
             .overlay { drawerOverlays }

@@ -14,6 +14,13 @@ class JourneyViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var aiErrorMessage: String?
     
+    var hasCachedAnalysis: Bool {
+        guard let journeyService = services.journeyService as? JourneyService else {
+            return false
+        }
+        return journeyService.hasValidCache
+    }
+    
     private let services: ServiceContainer
     
     init(services: ServiceContainer = .shared) {

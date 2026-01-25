@@ -9,9 +9,6 @@ struct JourneyView: View {
     @ObservedObject private var progressStore = ProgressStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
     @EnvironmentObject var router: AppRouter
-    @State private var showTimeline = false
-    @State private var showRecentHistory = false
-    @State private var showMyNotes = false
     
     var body: some View {
         NavigationStack {
@@ -21,6 +18,11 @@ struct JourneyView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
+                        // Stats Row - Always show first
+                        if let stats = viewModel.stats {
+                            JourneyStatsView(stats: stats)
+                        }
+                        
                         // AI Analysis Section
                         if viewModel.isLoadingAI {
                             AILoadingView()
@@ -30,11 +32,6 @@ struct JourneyView: View {
                             
                             // Path Status Card
                             PathStatusCardView(pathStatus: analysis.pathStatus)
-                            
-                            // Stats Row
-                            if let stats = viewModel.stats {
-                                JourneyStatsView(stats: stats)
-                            }
                             
                             // Journey Summary
                             if !analysis.journeySummary.isEmpty {
@@ -63,45 +60,32 @@ struct JourneyView: View {
                                     await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
                                 }
                             }
-                            
-                            // Show basic stats as fallback
-                            if let stats = viewModel.stats {
-                                JourneyStatsView(stats: stats)
-                            }
                         } else {
-                            // No analysis data - show start view
-                            JourneyStartView {
+                            // No cache - show button to get AI insights
+                            GetAIInsightsButton {
                                 Task {
                                     await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
                                 }
                             }
-                            
-                            // Show basic stats if available
-                            if let stats = viewModel.stats {
-                                JourneyStatsView(stats: stats)
-                            }
                         }
                         
-                        // Recent History Section (Collapsible)
-                        RecentHistorySectionView(
+                        // Recent History Section - Horizontal Scrollable Widgets
+                        RecentHistoryWidgetView(
                             historyItems: progressStore.getRecentHistory(limit: 5),
-                            isExpanded: $showRecentHistory,
                             settingsStore: settingsStore,
                             router: router
                         )
                         
-                        // My Notes Section (Collapsible)
-                        MyNotesSectionView(
+                        // My Notes Section - Horizontal Scrollable Widgets
+                        MyNotesWidgetView(
                             savedVerses: Array(noteStore.savedVerses.prefix(5)),
-                            isExpanded: $showMyNotes,
                             settingsStore: settingsStore,
                             router: router
                         )
                         
-                        // Timeline Section (Collapsible)
-                        TimelineSectionView(
+                        // Timeline Section - Small Timeline Widget
+                        TimelineWidgetView(
                             milestones: viewModel.milestones,
-                            isExpanded: $showTimeline,
                             isLoading: viewModel.isLoading
                         )
                         
@@ -130,7 +114,10 @@ struct JourneyView: View {
             .onAppear {
                 Task {
                     await viewModel.loadData()
-                    await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
+                    // Only auto-load AI analysis if cached
+                    if viewModel.hasCachedAnalysis {
+                        await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
+                    }
                 }
             }
         }
@@ -441,31 +428,26 @@ struct NextStepView: View {
     }
 }
 
-// MARK: - Timeline Section View
+// MARK: - Timeline Widget View
 
-struct TimelineSectionView: View {
+struct TimelineWidgetView: View {
     let milestones: [JourneyMilestone]
-    @Binding var isExpanded: Bool
     let isLoading: Bool
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "clock.fill")
-                        .foregroundColor(AppTheme.accentColor)
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "活動時間軸" : "Activity Timeline")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Spacer()
-                    
+            HStack {
+                Image(systemName: "clock.fill")
+                    .foregroundColor(AppTheme.accentColor)
+                Text(settingsStore.appLanguage == .chineseTraditional ? "活動時間軸" : "Activity Timeline")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
+                
+                if !milestones.isEmpty {
                     Text("\(milestones.count)")
                         .font(.caption)
                         .fontWeight(.semibold)
@@ -474,30 +456,32 @@ struct TimelineSectionView: View {
                         .padding(.vertical, 4)
                         .background(AppTheme.sectionBackground)
                         .cornerRadius(8)
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                }
+            }
+            .padding(.horizontal, 4)
+            
+            // Small Timeline Preview
+            if isLoading && milestones.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding()
+            } else if milestones.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "figure.walk")
+                        .font(.title2)
+                        .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "開始您的旅程！" : "Start your journey!")
                         .font(.caption)
                         .foregroundColor(AppTheme.secondaryText)
                 }
-            }
-            
-            // Content
-            if isExpanded {
-                if isLoading && milestones.isEmpty {
-                    ProgressView()
-                        .padding()
-                } else if milestones.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "figure.walk")
-                            .font(.title2)
-                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "開始您的旅程！" : "Start your journey!")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.secondaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                // Show compact timeline preview (first 3-4 items)
+                VStack(spacing: 8) {
+                    ForEach(Array(milestones.prefix(4))) { milestone in
+                        TimelineItemRow(milestone: milestone)
                     }
-                    .padding(.vertical, 20)
-                } else {
-                    JourneyTimelineView(milestones: Array(milestones.prefix(10)))
                 }
             }
         }
@@ -505,6 +489,55 @@ struct TimelineSectionView: View {
         .background(AppTheme.cardGradient)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+}
+
+// MARK: - Timeline Item Row
+
+struct TimelineItemRow: View {
+    let milestone: JourneyMilestone
+    @ObservedObject private var settingsStore = SettingsStore.shared
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Image(systemName: milestone.iconName)
+                .font(.system(size: 14))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 24)
+            
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text(milestone.title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(1)
+                
+                Text(formatDate(milestone.date))
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let isChinese = settingsStore.appLanguage == .chineseTraditional
+        
+        if calendar.isDateInToday(date) {
+            return isChinese ? "今天" : "Today"
+        } else if calendar.isDateInYesterday(date) {
+            return isChinese ? "昨天" : "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.locale = settingsStore.appLanguage.resolvedLocale()
+            return formatter.string(from: date)
+        }
     }
 }
 
@@ -543,56 +576,58 @@ struct AIErrorView: View {
     }
 }
 
-// MARK: - Journey Start View
+// MARK: - Get AI Insights Button
 
-struct JourneyStartView: View {
-    let onStart: () -> Void
+struct GetAIInsightsButton: View {
+    let onTap: () -> Void
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     var body: some View {
-        VStack(spacing: 24) {
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(AppTheme.accentColor.opacity(0.1))
-                    .frame(width: 100, height: 100)
+        Button(action: onTap) {
+            VStack(spacing: 24) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [AppTheme.accentColor.opacity(0.2), AppTheme.primaryPurple.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 48))
+                        .foregroundColor(AppTheme.accentColor)
+                        .symbolEffect(.pulse, options: .repeating)
+                }
                 
-                Image(systemName: "sparkles")
-                    .font(.system(size: 48))
+                // Title
+                Text(settingsStore.appLanguage == .chineseTraditional ? "獲取 AI 洞察" : "Get AI Insights")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                // Description
+                Text(settingsStore.appLanguage == .chineseTraditional ? "分析您的閱讀歷程，獲得個人化的屬靈洞察" : "Analyze your reading journey and get personalized spiritual insights")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                
+                // Arrow indicator
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.title3)
                     .foregroundColor(AppTheme.accentColor)
             }
-            
-            // Title
-            Text(settingsStore.appLanguage == .chineseTraditional ? "開始您的旅程" : "Start Your Journey")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(AppTheme.primaryText)
-            
-            // Description
-            Text(settingsStore.appLanguage == .chineseTraditional ? "讓我們分析您的閱讀歷程，為您提供個人化的屬靈洞察" : "Let's analyze your reading journey and provide personalized spiritual insights")
-                .font(.subheadline)
-                .foregroundColor(AppTheme.secondaryText)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            // Start Button
-            Button(action: onStart) {
-                Text(settingsStore.appLanguage == .chineseTraditional ? "開始分析" : "Start Analysis")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(AppTheme.buttonGradient)
-                    .cornerRadius(12)
-                    .shadow(color: AppTheme.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
-            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 60)
+            .background(AppTheme.cardGradient)
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.1), radius: 12, x: 0, y: 6)
         }
-        .padding(32)
-        .frame(maxWidth: .infinity)
-        .background(AppTheme.cardGradient)
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -652,68 +687,51 @@ struct StatBox: View {
     }
 }
 
-// MARK: - Recent History Section View
+// MARK: - Recent History Widget View
 
-struct RecentHistorySectionView: View {
+struct RecentHistoryWidgetView: View {
     let historyItems: [ReadingHistoryItem]
-    @Binding var isExpanded: Bool
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var router: AppRouter
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .foregroundColor(AppTheme.accentColor)
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "最近閱讀" : "Recent History")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Spacer()
-                    
-                    Text("\(historyItems.count)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.sectionBackground)
-                        .cornerRadius(8)
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.secondaryText)
-                }
+            HStack {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundColor(AppTheme.accentColor)
+                Text(settingsStore.appLanguage == .chineseTraditional ? "最近閱讀" : "Recent History")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
             }
+            .padding(.horizontal, 4)
             
-            // Content
-            if isExpanded {
-                if historyItems.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "book.closed")
-                            .font(.title2)
-                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "開始閱讀聖經！" : "Start reading!")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.secondaryText)
-                    }
-                    .padding(.vertical, 20)
-                } else {
-                    VStack(spacing: 8) {
+            // Horizontal Scrollable Cards
+            if historyItems.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "book.closed")
+                        .font(.title2)
+                        .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "開始閱讀聖經！" : "Start reading!")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
                         ForEach(historyItems) { item in
-                            RecentHistoryRow(
+                            RecentHistoryCard(
                                 item: item,
                                 settingsStore: settingsStore,
                                 router: router
                             )
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
             }
         }
@@ -724,9 +742,9 @@ struct RecentHistorySectionView: View {
     }
 }
 
-// MARK: - Recent History Row
+// MARK: - Recent History Card
 
-struct RecentHistoryRow: View {
+struct RecentHistoryCard: View {
     let item: ReadingHistoryItem
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var router: AppRouter
@@ -735,24 +753,25 @@ struct RecentHistoryRow: View {
         Button(action: {
             navigateToChapter()
         }) {
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(AppTheme.accentColor.opacity(0.1))
-                        .frame(width: 36, height: 36)
+                        .fill(AppTheme.accentColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
                     
                     Image(systemName: "book.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 18))
                         .foregroundColor(AppTheme.accentColor)
                 }
                 
                 // Book and chapter info
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(localizedBookChapter)
                         .font(.subheadline)
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
                         .foregroundColor(AppTheme.primaryText)
+                        .lineLimit(2)
                     
                     Text(formatTime(item.timestamp))
                         .font(.caption2)
@@ -760,14 +779,11 @@ struct RecentHistoryRow: View {
                 }
                 
                 Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
             }
             .padding(12)
-            .background(AppTheme.sectionBackground.opacity(0.3))
-            .cornerRadius(10)
+            .frame(width: 140, height: 140)
+            .background(AppTheme.sectionBackground.opacity(0.5))
+            .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -784,9 +800,6 @@ struct RecentHistoryRow: View {
     
     private func formatTime(_ date: Date) -> String {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let itemDate = calendar.startOfDay(for: date)
-        
         let isChinese = settingsStore.appLanguage == .chineseTraditional
         
         if calendar.isDateInToday(date) {
@@ -811,68 +824,51 @@ struct RecentHistoryRow: View {
     }
 }
 
-// MARK: - My Notes Section View
+// MARK: - My Notes Widget View
 
-struct MyNotesSectionView: View {
+struct MyNotesWidgetView: View {
     let savedVerses: [SavedVerse]
-    @Binding var isExpanded: Bool
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var router: AppRouter
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "book.fill")
-                        .foregroundColor(AppTheme.accentColor)
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "我的筆記" : "My Notes")
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Spacer()
-                    
-                    Text("\(savedVerses.count)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.sectionBackground)
-                        .cornerRadius(8)
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.secondaryText)
-                }
+            HStack {
+                Image(systemName: "bookmark.fill")
+                    .foregroundColor(AppTheme.accentColor)
+                Text(settingsStore.appLanguage == .chineseTraditional ? "我的筆記" : "My Notes")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
             }
+            .padding(.horizontal, 4)
             
-            // Content
-            if isExpanded {
-                if savedVerses.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "bookmark")
-                            .font(.title2)
-                            .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "保存經文以在此查看！" : "Save verses to see them here!")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.secondaryText)
-                    }
-                    .padding(.vertical, 20)
-                } else {
-                    VStack(spacing: 8) {
+            // Horizontal Scrollable Cards
+            if savedVerses.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "bookmark")
+                        .font(.title2)
+                        .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "保存經文以在此查看！" : "Save verses to see them here!")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
                         ForEach(savedVerses, id: \.id) { verse in
-                            SavedNoteCompactRow(
+                            NoteCard(
                                 savedVerse: verse,
                                 settingsStore: settingsStore,
                                 router: router
                             )
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
             }
         }
@@ -883,9 +879,9 @@ struct MyNotesSectionView: View {
     }
 }
 
-// MARK: - Saved Note Compact Row
+// MARK: - Note Card
 
-struct SavedNoteCompactRow: View {
+struct NoteCard: View {
     let savedVerse: SavedVerse
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var router: AppRouter
@@ -894,58 +890,61 @@ struct SavedNoteCompactRow: View {
         Button(action: {
             navigateToVerse()
         }) {
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(AppTheme.accentColor.opacity(0.1))
-                        .frame(width: 36, height: 36)
+                        .fill(AppTheme.accentColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
                     
                     Image(systemName: "bookmark.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 18))
                         .foregroundColor(AppTheme.accentColor)
                 }
                 
                 // Verse info
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(localizedVerseReference)
                         .font(.subheadline)
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
                         .foregroundColor(AppTheme.primaryText)
+                        .lineLimit(2)
                     
                     if !savedVerse.content.isEmpty {
                         Text(savedVerse.content)
                             .font(.caption2)
                             .foregroundColor(AppTheme.secondaryText)
-                            .lineLimit(1)
+                            .lineLimit(2)
                     } else {
                         Text(formatDate(savedVerse.timestamp))
                             .font(.caption2)
                             .foregroundColor(AppTheme.secondaryText)
                     }
-                }
-                
-                Spacer()
-                
-                // Labels indicator
-                if !savedVerse.labels.isEmpty {
-                    Text("\(savedVerse.labels.count)")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.accentColor)
+                    
+                    // Labels indicator
+                    if !savedVerse.labels.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(AppTheme.accentColor)
+                            Text("\(savedVerse.labels.count)")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(AppTheme.accentColor)
+                        }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(AppTheme.accentColor.opacity(0.15))
                         .cornerRadius(4)
+                    }
                 }
                 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                Spacer()
             }
             .padding(12)
-            .background(AppTheme.sectionBackground.opacity(0.3))
-            .cornerRadius(10)
+            .frame(width: 140, height: 140)
+            .background(AppTheme.sectionBackground.opacity(0.5))
+            .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
     }

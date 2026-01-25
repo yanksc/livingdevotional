@@ -120,6 +120,7 @@ struct AskCategoryDetailView: View {
                         selectedQuestion = nil
                     }
                 )
+                .environmentObject(router)
                 .presentationDetents([.fraction(0.8), .large])
                 .presentationDragIndicator(.visible)
             } else {

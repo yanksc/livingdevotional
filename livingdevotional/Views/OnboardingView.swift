@@ -29,13 +29,15 @@ struct OnboardingView: View {
         return Calendar.current.date(from: components) ?? Date()
     }()
     @State private var showPrayerStep = false
+    @State private var showInterstitial = false
     @State private var step1TitleAppeared = false
     @State private var step1SubtitleAppeared = false
     @State private var step1NameFieldAppeared = false
-    @State private var step1LanguageOptionsAppeared: Set<String> = []
+    @State private var step2LanguageOptionsAppeared: Set<String> = []
+    @State private var selectionFeedback: String? = nil
     @FocusState private var isNameFieldFocused: Bool
     
-    private let totalSteps = 8
+    private let totalSteps = 10
     
     init() {
         let store = SettingsStore.shared
@@ -51,23 +53,18 @@ struct OnboardingView: View {
     private var canProceed: Bool {
         switch currentStep {
         case 0: return !name.trimmingCharacters(in: .whitespaces).isEmpty
-        case 2: return !selectedGoals.isEmpty
+        case 3: return !selectedGoals.isEmpty // Goals step (tag 3)
         default: return true
         }
     }
     
     var body: some View {
         ZStack {
-            if showPrayerStep {
-                SereneGradientBackground()
-                    .ignoresSafeArea()
-            } else {
-                AppTheme.backgroundGradient
-                    .ignoresSafeArea()
-            }
+            SereneGradientBackground()
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                if !showPrayerStep {
+                if !showPrayerStep && !showInterstitial {
                     ProgressView(value: Double(currentStep + 1), total: Double(totalSteps))
                         .progressViewStyle(LinearProgressViewStyle(tint: AppTheme.accentColor))
                         .padding(.horizontal)
@@ -76,16 +73,20 @@ struct OnboardingView: View {
                 
                 if showPrayerStep {
                     prayerStepView
+                } else if showInterstitial {
+                    interstitialView
                 } else {
                     TabView(selection: $currentStep) {
                         step1Welcome.tag(0)
-                        step2Journey.tag(1)
-                        step3Goals.tag(2)
-                        step4LifeFocus.tag(3)
-                        step5TimeAvailability.tag(4)
-                        step6ExplanationDepth.tag(5)
-                        step7Settings.tag(6)
-                        step8Placeholder.tag(7)
+                        step2Language.tag(1)
+                        step3Journey.tag(2)
+                        step4Goals.tag(3)
+                        step5Denomination.tag(4)
+                        step6LifeFocus.tag(5)
+                        step7TimeAvailability.tag(6)
+                        step8ExplanationDepth.tag(7)
+                        step9Settings.tag(8)
+                        step10Placeholder.tag(9)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .allowsHitTesting(true)
@@ -111,8 +112,13 @@ struct OnboardingView: View {
             
             Button(action: {
                 if currentStep < totalSteps - 1 {
-                    if currentStep == 6 {
-                        // Step 7 is settings - request notification permission if enabled
+                    if currentStep == 4 {
+                        // After Denomination step (tag 4) - show interstitial
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showInterstitial = true
+                        }
+                    } else if currentStep == 8 {
+                        // Step 9 is settings (tag 8) - request notification permission if enabled
                         handleSettingsCompletion()
                     } else {
                         withAnimation(.easeInOut(duration: 0.3)) { currentStep += 1 }
@@ -135,7 +141,7 @@ struct OnboardingView: View {
         .padding(.bottom, 40)
     }
     
-    // MARK: - Step 1: Welcome & Language
+    // MARK: - Step 1: Welcome & Name
     
     private var step1Welcome: some View {
         ScrollView {
@@ -158,7 +164,7 @@ struct OnboardingView: View {
                         }
                     }
                 
-                Text(isChinese ? "讓我們為您設定個人化體驗" : "Hi there. Let's set things up so this app feels like yours.")
+                Text(isChinese ? "我來陪伴您走這段路" : "Hi there. I'm here to walk alongside you.")
                     .font(.system(size: 18, weight: .regular, design: .default))
                     .foregroundColor(AppTheme.secondaryText)
                     .multilineTextAlignment(.center)
@@ -181,7 +187,7 @@ struct OnboardingView: View {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 20))
                         .foregroundColor(AppTheme.accentColor)
-                    Text(isChinese ? "您的名字" : "What's your name?")
+                    Text(isChinese ? "我該怎麼稱呼您？" : "What should I call you?")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(AppTheme.primaryText)
                 }
@@ -204,11 +210,6 @@ struct OnboardingView: View {
                     )
                     .autocapitalization(.words)
                     .submitLabel(.next)
-                
-                Text(isChinese ? "您的名字幫助我們個人化禱告和訊息。" : "Your name helps us personalize prayers and messages.")
-                    .font(.system(size: 13))
-                    .foregroundColor(AppTheme.secondaryText)
-                    .padding(.leading, 4)
             }
             .padding(20)
             .background(AppTheme.cardGradient)
@@ -225,54 +226,42 @@ struct OnboardingView: View {
                     }
                 }
             }
-            
-            // Language Selection Card - Enhanced picker
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "character.book.closed.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(AppTheme.accentColor)
-                    Text(isChinese ? "應用程式語言" : "Which language feels like home?")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(AppTheme.primaryText)
-                }
-                
-                VStack(spacing: 8) {
-                    ForEach(Array(AppLanguage.allCases.enumerated()), id: \.element.id) { index, lang in
-                        LanguageOptionButton(
-                            language: lang,
-                            isSelected: settingsStore.appLanguage == lang,
-                            isChinese: isChinese
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                settingsStore.appLanguage = lang
-                            }
-                        }
-                        .opacity(step1LanguageOptionsAppeared.contains(lang.id) ? 1.0 : 0.0)
-                        .offset(x: step1LanguageOptionsAppeared.contains(lang.id) ? 0 : 30)
-                        .onAppear {
-                            let delay = 0.9 + Double(index) * 0.1
-                            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                                withAnimation(.easeOut(duration: 0.4)) {
-                                    let _ = step1LanguageOptionsAppeared.insert(lang.id)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(20)
-            .background(AppTheme.cardGradient)
-            .cornerRadius(16)
-            .shadow(color: Color(white: 0).opacity(0.08), radius: 12, x: 0, y: 4)
-            .padding(.horizontal, 24)
         }
         .padding(.bottom, 100)
     }
     
-    // MARK: - Step 2: Spiritual Journey
+    // MARK: - Step 2: Language
     
-    private var step2Journey: some View {
+    private var step2Language: some View {
+        OnboardingStepView(
+            title: isChinese ? "語言設定" : "Language",
+            subtitle: isChinese ? "哪種語言讓您感覺最自在？" : "Which language feels like home?",
+            caption: isChinese ? "您可以隨時在設定中更改。" : "You can always change this later in settings.",
+            isChinese: isChinese
+        ) { questionComplete in
+            VStack(spacing: 12) {
+                ForEach(Array(AppLanguage.allCases.enumerated()), id: \.element.id) { index, lang in
+                    LanguageSelectionButton(
+                        language: lang,
+                        isSelected: settingsStore.appLanguage == lang,
+                        isChinese: isChinese,
+                        animationDelay: Double(index) * 0.1,
+                        shouldAnimate: questionComplete
+                    ) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            settingsStore.appLanguage = lang
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+        }
+    }
+    
+    // MARK: - Step 3: Spiritual Journey
+    
+    private var step3Journey: some View {
         OnboardingStepView(
             title: isChinese ? "您的屬靈旅程" : "Your Spiritual Journey",
             subtitle: isChinese ? "您在屬靈旅程的哪個階段？" : "Where are you on your spiritual journey?",
@@ -289,18 +278,36 @@ struct OnboardingView: View {
                     ) {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             selectedMaturity = maturity
+                            showSelectionFeedback(for: .journey)
                         }
                     }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
+            .onChange(of: selectedMaturity) { _, _ in
+                // Clear feedback when selection changes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Step 3: Goals
+    // MARK: - Step 4: Goals
     
-    private var step3Goals: some View {
+    private var step4Goals: some View {
         OnboardingStepView(
             title: isChinese ? "您的目標" : "Your Goals",
             subtitle: isChinese ? "是什麼帶您來到這裡？" : "What brings you here?",
@@ -321,18 +328,81 @@ struct OnboardingView: View {
                             } else {
                                 selectedGoals.insert(goal)
                             }
+                            showSelectionFeedback(for: .goals)
                         }
                     }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
+            .onChange(of: selectedGoals) { _, _ in
+                // Clear feedback when selection changes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Step 4: Life Focus
+    // MARK: - Step 5: Denomination
     
-    private var step4LifeFocus: some View {
+    private var step5Denomination: some View {
+        OnboardingStepView(
+            title: isChinese ? "傳統背景" : "Tradition",
+            subtitle: isChinese ? "哪個傳統最符合您的背景？" : "What tradition resonates with you?",
+            caption: isChinese ? "這幫助我們了解您的信仰背景。" : "This helps us understand your faith background.",
+            isChinese: isChinese
+        ) { questionComplete in
+            VStack(spacing: 12) {
+                ForEach(Array(ChristianTradition.allCases.enumerated()), id: \.element.id) { index, tradition in
+                    SelectionButton(
+                        title: isChinese ? tradition.displayNameChinese : tradition.displayName,
+                        isSelected: selectedTradition == tradition,
+                        animationDelay: Double(index) * 0.1,
+                        shouldAnimate: questionComplete
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTradition = tradition
+                            showSelectionFeedback(for: .denomination)
+                        }
+                    }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .onChange(of: selectedTradition) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Step 6: Life Focus
+    
+    private var step6LifeFocus: some View {
         OnboardingStepView(
             title: isChinese ? "生活焦點" : "Life Focus",
             subtitle: isChinese ? "您想將哪些生活領域帶到神面前？" : "What areas of your life would you like to bring before God?",
@@ -353,18 +423,35 @@ struct OnboardingView: View {
                             } else {
                                 selectedLifeFocusAreas.insert(area)
                             }
+                            showSelectionFeedback(for: .lifeFocus)
                         }
                     }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
+            .onChange(of: selectedLifeFocusAreas) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Step 5: Time Availability
+    // MARK: - Step 7: Time Availability
     
-    private var step5TimeAvailability: some View {
+    private var step7TimeAvailability: some View {
         OnboardingStepView(
             title: isChinese ? "時間安排" : "Time Availability",
             subtitle: isChinese ? "您每天可以撥出多少時間？" : "How much time can you set aside for daily devotion?",
@@ -381,18 +468,35 @@ struct OnboardingView: View {
                     ) {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             selectedTimeCommitment = commitment
+                            showSelectionFeedback(for: .time)
                         }
                     }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
+            .onChange(of: selectedTimeCommitment) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Step 6: Explanation Depth
+    // MARK: - Step 8: Explanation Depth
     
-    private var step6ExplanationDepth: some View {
+    private var step8ExplanationDepth: some View {
         OnboardingStepView(
             title: isChinese ? "解釋深度" : "Explanation Depth",
             subtitle: isChinese ? "您希望解釋的感覺如何？" : "How would you like explanations to feel?",
@@ -411,18 +515,35 @@ struct OnboardingView: View {
                     ) {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             selectedExplanationDepth = depth
+                            showSelectionFeedback(for: .explanation)
                         }
                     }
+                }
+                
+                if let feedback = selectionFeedback {
+                    Text(feedback)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
+            .onChange(of: selectedExplanationDepth) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        selectionFeedback = nil
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Step 7: Settings
+    // MARK: - Step 9: Settings
     
-    private var step7Settings: some View {
+    private var step9Settings: some View {
         ScrollView {
             VStack(spacing: 24) {
                 stepHeader(
@@ -477,10 +598,25 @@ struct OnboardingView: View {
         .padding(.top, 10)
     }
     
-    // MARK: - Step 8: Placeholder (will be replaced by prayer step)
+    // MARK: - Step 10: Placeholder (will be replaced by prayer step)
     
-    private var step8Placeholder: some View {
+    private var step10Placeholder: some View {
         EmptyView()
+    }
+    
+    // MARK: - Interstitial View
+    
+    private var interstitialView: some View {
+        InterstitialEncouragementView(
+            userName: name,
+            isChinese: isChinese,
+            onContinue: {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showInterstitial = false
+                    currentStep = 5 // Move to Life Focus step (tag 5)
+                }
+            }
+        )
     }
     
     // MARK: - Prayer Step
@@ -585,6 +721,56 @@ struct OnboardingView: View {
         settingsStore.secondaryLanguage = selectedSecondaryLanguage
         
         profileStore.completeOnboarding()
+    }
+    
+    // MARK: - Helper Functions
+    
+    private enum FeedbackType {
+        case journey
+        case goals
+        case denomination
+        case lifeFocus
+        case time
+        case explanation
+    }
+    
+    private func showSelectionFeedback(for type: FeedbackType) {
+        let messages: [String]
+        if isChinese {
+            switch type {
+            case .journey:
+                messages = ["那是個美好的階段", "感謝您願意分享", "每個階段都有它的意義"]
+            case .goals:
+                messages = ["這些都是有意義的追求", "很好的選擇", "我們會根據這些為您推薦內容"]
+            case .denomination:
+                messages = ["了解您的背景很有幫助", "感謝分享"]
+            case .lifeFocus:
+                messages = ["這些都是重要的領域", "我們會為這些領域推薦經文"]
+            case .time:
+                messages = ["好的，我們會調整內容長度", "了解您的時間安排很有幫助"]
+            case .explanation:
+                messages = ["我們會依此調整解釋方式", "很好的選擇"]
+            }
+        } else {
+            switch type {
+            case .journey:
+                messages = ["That's a beautiful place to be", "Thank you for sharing", "Every stage has its purpose"]
+            case .goals:
+                messages = ["Those are meaningful pursuits", "Great choices", "We'll tailor content to these"]
+            case .denomination:
+                messages = ["Understanding your background helps", "Thanks for sharing"]
+            case .lifeFocus:
+                messages = ["These are important areas", "We'll suggest verses for these"]
+            case .time:
+                messages = ["Good to know, we'll adjust content length", "Understanding your schedule helps"]
+            case .explanation:
+                messages = ["We'll adjust explanations accordingly", "Good choice"]
+            }
+        }
+        
+        withAnimation(.easeIn(duration: 0.3)) {
+            selectionFeedback = messages.randomElement()
+        }
     }
     
     // MARK: - Helper Views
@@ -693,19 +879,19 @@ private struct OnboardingStepView<Content: View>: View {
         captionComplete = false
         
         // Animate title first
-        animateText(title, isChinese: isChinese, speed: 0.05) { char in
+        animateText(title, isChinese: isChinese, speed: 0.08) { char in
             displayedTitle += char
         } completion: {
             titleComplete = true
             // Small pause before subtitle
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                animateText(subtitle, isChinese: isChinese, speed: 0.03) { char in
+                animateText(subtitle, isChinese: isChinese, speed: 0.05) { char in
                     displayedSubtitle += char
                 } completion: {
                     subtitleComplete = true
                     // Small pause before caption
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        animateText(caption, isChinese: isChinese, speed: 0.02) { char in
+                        animateText(caption, isChinese: isChinese, speed: 0.04) { char in
                             displayedCaption += char
                         } completion: {
                             captionComplete = true
@@ -738,7 +924,7 @@ private struct OnboardingStepView<Content: View>: View {
             }
             // Add slight pause after punctuation
             if [".", ",", "?", "!", "。", "，", "？", "！"].contains(char) {
-                delay = speed * 3
+                delay = speed * 4
             }
             
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -1060,6 +1246,220 @@ private struct LanguageOptionButton: View {
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Language Selection Button (with animation support)
+
+private struct LanguageSelectionButton: View {
+    let language: AppLanguage
+    let isSelected: Bool
+    let isChinese: Bool
+    let animationDelay: Double
+    let shouldAnimate: Bool
+    let action: () -> Void
+    
+    @State private var hasAppeared = false
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(language.displayName)
+                    .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .white : AppTheme.primaryText)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(AppTheme.buttonGradient)
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white)
+                    }
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isSelected ? Color.clear : AppTheme.accentColor.opacity(0.2),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(
+                color: isSelected ? AppTheme.accentColor.opacity(0.3) : Color.black.opacity(0.03),
+                radius: isSelected ? 8 : 2,
+                x: 0,
+                y: isSelected ? 4 : 1
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .opacity(hasAppeared ? 1.0 : 0.0)
+        .offset(x: hasAppeared ? 0 : 30)
+        .onChange(of: shouldAnimate) { _, newValue in
+            if newValue && !hasAppeared {
+                DispatchQueue.main.asyncAfter(deadline: .now() + animationDelay) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        hasAppeared = true
+                    }
+                }
+            }
+        }
+        .onAppear {
+            if shouldAnimate && !hasAppeared {
+                DispatchQueue.main.asyncAfter(deadline: .now() + animationDelay) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        hasAppeared = true
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Interstitial Encouragement View
+
+private struct InterstitialEncouragementView: View {
+    let userName: String
+    let isChinese: Bool
+    let onContinue: () -> Void
+    
+    @State private var displayedTitle = ""
+    @State private var displayedSubtitle = ""
+    @State private var titleComplete = false
+    @State private var subtitleComplete = false
+    @State private var showButton = false
+    
+    private var encouragementMessage: (title: String, subtitle: String) {
+        let name = userName.isEmpty ? "" : userName
+        let greeting = name.isEmpty ? "" : (isChinese ? "，\(name)" : ", \(name)")
+        
+        if isChinese {
+            return (
+                title: "了解您了\(greeting)",
+                subtitle: "現在我們知道您的屬靈旅程和目標，\n就能為您推薦最適合的經文和禱告。\n\n再幾個問題，讓我們把體驗調整得更好。"
+            )
+        } else {
+            return (
+                title: "We're getting to know you\(greeting)",
+                subtitle: "Now that we understand your journey and goals,\nwe can suggest Scripture and prayers that truly resonate.\n\nA few more questions to fine-tune your experience."
+            )
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 40) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                // Title with typewriter effect
+                Text(displayedTitle)
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+                    .foregroundColor(AppTheme.primaryText)
+                    .frame(minHeight: 40)
+                
+                // Subtitle with typewriter effect
+                Text(displayedSubtitle)
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(AppTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+                    .padding(.horizontal, 40)
+                    .frame(minHeight: 100)
+            }
+            
+            Spacer()
+            
+            // Continue button
+            Button(action: onContinue) {
+                Text(isChinese ? "繼續" : "Continue")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(AppTheme.buttonGradient)
+                    .cornerRadius(14)
+                    .shadow(color: AppTheme.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 60)
+            .opacity(showButton ? 1.0 : 0.0)
+            .offset(y: showButton ? 0 : 20)
+        }
+        .onAppear {
+            startTypewriterAnimation()
+        }
+    }
+    
+    private func startTypewriterAnimation() {
+        let message = encouragementMessage
+        
+        // Reset states
+        displayedTitle = ""
+        displayedSubtitle = ""
+        titleComplete = false
+        subtitleComplete = false
+        
+        // Animate title first
+        animateText(message.title, isChinese: isChinese, speed: 0.08) { char in
+            displayedTitle += char
+        } completion: {
+            titleComplete = true
+            // Pause before subtitle
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                animateText(message.subtitle, isChinese: isChinese, speed: 0.05) { char in
+                    displayedSubtitle += char
+                } completion: {
+                    subtitleComplete = true
+                    // Show button after subtitle completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeOut(duration: 0.4)) {
+                            showButton = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func animateText(_ text: String, isChinese: Bool, speed: Double, onChar: @escaping (String) -> Void, completion: @escaping () -> Void) {
+        let characters = Array(text)
+        var index = 0
+        
+        func typeNext() {
+            guard index < characters.count else {
+                completion()
+                return
+            }
+            
+            let char = String(characters[index])
+            onChar(char)
+            index += 1
+            
+            var delay = speed
+            if isChinese {
+                delay = speed * 1.2
+            }
+            if [".", ",", "?", "!", "。", "，", "？", "！", "\n"].contains(char) {
+                delay = speed * 4
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                typeNext()
+            }
+        }
+        
+        typeNext()
     }
 }
 

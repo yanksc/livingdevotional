@@ -133,6 +133,7 @@ struct ChatViewWrapper: View {
     let verse: DailyVerse
     let services: ServiceContainer
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var router: AppRouter
     
     var body: some View {
         if let aiService = services.aiService {
@@ -150,6 +151,7 @@ struct ChatViewWrapper: View {
                 settingsStore: SettingsStore.shared,
                 onClose: { dismiss() }
             )
+            .environmentObject(router)
         } else {
             // Fallback if AI service not available (shouldn't happen)
             Text("AI Service Unavailable")

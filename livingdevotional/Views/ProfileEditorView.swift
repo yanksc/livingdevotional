@@ -15,7 +15,6 @@ struct ProfileEditorView: View {
     @State private var selectedTimeCommitment: DailyTimeCommitment
     @State private var selectedExplanationDepth: ExplanationDepth
     @State private var selectedTradition: ChristianTradition
-    @State private var selectedCompanionStyle: AICompanionStyle
     
     init() {
         let store = UserProfileStore.shared
@@ -26,7 +25,6 @@ struct ProfileEditorView: View {
         _selectedTimeCommitment = State(initialValue: store.profile.dailyTimeCommitment)
         _selectedExplanationDepth = State(initialValue: store.profile.explanationDepth)
         _selectedTradition = State(initialValue: store.profile.tradition)
-        _selectedCompanionStyle = State(initialValue: store.profile.companionStyle)
     }
     
     private var isChinese: Bool {
@@ -74,9 +72,6 @@ struct ProfileEditorView: View {
         .onChange(of: selectedTradition) { _, newValue in
             profileStore.profile.tradition = newValue
         }
-        .onChange(of: selectedCompanionStyle) { _, newValue in
-            profileStore.profile.companionStyle = newValue
-        }
     }
     
     private var mainContent: some View {
@@ -111,7 +106,6 @@ struct ProfileEditorView: View {
             timeCommitmentField
             explanationDepthField
             churchBackgroundField
-            interactionStyleField
             chatSessionsField
         }
         .padding()
@@ -233,24 +227,6 @@ struct ProfileEditorView: View {
         isChinese ? tradition.displayNameChinese : tradition.displayName
     }
     
-    private var interactionStyleField: some View {
-        editablePickerRow(
-            title: isChinese ? "互動風格" : "Interaction Style",
-            value: companionStyleDisplayValue,
-            selection: $selectedCompanionStyle,
-            options: AICompanionStyle.allCases,
-            displayName: companionStyleDisplayName
-        )
-    }
-    
-    private var companionStyleDisplayValue: String {
-        isChinese ? selectedCompanionStyle.displayNameChinese : selectedCompanionStyle.displayName
-    }
-    
-    private func companionStyleDisplayName(_ style: AICompanionStyle) -> String {
-        isChinese ? style.displayNameChinese : style.displayName
-    }
-    
     private var chatSessionsField: some View {
         infoRow(
             title: isChinese ? "聊天記錄" : "Chat Sessions",
@@ -281,7 +257,6 @@ struct ProfileEditorView: View {
         profileStore.profile.dailyTimeCommitment = selectedTimeCommitment
         profileStore.profile.explanationDepth = selectedExplanationDepth
         profileStore.profile.tradition = selectedTradition
-        profileStore.profile.companionStyle = selectedCompanionStyle
     }
     
     private func infoRow(title: String, value: String) -> some View {
