@@ -1811,6 +1811,103 @@ class AIService: AIServiceProtocol {
         )
     }
     
+    // MARK: - Verse Rationale Generation
+    
+    func generateVerseRationale(verseReference: String, verseText: String, userAction: String, appLanguage: AppLanguage) async throws -> String {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        // Build prompt for AI to generate rationale - 2-3 sentences
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            用户最近的活动：\(userAction)
+            
+            推荐的经文：\(verseReference)
+            经文内容："\(verseText)"
+            
+            请用2-3句话解释为什么我们为用户推荐这节经文。解释应该包含：
+            1. 第一句：描述用户具体做了什么（例如：您最近在祷告中关注了...，您阅读了...，您问了关于...的问题）
+            2. 第二句：说明这节经文如何与用户的行为或需求相关
+            3. 第三句：简短说明这节经文如何能帮助用户的属灵成长或当前处境
+            
+            语气要温暖、个人化，像是朋友在分享。不要使用"用户"，而是直接用"您"。
+            只返回解释文字，不要其他格式。
+            """
+        } else if isChinese {
+            prompt = """
+            用戶最近的活動：\(userAction)
+            
+            推薦的經文：\(verseReference)
+            經文內容："\(verseText)"
+            
+            請用2-3句話解釋為什麼我們為用戶推薦這節經文。解釋應該包含：
+            1. 第一句：描述用戶具體做了什麼（例如：您最近在禱告中關注了...，您閱讀了...，您問了關於...的問題）
+            2. 第二句：說明這節經文如何與用戶的行為或需求相關
+            3. 第三句：簡短說明這節經文如何能幫助用戶的屬靈成長或當前處境
+            
+            語氣要溫暖、個人化，像是朋友在分享。不要使用「用戶」，而是直接用「您」。
+            只返回解釋文字，不要其他格式。
+            """
+        } else {
+            prompt = """
+            User's recent activity: \(userAction)
+            
+            Recommended verse: \(verseReference)
+            Verse text: "\(verseText)"
+            
+            Please provide a 2-3 sentence explanation of why we recommend this verse to the user. The explanation should include:
+            1. First sentence: Describe what the user specifically did (e.g., "You recently prayed about...", "You were reading...", "You asked about...")
+            2. Second sentence: Explain how this verse relates to the user's action or need
+            3. Third sentence: Briefly describe how this verse might help with their spiritual journey or current situation
+            
+            Use a warm, personal tone like a friend sharing. Use "you" instead of "the user".
+            Return only the explanation text, no other formatting.
+            """
+        }
+        
+        // Call OpenAI API
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 250
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Clean and return the rationale
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
     // MARK: - Journey Analysis
     
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis {
@@ -2118,5 +2215,501 @@ class AIService: AIServiceProtocol {
             pathHighlights: pathHighlights,
             nextStep: nextStep
         )
+    }
+    
+    // MARK: - Personalized Reading Plan Generation
+    
+    struct UserHistoryContext {
+        let recentNotes: [String] // Recent note contents or verse references
+        let recentPrayers: [String] // Recent prayer topics or custom prayers
+        let recentQuestions: [String] // Recent questions asked
+        let readingHistory: [String] // Books/chapters read
+        let savedVerseReferences: [String] // Verse references saved
+    }
+    
+    struct PlanQuestion {
+        let question: String
+        let contextCaption: String // Why we asked this question
+        let options: [QuestionOption]
+        let allowsMultipleSelection: Bool
+    }
+    
+    struct QuestionOption: Codable {
+        let id: String
+        let text: String
+    }
+    
+    func generatePersonalizedPlanQuestions(
+        profile: UserProfile,
+        history: UserHistoryContext?,
+        appLanguage: AppLanguage
+    ) async throws -> [PlanQuestion] {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        // Build context string
+        let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
+        let goals = profile.spiritualGoals.isEmpty ? 
+            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
+            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
+        let focusAreas = profile.lifeFocusAreas.isEmpty ?
+            (isChinese ? (isSimplified ? "未设定" : "未設定") : "not set") :
+            profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
+        
+        var contextString = ""
+        if let history = history {
+            // Warm start - use history
+            let recentActivity = [
+                history.recentNotes.isEmpty ? nil : "Recent notes: \(history.recentNotes.prefix(3).joined(separator: ", "))",
+                history.recentPrayers.isEmpty ? nil : "Recent prayers: \(history.recentPrayers.prefix(3).joined(separator: ", "))",
+                history.recentQuestions.isEmpty ? nil : "Recent questions: \(history.recentQuestions.prefix(2).joined(separator: ", "))",
+                history.readingHistory.isEmpty ? nil : "Reading history: \(history.readingHistory.prefix(5).joined(separator: ", "))"
+            ].compactMap { $0 }.joined(separator: "\n")
+            
+            contextString = """
+            User Profile:
+            - Spiritual Maturity: \(maturity)
+            - Goals: \(goals)
+            - Life Focus Areas: \(focusAreas)
+            
+            Recent Activity:
+            \(recentActivity)
+            """
+        } else {
+            // Cold start - use profile only
+            contextString = """
+            User Profile:
+            - Spiritual Maturity: \(maturity)
+            - Goals: \(goals)
+            - Life Focus Areas: \(focusAreas)
+            - Daily Time Commitment: \(profile.dailyTimeCommitment.localizedDisplayName(for: appLanguage))
+            
+            Note: This is a new user with no reading history yet.
+            """
+        }
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            你是一位属灵导师，正在帮助用户创建个性化的阅读计划。
+            
+            \(contextString)
+            
+            请生成2-3个深入且相关的问题，帮助了解用户的具体需求和期望。每个问题应该：
+            1. 基于用户的属灵阶段、目标和生活焦点领域
+            2. 如果用户有活动历史，要参考他们的笔记、祷告和问题
+            3. 问题应该具体、有针对性，能帮助生成更个性化的阅读计划
+            
+            请以JSON数组格式返回，每个问题包含：
+            {
+              "question": "问题内容",
+              "contextCaption": "为什么问这个问题（简短说明，不超过30字）",
+              "allowsMultipleSelection": false（true表示可多选，false表示单选）,
+              "options": [
+                {"id": "option1", "text": "选项1"},
+                {"id": "option2", "text": "选项2"},
+                {"id": "option3", "text": "选项3"},
+                {"id": "option4", "text": "选项4"}
+              ]
+            }
+            
+            每个问题应有3-5个选项。只返回JSON数组，不要其他文字。
+            """
+        } else if isChinese {
+            prompt = """
+            你是一位屬靈導師，正在幫助用戶創建個性化的閱讀計劃。
+            
+            \(contextString)
+            
+            請生成2-3個深入且相關的問題，幫助了解用戶的具體需求和期望。每個問題應該：
+            1. 基於用戶的屬靈階段、目標和生活焦點領域
+            2. 如果用戶有活動歷史，要參考他們的筆記、禱告和問題
+            3. 問題應該具體、有針對性，能幫助生成更個性化的閱讀計劃
+            
+            請以JSON陣列格式返回，每個問題包含：
+            {
+              "question": "問題內容",
+              "contextCaption": "為什麼問這個問題（簡短說明，不超過30字）",
+              "allowsMultipleSelection": false（true表示可多選，false表示單選）,
+              "options": [
+                {"id": "option1", "text": "選項1"},
+                {"id": "option2", "text": "選項2"},
+                {"id": "option3", "text": "選項3"},
+                {"id": "option4", "text": "選項4"}
+              ]
+            }
+            
+            每個問題應有3-5個選項。只返回JSON陣列，不要其他文字。
+            """
+        } else {
+            prompt = """
+            You are a spiritual mentor helping a user create a personalized reading plan.
+            
+            \(contextString)
+            
+            Please generate 2-3 insightful and relevant questions to understand the user's specific needs and expectations. Each question should:
+            1. Be based on the user's spiritual maturity, goals, and life focus areas
+            2. If the user has activity history, reference their notes, prayers, and questions
+            3. Be specific and targeted to help generate a more personalized reading plan
+            
+            Please return in JSON array format, each question containing:
+            {
+              "question": "Question text",
+              "contextCaption": "Why we're asking this (brief explanation, max 30 words)",
+              "allowsMultipleSelection": false (true for multiple choice, false for single choice),
+              "options": [
+                {"id": "option1", "text": "Option 1"},
+                {"id": "option2", "text": "Option 2"},
+                {"id": "option3", "text": "Option 3"},
+                {"id": "option4", "text": "Option 4"}
+              ]
+            }
+            
+            Each question should have 3-5 options. Return only JSON array, no other text.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 500
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8),
+              let questionsArray = try? JSONSerialization.jsonObject(with: jsonData2) as? [[String: Any]] else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        return questionsArray.compactMap { questionJson -> PlanQuestion? in
+            guard let question = questionJson["question"] as? String,
+                  let caption = questionJson["contextCaption"] as? String,
+                  let optionsArray = questionJson["options"] as? [[String: Any]] else {
+                return nil
+            }
+            
+            let allowsMultiple = questionJson["allowsMultipleSelection"] as? Bool ?? false
+            
+            let options = optionsArray.compactMap { optionJson -> QuestionOption? in
+                guard let id = optionJson["id"] as? String,
+                      let text = optionJson["text"] as? String else {
+                    return nil
+                }
+                return QuestionOption(id: id, text: text)
+            }
+            
+            guard !options.isEmpty else { return nil }
+            
+            return PlanQuestion(
+                question: question,
+                contextCaption: caption,
+                options: options,
+                allowsMultipleSelection: allowsMultiple
+            )
+        }
+    }
+    
+    func generateReadingPlan(
+        answers: [String: String],
+        profile: UserProfile,
+        appLanguage: AppLanguage
+    ) async throws -> ReadingPlan {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        // Build context from profile and answers
+        let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
+        let goals = profile.spiritualGoals.isEmpty ? 
+            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
+            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
+        
+        let answersText = answers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+        
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            你是一位圣经学者和属灵导师。请根据以下信息生成一个个性化的阅读计划。
+            
+            用户资料：
+            - 属灵阶段：\(maturity)
+            - 目标：\(goals)
+            - 生活焦点：\(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            
+            用户回答：
+            \(answersText)
+            
+            请生成一个完整的阅读计划，以JSON格式返回：
+            {
+              "title": "计划标题（简洁，不超过20字）",
+              "description": "简短描述（不超过50字）",
+              "extendedDescription": "详细描述（100-150字）",
+              "icon": "SF Symbol名称（必须从以下选择：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles）",
+              "category": "book|topical|devotional",
+              "days": [
+                {
+                  "dayNumber": 1,
+                  "book": "BookName（英文书名）",
+                  "chapter": 1,
+                  "verseStart": null（可选，如果只读部分章节）,
+                  "verseEnd": null（可选）,
+                  "description": "简短标题（不超过15字）",
+                  "chapterDescription": "为什么读这一章（50-80字）"
+                }
+              ]
+            }
+            
+            重要规则：
+            1. 根据用户的属灵阶段选择合适的深度和内容
+            2. 如果用户是初学者，推荐经典且广为人知的故事（如大卫和歌利亚、浪子回头等）
+            3. 如果用户有特定目标（如寻找平安、理解圣经等），选择相关主题的经文
+            4. 计划天数根据用户回答的"duration"决定（3-14天）
+            5. 每天一章或相关章节，确保内容连贯且有意义
+            6. 书名必须使用英文（如John, Psalms, Matthew等）
+            7. 只返回JSON，不要其他文字
+            
+            请确保JSON格式正确，可以直接解析。
+            """
+        } else if isChinese {
+            prompt = """
+            你是一位聖經學者和屬靈導師。請根據以下資訊生成一個個性化的閱讀計劃。
+            
+            用戶資料：
+            - 屬靈階段：\(maturity)
+            - 目標：\(goals)
+            - 生活焦點：\(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            
+            用戶回答：
+            \(answersText)
+            
+            請生成一個完整的閱讀計劃，以JSON格式返回：
+            {
+              "title": "計劃標題（簡潔，不超過20字）",
+              "description": "簡短描述（不超過50字）",
+              "extendedDescription": "詳細描述（100-150字）",
+              "icon": "SF Symbol名稱（必須從以下選擇：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles）",
+              "category": "book|topical|devotional",
+              "days": [
+                {
+                  "dayNumber": 1,
+                  "book": "BookName（英文書名）",
+                  "chapter": 1,
+                  "verseStart": null（可選，如果只讀部分章節）,
+                  "verseEnd": null（可選）,
+                  "description": "簡短標題（不超過15字）",
+                  "chapterDescription": "為什麼讀這一章（50-80字）"
+                }
+              ]
+            }
+            
+            重要規則：
+            1. 根據用戶的屬靈階段選擇合適的深度和內容
+            2. 如果用戶是初學者，推薦經典且廣為人知的故事（如大衛和歌利亞、浪子回頭等）
+            3. 如果用戶有特定目標（如尋找平安、理解聖經等），選擇相關主題的經文
+            4. 計劃天數根據用戶回答的"duration"決定（3-14天）
+            5. 每天一章或相關章節，確保內容連貫且有意義
+            6. 書名必須使用英文（如John, Psalms, Matthew等）
+            7. 只返回JSON，不要其他文字
+            
+            請確保JSON格式正確，可以直接解析。
+            """
+        } else {
+            prompt = """
+            You are a Bible scholar and spiritual mentor. Please generate a personalized reading plan based on the following information.
+            
+            User Profile:
+            - Spiritual Maturity: \(maturity)
+            - Goals: \(goals)
+            - Life Focus Areas: \(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            
+            User Answers:
+            \(answersText)
+            
+            Please generate a complete reading plan in JSON format:
+            {
+              "title": "Plan title (concise, max 20 words)",
+              "description": "Brief description (max 50 words)",
+              "extendedDescription": "Detailed description (100-150 words)",
+              "icon": "SF Symbol name (must be one of: book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles)",
+              "category": "book|topical|devotional",
+              "days": [
+                {
+                  "dayNumber": 1,
+                  "book": "BookName (English book name)",
+                  "chapter": 1,
+                  "verseStart": null (optional, if reading partial chapter),
+                  "verseEnd": null (optional),
+                  "description": "Short title (max 15 words)",
+                  "chapterDescription": "Why read this chapter (50-80 words)"
+                }
+              ]
+            }
+            
+            Important Rules:
+            1. Choose appropriate depth and content based on user's spiritual maturity
+            2. If user is a beginner, recommend classic well-known stories (like David and Goliath, Prodigal Son, etc.)
+            3. If user has specific goals (like finding peace, understanding Scripture, etc.), choose relevant thematic verses
+            4. Plan duration based on user's "duration" answer (3-14 days)
+            5. One chapter or related chapters per day, ensuring coherent and meaningful content
+            6. Book names must be in English (e.g., John, Psalms, Matthew)
+            7. Return only JSON, no other text
+            
+            Ensure JSON format is correct and can be parsed directly.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 2000
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
+        }
+        
+        // Parse JSON response with retry logic
+        let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData2 = cleanedContent.data(using: .utf8) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response"])
+        }
+        
+        // Try to decode the plan
+        do {
+            let planJson = try JSONSerialization.jsonObject(with: jsonData2) as? [String: Any]
+            guard let planJson = planJson else {
+                throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure"])
+            }
+            
+            // Parse the plan
+            guard let title = planJson["title"] as? String,
+                  let description = planJson["description"] as? String,
+                  let rawIcon = planJson["icon"] as? String,
+                  let categoryStr = planJson["category"] as? String,
+                  let category = ReadingPlan.PlanCategory(rawValue: categoryStr),
+                  let daysArray = planJson["days"] as? [[String: Any]] else {
+                throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing required fields in plan JSON"])
+            }
+            
+            // Validate the icon - use a fallback if the AI returns an invalid SF Symbol
+            let validIcons = [
+                "book.fill", "heart.fill", "lightbulb.fill", "leaf.fill", "mountain.2.fill",
+                "star.fill", "sun.max.fill", "flame.fill", "sparkles", "cross.fill",
+                "hand.raised.fill", "person.fill", "figure.walk", "figure.mind.and.body",
+                "water.waves", "moon.fill", "bolt.fill", "shield.fill", "crown.fill",
+                "graduationcap.fill", "book.closed.fill", "text.book.closed.fill",
+                "globe.americas.fill", "hands.clap.fill", "heart.text.square.fill"
+            ]
+            let icon = validIcons.contains(rawIcon) ? rawIcon : "book.fill"
+            
+            // imageName is no longer used - SereneBackgroundManager assigns backgrounds automatically
+            let imageName = "auto-assigned"
+            
+            let extendedDescription = planJson["extendedDescription"] as? String
+            
+            let days = try daysArray.map { dayJson -> ReadingPlanDay in
+                guard let dayNumber = dayJson["dayNumber"] as? Int,
+                      let book = dayJson["book"] as? String,
+                      let chapter = dayJson["chapter"] as? Int else {
+                    throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid day structure"])
+                }
+                
+                let verseStart = dayJson["verseStart"] as? Int
+                let verseEnd = dayJson["verseEnd"] as? Int
+                let dayDescription = dayJson["description"] as? String
+                let chapterDescription = dayJson["chapterDescription"] as? String
+                
+                return ReadingPlanDay(
+                    dayNumber: dayNumber,
+                    book: book,
+                    chapter: chapter,
+                    verseStart: verseStart,
+                    verseEnd: verseEnd,
+                    description: dayDescription,
+                    chapterDescription: chapterDescription
+                )
+            }
+            
+            // Generate unique ID for custom plan
+            let planId = "custom-\(UUID().uuidString)"
+            
+            return ReadingPlan(
+                id: planId,
+                title: title,
+                description: description,
+                extendedDescription: extendedDescription,
+                icon: icon,
+                imageName: imageName,
+                days: days,
+                category: category
+            )
+        } catch {
+            // If parsing fails, try to repair JSON (basic attempt)
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse reading plan: \(error.localizedDescription)"])
+        }
     }
 }

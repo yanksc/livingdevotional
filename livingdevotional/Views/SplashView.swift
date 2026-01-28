@@ -67,7 +67,7 @@ struct SplashView: View {
                         .foregroundColor(.white)
                         .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
                     
-                    Text("Devotional")
+                    Text("Path")
                         .font(.system(size: 36, weight: .light, design: .rounded))
                         .foregroundColor(.white.opacity(0.95))
                         .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)

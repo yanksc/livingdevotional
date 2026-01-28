@@ -1,5 +1,5 @@
 // JourneyView.swift
-// Main view for the Journey feature showing AI insights, stats and timeline
+// Main view for the Journey feature showing spiritual insights, stats and timeline
 
 import SwiftUI
 
@@ -9,6 +9,7 @@ struct JourneyView: View {
     @ObservedObject private var progressStore = ProgressStore.shared
     @ObservedObject private var noteStore = NoteStore.shared
     @EnvironmentObject var router: AppRouter
+    @State private var showDetails = false
     
     var body: some View {
         NavigationStack {
@@ -18,12 +19,7 @@ struct JourneyView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        // Stats Row - Always show first
-                        if let stats = viewModel.stats {
-                            JourneyStatsView(stats: stats)
-                        }
-                        
-                        // AI Analysis Section
+                        // Spiritual Analysis Section
                         if viewModel.isLoadingAI {
                             AILoadingView()
                         } else if let analysis = viewModel.aiAnalysis {
@@ -61,7 +57,7 @@ struct JourneyView: View {
                                 }
                             }
                         } else {
-                            // No cache - show button to get AI insights
+                            // No cache - show button to get spiritual insights
                             GetAIInsightsButton {
                                 Task {
                                     await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
@@ -69,32 +65,40 @@ struct JourneyView: View {
                             }
                         }
                         
-                        // Recent History Section - Horizontal Scrollable Widgets
-                        RecentHistoryWidgetView(
-                            historyItems: progressStore.getRecentHistory(limit: 5),
-                            settingsStore: settingsStore,
-                            router: router
-                        )
+                        // Stats Row - Below the summary section, expandable
+                        if let stats = viewModel.stats {
+                            JourneyStatsView(stats: stats, showDetails: $showDetails)
+                        }
                         
-                        // My Notes Section - Horizontal Scrollable Widgets
-                        MyNotesWidgetView(
-                            savedVerses: Array(noteStore.savedVerses.prefix(5)),
-                            settingsStore: settingsStore,
-                            router: router
-                        )
-                        
-                        // Timeline Section - Small Timeline Widget
-                        TimelineWidgetView(
-                            milestones: viewModel.milestones,
-                            isLoading: viewModel.isLoading
-                        )
+                        // Detailed sections - Only shown when expanded
+                        if showDetails {
+                            // Recent History Section - Horizontal Scrollable Widgets
+                            RecentHistoryWidgetView(
+                                historyItems: progressStore.getRecentHistory(limit: 5),
+                                settingsStore: settingsStore,
+                                router: router
+                            )
+                            
+                            // My Notes Section - Horizontal Scrollable Widgets
+                            MyNotesWidgetView(
+                                savedVerses: Array(noteStore.savedVerses.prefix(5)),
+                                settingsStore: settingsStore,
+                                router: router
+                            )
+                            
+                            // Timeline Section - Small Timeline Widget
+                            TimelineWidgetView(
+                                milestones: viewModel.milestones,
+                                isLoading: viewModel.isLoading
+                            )
+                        }
                         
                         Spacer(minLength: 40)
                     }
                     .padding()
                 }
             }
-            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "路徑" : "Path")
+            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "了解你的屬靈之路" : "Discover Your Spiritual Path")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -114,7 +118,7 @@ struct JourneyView: View {
             .onAppear {
                 Task {
                     await viewModel.loadData()
-                    // Only auto-load AI analysis if cached
+                    // Only auto-load spiritual analysis if cached
                     if viewModel.hasCachedAnalysis {
                         await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
                     }
@@ -124,50 +128,47 @@ struct JourneyView: View {
     }
 }
 
-// MARK: - AI Loading View
+// MARK: - Spiritual Loading View
 
 struct AILoadingView: View {
-    @State private var animationPhase = 0
+    @State private var progress: Double = 0.0
     @ObservedObject private var settingsStore = SettingsStore.shared
     
-    let loadingMessages = [
-        "Analyzing your journey...",
-        "Looking at your reading patterns...",
-        "Preparing personalized insights...",
-        "Almost there..."
-    ]
-    
-    let loadingMessagesChinese = [
-        "分析您的信仰歷程...",
-        "觀察您的閱讀模式...",
-        "準備個人化的洞見...",
-        "即將完成..."
-    ]
+    let loadingMessage = "Reflecting on your journey..."
+    let loadingMessageChinese = "回顧您的信仰歷程..."
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Animated icon
+        VStack(spacing: 24) {
+            // Circular Progress Ring
             ZStack {
+                // Background circle
                 Circle()
-                    .fill(AppTheme.accentColor.opacity(0.1))
+                    .stroke(AppTheme.accentColor.opacity(0.2), lineWidth: 6)
                     .frame(width: 80, height: 80)
                 
-                Image(systemName: "sparkles")
-                    .font(.system(size: 32))
-                    .foregroundColor(AppTheme.accentColor)
-                    .symbolEffect(.pulse, options: .repeating)
+                // Progress circle
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AppTheme.accentColor,
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    )
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.1), value: progress)
             }
             
-            Text(settingsStore.appLanguage == .chineseTraditional ? loadingMessagesChinese[animationPhase % loadingMessagesChinese.count] : loadingMessages[animationPhase % loadingMessages.count])
+            // Single loading message
+            Text(settingsStore.appLanguage == .chineseTraditional ? loadingMessageChinese : loadingMessage)
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
-                .animation(.easeInOut, value: animationPhase)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
         .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-                animationPhase += 1
+            // Animate progress over 12 seconds
+            withAnimation(.linear(duration: 12.0)) {
+                progress = 1.0
             }
         }
     }
@@ -177,17 +178,21 @@ struct AILoadingView: View {
 
 struct EncouragementHeroView: View {
     let encouragement: String
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
+    
+    // Use a consistent background based on encouragement text hash
+    private var backgroundFilename: String {
+        let hash = abs(encouragement.hashValue)
+        let index = hash % backgroundManager.count
+        return backgroundManager.background(at: index)
+    }
     
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 28))
-                .foregroundColor(AppTheme.accentColor)
-            
             Text(encouragement)
                 .font(.body)
                 .fontWeight(.medium)
-                .foregroundColor(AppTheme.primaryText)
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .lineSpacing(6)
         }
@@ -195,22 +200,28 @@ struct EncouragementHeroView: View {
         .frame(maxWidth: .infinity)
         .background(
             ZStack {
-                AppTheme.cardGradient
+                // Serene background image
+                SereneBackgroundImage(
+                    filename: backgroundFilename,
+                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 200)
+                )
+                .aspectRatio(contentMode: .fill)
                 
-                // Decorative elements
-                Circle()
-                    .fill(AppTheme.accentColor.opacity(0.05))
-                    .frame(width: 150, height: 150)
-                    .offset(x: -80, y: -60)
-                
-                Circle()
-                    .fill(AppTheme.primaryPurple.opacity(0.05))
-                    .frame(width: 100, height: 100)
-                    .offset(x: 100, y: 50)
+                // Dark gradient overlay for text readability
+                LinearGradient(
+                    colors: [
+                        Color.black.opacity(0.6),
+                        Color.black.opacity(0.5),
+                        Color.black.opacity(0.6)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             }
         )
+        .clipped()
         .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -302,17 +313,25 @@ struct JourneySummaryView: View {
 struct RecommendedVerseView: View {
     let verse: RecommendedVerse
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
+    
+    // Use a consistent background based on verse reference hash
+    private var backgroundFilename: String {
+        let hash = abs(verse.reference.hashValue)
+        let index = hash % backgroundManager.count
+        return backgroundManager.background(at: index)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "star.fill")
                     .font(.caption)
-                    .foregroundColor(.orange)
+                    .foregroundColor(.yellow)
                 Text(settingsStore.appLanguage == .chineseTraditional ? "為你推薦" : "Recommended for You")
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.secondaryText)
+                    .foregroundColor(.white.opacity(0.9))
                     .textCase(.uppercase)
                 Spacer()
             }
@@ -320,36 +339,47 @@ struct RecommendedVerseView: View {
             Text("\"\(verse.text)\"")
                 .font(.body)
                 .italic()
-                .foregroundColor(AppTheme.primaryText)
+                .foregroundColor(.white)
                 .lineSpacing(4)
             
             HStack {
                 Text(verse.reference)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.accentColor)
+                    .foregroundColor(.white.opacity(0.9))
                 
                 Spacer()
                 
                 Text(verse.reason)
                     .font(.caption2)
-                    .foregroundColor(AppTheme.secondaryText)
+                    .foregroundColor(.white.opacity(0.8))
             }
         }
         .padding(16)
         .background(
             ZStack {
-                AppTheme.cardGradient
+                // Serene background image
+                SereneBackgroundImage(
+                    filename: backgroundFilename,
+                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 180)
+                )
+                .aspectRatio(contentMode: .fill)
                 
-                // Quote decoration
-                Image(systemName: "quote.opening")
-                    .font(.system(size: 60))
-                    .foregroundColor(AppTheme.accentColor.opacity(0.05))
-                    .offset(x: -60, y: -20)
+                // Dark gradient overlay for text readability
+                LinearGradient(
+                    colors: [
+                        Color.black.opacity(0.65),
+                        Color.black.opacity(0.55),
+                        Color.black.opacity(0.65)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             }
         )
+        .clipped()
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -541,7 +571,7 @@ struct TimelineItemRow: View {
     }
 }
 
-// MARK: - AI Error View
+// MARK: - Insight Error View
 
 struct AIErrorView: View {
     let error: String
@@ -554,7 +584,7 @@ struct AIErrorView: View {
                 .font(.title)
                 .foregroundColor(.orange)
             
-            Text(settingsStore.appLanguage == .chineseTraditional ? "無法載入 AI 分析" : "Unable to load AI analysis")
+            Text(settingsStore.appLanguage == .chineseTraditional ? "無法載入屬靈分析" : "Unable to load spiritual insights")
                 .font(.subheadline)
                 .foregroundColor(AppTheme.primaryText)
             
@@ -576,54 +606,55 @@ struct AIErrorView: View {
     }
 }
 
-// MARK: - Get AI Insights Button
+// MARK: - Get Spiritual Insights Button
 
 struct GetAIInsightsButton: View {
     let onTap: () -> Void
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 24) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [AppTheme.accentColor.opacity(0.2), AppTheme.primaryPurple.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 100, height: 100)
+            ZStack {
+                // Background Image
+                SereneBackgroundImage(
+                    filename: backgroundManager.journeyBackground,
+                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 350)
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 340)
+                .clipped()
+                .overlay(
+                    LinearGradient(
+                        colors: [.black.opacity(0.6), .black.opacity(0.2)],
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                )
+                
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        // Title
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "獲取屬靈洞見" : "Receive Spiritual Insight")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        
+                        // Description
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "回顧您的閱讀歷程，獲得個人化的屬靈鼓勵" : "Reflect on your journey and get personalized spiritual encouragement")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
                     
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 48))
-                        .foregroundColor(AppTheme.accentColor)
-                        .symbolEffect(.pulse, options: .repeating)
+                    // Arrow indicator
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.white)
                 }
-                
-                // Title
-                Text(settingsStore.appLanguage == .chineseTraditional ? "獲取 AI 洞察" : "Get AI Insights")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(AppTheme.primaryText)
-                
-                // Description
-                Text(settingsStore.appLanguage == .chineseTraditional ? "分析您的閱讀歷程，獲得個人化的屬靈洞察" : "Analyze your reading journey and get personalized spiritual insights")
-                    .font(.subheadline)
-                    .foregroundColor(AppTheme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                
-                // Arrow indicator
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.title3)
-                    .foregroundColor(AppTheme.accentColor)
+                .padding(.vertical, 50)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 60)
-            .background(AppTheme.cardGradient)
             .cornerRadius(20)
             .shadow(color: Color.black.opacity(0.1), radius: 12, x: 0, y: 6)
         }
@@ -635,26 +666,50 @@ struct GetAIInsightsButton: View {
 
 struct JourneyStatsView: View {
     let stats: JourneyStats
+    @Binding var showDetails: Bool
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     var body: some View {
-        HStack(spacing: 12) {
-            StatBox(
-                title: settingsStore.appLanguage == .chineseTraditional ? "章節" : "Chapters",
-                value: "\(stats.totalChaptersRead)",
-                icon: "book.fill"
-            )
-            StatBox(
-                title: settingsStore.appLanguage == .chineseTraditional ? "保存" : "Saved",
-                value: "\(stats.totalVersesSaved)",
-                icon: "bookmark.fill"
-            )
-            StatBox(
-                title: settingsStore.appLanguage == .chineseTraditional ? "連續" : "Streak",
-                value: "\(stats.currentStreak)",
-                icon: "flame.fill"
-            )
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showDetails.toggle()
+            }
+        }) {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    StatBox(
+                        title: settingsStore.appLanguage == .chineseTraditional ? "章節" : "Chapters",
+                        value: "\(stats.totalChaptersRead)",
+                        icon: "book.fill"
+                    )
+                    StatBox(
+                        title: settingsStore.appLanguage == .chineseTraditional ? "保存" : "Saved",
+                        value: "\(stats.totalVersesSaved)",
+                        icon: "bookmark.fill"
+                    )
+                    StatBox(
+                        title: settingsStore.appLanguage == .chineseTraditional ? "連續" : "Streak",
+                        value: "\(stats.currentStreak)",
+                        icon: "flame.fill"
+                    )
+                }
+                
+                // Chevron indicator
+                HStack {
+                    Spacer()
+                    Image(systemName: showDetails ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .animation(.easeInOut(duration: 0.2), value: showDetails)
+                    Spacer()
+                }
+            }
+            .padding(16)
+            .background(AppTheme.cardGradient)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

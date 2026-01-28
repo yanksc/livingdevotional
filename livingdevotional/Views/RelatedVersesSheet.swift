@@ -203,7 +203,7 @@ struct RelatedVersesSheet: View {
     
     private func loadRelatedVerses() {
         guard let aiService = services.aiService else {
-            errorMessage = settingsStore.appLanguage == .chineseTraditional ? "AI服務不可用" : "AI service unavailable"
+            errorMessage = settingsStore.appLanguage == .chineseTraditional ? "服務不可用" : "Service unavailable"
             return
         }
         

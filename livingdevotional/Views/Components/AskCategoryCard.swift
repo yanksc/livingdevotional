@@ -4,14 +4,18 @@ import SwiftUI
 
 struct AskCategoryCard: View {
     let category: AskCategory
+    let backgroundImage: String? // Optional custom background image
     @ObservedObject private var settingsStore = SettingsStore.shared
+    
+    init(category: AskCategory, backgroundImage: String? = nil) {
+        self.category = category
+        self.backgroundImage = backgroundImage
+    }
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Background image
-            Image(category.imageName, bundle: .main)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+            // Background image from bg_serene folder - use custom background if provided, otherwise use category's imageName
+            SereneBackgroundImage(filename: backgroundImage ?? category.imageName)
                 .frame(width: 160, height: 180)
                 .clipped()
             
@@ -58,8 +62,8 @@ struct AskCategoryCard: View {
 
 #Preview {
     HStack {
-        AskCategoryCard(category: AskCategoryStore.shared.categories[0])
-        AskCategoryCard(category: AskCategoryStore.shared.categories[1])
+        AskCategoryCard(category: AskCategoryStore.shared.categories[0], backgroundImage: "SereneBackground1")
+        AskCategoryCard(category: AskCategoryStore.shared.categories[1], backgroundImage: "SereneBackground2")
     }
     .padding()
 }

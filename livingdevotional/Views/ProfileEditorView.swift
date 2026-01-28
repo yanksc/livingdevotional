@@ -314,28 +314,23 @@ struct ProfileEditorView: View {
         value: String,
         selectedGoals: Binding<Set<SpiritualGoal>>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.caption)
                 .foregroundColor(AppTheme.secondaryText)
             
-            VStack(alignment: .leading, spacing: 8) {
+            FlowLayout(spacing: 8) {
                 ForEach(SpiritualGoal.allCases) { goal in
-                    Toggle(
-                        isChinese ? goal.displayNameChinese : goal.displayName,
-                        isOn: Binding(
-                            get: { selectedGoals.wrappedValue.contains(goal) },
-                            set: { isOn in
-                                if isOn {
-                                    selectedGoals.wrappedValue.insert(goal)
-                                } else {
-                                    selectedGoals.wrappedValue.remove(goal)
-                                }
-                            }
-                        )
-                    )
-                    .tint(AppTheme.accentColor)
-                    .font(.body)
+                    SelectableTag(
+                        title: isChinese ? goal.displayNameChinese : goal.displayName,
+                        isSelected: selectedGoals.wrappedValue.contains(goal)
+                    ) {
+                        if selectedGoals.wrappedValue.contains(goal) {
+                            selectedGoals.wrappedValue.remove(goal)
+                        } else {
+                            selectedGoals.wrappedValue.insert(goal)
+                        }
+                    }
                 }
             }
         }
@@ -347,31 +342,125 @@ struct ProfileEditorView: View {
         value: String,
         selectedAreas: Binding<Set<LifeFocusArea>>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.caption)
                 .foregroundColor(AppTheme.secondaryText)
             
-            VStack(alignment: .leading, spacing: 8) {
+            FlowLayout(spacing: 8) {
                 ForEach(LifeFocusArea.allCases) { area in
-                    Toggle(
-                        isChinese ? area.displayNameChinese : area.displayName,
-                        isOn: Binding(
-                            get: { selectedAreas.wrappedValue.contains(area) },
-                            set: { isOn in
-                                if isOn {
-                                    selectedAreas.wrappedValue.insert(area)
-                                } else {
-                                    selectedAreas.wrappedValue.remove(area)
-                                }
-                            }
-                        )
-                    )
-                    .tint(AppTheme.accentColor)
-                    .font(.body)
+                    SelectableTag(
+                        title: isChinese ? area.displayNameChinese : area.displayName,
+                        isSelected: selectedAreas.wrappedValue.contains(area)
+                    ) {
+                        if selectedAreas.wrappedValue.contains(area) {
+                            selectedAreas.wrappedValue.remove(area)
+                        } else {
+                            selectedAreas.wrappedValue.insert(area)
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+// MARK: - Selectable Tag Component
+
+struct SelectableTag: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(isSelected ? .medium : .regular)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                isSelected
+                    ? AppTheme.accentColor.opacity(0.2)
+                    : Color.clear
+            )
+            .foregroundColor(
+                isSelected
+                    ? AppTheme.accentColor
+                    : AppTheme.primaryText
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        isSelected ? AppTheme.accentColor : AppTheme.secondaryText.opacity(0.4),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            )
+            .cornerRadius(20)
+            .animation(.easeInOut(duration: 0.2), value: isSelected)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Flow Layout for Tags
+
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        
+        for (index, position) in result.positions.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: ProposedViewSize(subviews[index].sizeThatFits(.unspecified))
+            )
+        }
+    }
+    
+    private func arrangeSubviews(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let maxWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var totalHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            
+            // Check if we need to wrap to next line
+            if currentX + size.width > maxWidth && currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            
+            positions.append(CGPoint(x: currentX, y: currentY))
+            
+            lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
+            totalWidth = max(totalWidth, currentX - spacing)
+        }
+        
+        totalHeight = currentY + lineHeight
+        
+        return (CGSize(width: totalWidth, height: totalHeight), positions)
     }
 }
 

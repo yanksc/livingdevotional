@@ -153,8 +153,8 @@ struct ChatViewWrapper: View {
             )
             .environmentObject(router)
         } else {
-            // Fallback if AI service not available (shouldn't happen)
-            Text("AI Service Unavailable")
+            // Fallback if service not available (shouldn't happen)
+            Text("Service Unavailable")
                 .onTapGesture { dismiss() }
         }
     }

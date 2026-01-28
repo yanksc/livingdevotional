@@ -4,7 +4,15 @@ import Foundation
 import SwiftUI
 
 class ServiceContainer: ObservableObject {
-    static let shared = ServiceContainer()
+    // Thread-safe singleton initialization
+    private static let _shared: ServiceContainer = {
+        let instance = ServiceContainer()
+        return instance
+    }()
+    
+    static var shared: ServiceContainer {
+        return _shared
+    }
     
     // Services
     let bibleService: BibleService
@@ -30,7 +38,7 @@ class ServiceContainer: ObservableObject {
         self.checkInStore = CheckInStore.shared
         self.prayerLogStore = PrayerLogStore.shared
         
-        // Initialize DailyVerseService
+        // Initialize DailyVerseService (without accessing ServiceContainer to avoid circular dependency)
         self.dailyVerseService = DailyVerseService.shared
         
         // Initialize JourneyService

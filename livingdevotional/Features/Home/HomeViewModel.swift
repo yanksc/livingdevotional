@@ -14,6 +14,15 @@ class HomeViewModel: ObservableObject {
     
     init(services: ServiceContainer = .shared) {
         self.services = services
+        setupNotificationObserver()
+    }
+    
+    private func setupNotificationObserver() {
+        NotificationCenter.default.publisher(for: NSNotification.Name("RefreshVerseOfTheDay"))
+            .sink { [weak self] _ in
+                self?.loadHomeData()
+            }
+            .store(in: &cancellables)
     }
     
     func loadHomeData() {

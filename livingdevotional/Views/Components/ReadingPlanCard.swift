@@ -6,18 +6,22 @@ struct ReadingPlanCard: View {
     let plan: ReadingPlan
     let progress: ReadingPlanProgress?
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     
     var progressPercentage: Double {
         guard let progress = progress, !progress.completedDays.isEmpty else { return 0 }
         return Double(progress.completedDays.count) / Double(plan.duration) * 100
     }
     
+    /// Get background filename for this plan
+    private var backgroundFilename: String {
+        backgroundManager.backgroundForPlan(planId: plan.id)
+    }
+    
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Background image
-            Image(plan.imageName, bundle: .main)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+            // Background image from bg_serene folder
+            SereneBackgroundImage(filename: backgroundFilename)
                 .frame(width: 160, height: 180)
                 .clipped()
             

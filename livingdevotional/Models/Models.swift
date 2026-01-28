@@ -218,7 +218,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "GreatStart": ["en": "A good step on your journey", "zh-Hant": "信仰旅途上的好開始", "zh-Hans": "信仰旅途上的好开始", "es": "Un buen paso en tu camino", "pt": "Um bom passo em sua jornada"],
             "AmazingProgress": ["en": "Growing in faith today", "zh-Hant": "今天在信仰中成長", "zh-Hans": "今天在信仰中成长", "es": "Creciendo en fe hoy", "pt": "Crescendo na fé hoje"],
             "OnFire": ["en": "Faithful dedication today", "zh-Hant": "今日忠心的投入", "zh-Hans": "今日忠心的投入", "es": "Dedicación fiel hoy", "pt": "Dedicação fiel hoje"],
-            "StartReading": ["en": "Start your reading journey today!", "zh-Hant": "今天開始您的閱讀之旅！", "zh-Hans": "今天开始您的阅读之旅！", "es": "¡Comienza tu viaje de lectura hoy!", "pt": "Comece sua jornada de leitura hoje!"]
+            "StartReading": ["en": "Start your reading journey today!", "zh-Hant": "今天開始您的閱讀之旅！", "zh-Hans": "今天开始您的阅读之旅！", "es": "¡Comienza tu viaje de lectura hoy!", "pt": "Comece sua jornada de leitura hoje!"],
+            "WhyWeRecommend": ["en": "Why we recommend this verse", "zh-Hant": "為什麼推薦這節經文", "zh-Hans": "为什么推荐这节经文", "es": "Por qué recomendamos este versículo", "pt": "Por que recomendamos este versículo"],
+            "BecauseYouAsked": ["en": "Because you asked about %@", "zh-Hant": "因為您詢問了 %@", "zh-Hans": "因为您询问了 %@", "es": "Porque preguntaste sobre %@", "pt": "Porque você perguntou sobre %@"],
+            "SinceYouRead": ["en": "Since you read %@", "zh-Hant": "因為您讀了 %@", "zh-Hans": "因为您读了 %@", "es": "Desde que leíste %@", "pt": "Desde que você leu %@"],
+            "YouSavedNotes": ["en": "You saved notes on %@", "zh-Hant": "您在 %@ 上保存了筆記", "zh-Hans": "您在 %@ 上保存了笔记", "es": "Guardaste notas en %@", "pt": "Você salvou notas em %@"],
+            "FromYourPrayer": ["en": "From your prayer about %@", "zh-Hant": "來自您關於 %@ 的禱告", "zh-Hans": "来自您关于 %@ 的祷告", "es": "De tu oración sobre %@", "pt": "Da sua oração sobre %@"]
         ]
         
         return strings[key]?[languageCode] ?? strings[key]?["en"] ?? key
@@ -414,6 +419,8 @@ struct DailyVerse: Codable {
     let selectedDate: String
     let reason: String?
     let source: String?
+    let rationale: String?  // LLM-generated explanation of relevancy
+    let backgroundImage: String?  // Random bg_serene image filename
     
     enum CodingKeys: String, CodingKey {
         case book, chapter, reference
@@ -428,9 +435,11 @@ struct DailyVerse: Codable {
         case selectedDate = "selected_date"
         case reason
         case source
+        case rationale
+        case backgroundImage = "background_image"
     }
     
-    init(book: String, chapter: Int, verseNumber: Int, textBsb: String, textCuv: String, textCu1: String, textKjv: String, textWeb: String, textSpa: String, textPor: String, reference: String, selectedDate: String, reason: String? = nil, source: String? = nil) {
+    init(book: String, chapter: Int, verseNumber: Int, textBsb: String, textCuv: String, textCu1: String, textKjv: String, textWeb: String, textSpa: String, textPor: String, reference: String, selectedDate: String, reason: String? = nil, source: String? = nil, rationale: String? = nil, backgroundImage: String? = nil) {
         self.book = book
         self.chapter = chapter
         self.verseNumber = verseNumber
@@ -445,6 +454,8 @@ struct DailyVerse: Codable {
         self.selectedDate = selectedDate
         self.reason = reason
         self.source = source
+        self.rationale = rationale
+        self.backgroundImage = backgroundImage
     }
     
     func text(for language: Language) -> String {

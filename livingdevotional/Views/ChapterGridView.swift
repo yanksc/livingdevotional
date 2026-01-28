@@ -6,6 +6,7 @@ struct ChapterGridView: View {
     let book: BibleBook
     @ObservedObject var viewModel: BibleViewModel
     @ObservedObject var settingsStore = SettingsStore.shared
+    @ObservedObject var progressStore = ProgressStore.shared
     @Environment(\.dismiss) private var dismiss
     
     private let columns = [
@@ -23,7 +24,8 @@ struct ChapterGridView: View {
                         ChapterButton(
                             chapter: chapter,
                             book: book,
-                            viewModel: viewModel
+                            viewModel: viewModel,
+                            isRead: progressStore.isChapterRead(book: book.name, chapter: chapter)
                         )
                     }
                 }
@@ -56,16 +58,25 @@ struct ChapterButton: View {
     let chapter: Int
     let book: BibleBook
     @ObservedObject var viewModel: BibleViewModel
+    let isRead: Bool
     
     var body: some View {
         NavigationLink(value: NavigationDestination.reading(book, chapter)) {
             Text("\(chapter)")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 18, weight: isRead ? .medium : .semibold))
                 .foregroundColor(.white)
                 .frame(width: 70, height: 70)
-                .background(AppTheme.chapterButtonGradient)
+                .background(
+                    AppTheme.chapterButtonGradient
+                        .opacity(isRead ? 0.6 : 1.0)
+                )
                 .cornerRadius(16)
-                .shadow(color: AppTheme.chapterButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
+                .shadow(
+                    color: AppTheme.chapterButtonColor.opacity(isRead ? 0.15 : 0.3), 
+                    radius: 8, 
+                    x: 0, 
+                    y: 4
+                )
         }
         .buttonStyle(PlainButtonStyle())
         .onTapGesture {

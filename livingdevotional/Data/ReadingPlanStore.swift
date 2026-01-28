@@ -8,20 +8,27 @@ class ReadingPlanStore: ObservableObject {
     
     private let userDefaults = UserDefaults.standard
     private let progressKey = "readingPlanProgress"
+    private let customPlansKey = "customReadingPlans"
     
-    @Published var plans: [ReadingPlan] = []
+    @Published var defaultPlans: [ReadingPlan] = []
+    @Published var customPlans: [ReadingPlan] = []
     @Published var progress: [String: ReadingPlanProgress] = [:]
     
+    var plans: [ReadingPlan] {
+        defaultPlans + customPlans
+    }
+    
     private init() {
-        loadPlans()
+        loadDefaultPlans()
+        loadCustomPlans()
         loadProgress()
     }
     
     // MARK: - Plan Definitions
     
-    private func loadPlans() {
-        // Define the 5 reading plans
-        plans = [
+    private func loadDefaultPlans() {
+        // Define the 5 default reading plans
+        defaultPlans = [
             // 1. Gospel of John (7 days)
             ReadingPlan(
                 id: "gospel-of-john",
@@ -255,5 +262,82 @@ class ReadingPlanStore: ObservableObject {
     /// Get total days completed across all plans
     func getTotalDaysCompleted() -> Int {
         return progress.values.reduce(0) { $0 + $1.completedDays.count }
+    }
+    
+    // MARK: - Custom Plans Management
+    
+    // Valid SF Symbols for reading plans
+    private static let validIcons: Set<String> = [
+        "book.fill", "heart.fill", "lightbulb.fill", "leaf.fill", "mountain.2.fill",
+        "star.fill", "sun.max.fill", "flame.fill", "sparkles", "cross.fill",
+        "hand.raised.fill", "person.fill", "figure.walk", "figure.mind.and.body",
+        "water.waves", "moon.fill", "bolt.fill", "shield.fill", "crown.fill",
+        "graduationcap.fill", "book.closed.fill", "text.book.closed.fill",
+        "globe.americas.fill", "hands.clap.fill", "heart.text.square.fill"
+    ]
+    
+    private func loadCustomPlans() {
+        guard let data = userDefaults.data(forKey: customPlansKey),
+              let decoded = try? JSONDecoder().decode([ReadingPlan].self, from: data) else {
+            customPlans = []
+            return
+        }
+        // Sanitize icons for any plans with invalid SF Symbols
+        customPlans = decoded.map { plan in
+            if Self.validIcons.contains(plan.icon) {
+                return plan
+            } else {
+                // Return plan with valid fallback icon
+                return ReadingPlan(
+                    id: plan.id,
+                    title: plan.title,
+                    description: plan.description,
+                    extendedDescription: plan.extendedDescription,
+                    icon: "book.fill",
+                    imageName: plan.imageName,
+                    days: plan.days,
+                    category: plan.category
+                )
+            }
+        }
+    }
+    
+    private func saveCustomPlans() {
+        if let encoded = try? JSONEncoder().encode(customPlans) {
+            userDefaults.set(encoded, forKey: customPlansKey)
+        }
+    }
+    
+    func addCustomPlan(_ plan: ReadingPlan) {
+        // Ensure ID is unique
+        var planToAdd = plan
+        if planToAdd.id.isEmpty || plans.contains(where: { $0.id == planToAdd.id }) {
+            planToAdd = ReadingPlan(
+                id: "custom-\(UUID().uuidString)",
+                title: plan.title,
+                description: plan.description,
+                extendedDescription: plan.extendedDescription,
+                icon: plan.icon,
+                imageName: plan.imageName,
+                days: plan.days,
+                category: plan.category
+            )
+        }
+        customPlans.append(planToAdd)
+        saveCustomPlans()
+    }
+    
+    func deleteCustomPlan(_ planId: String) {
+        customPlans.removeAll { $0.id == planId }
+        // Also remove progress if exists
+        progress.removeValue(forKey: planId)
+        // Release the background assignment so it can be reused
+        SereneBackgroundManager.shared.removePlanBackground(for: planId)
+        saveCustomPlans()
+        saveProgress()
+    }
+    
+    func isCustomPlan(_ planId: String) -> Bool {
+        return customPlans.contains(where: { $0.id == planId })
     }
 }

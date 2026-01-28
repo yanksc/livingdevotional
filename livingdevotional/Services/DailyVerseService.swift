@@ -7,6 +7,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
     static let shared = DailyVerseService()
     
     private let bibleService: BibleService
+    private let injectedAIService: AIServiceProtocol?
     private let userDefaults = UserDefaults.standard
     private let dailyVerseKey = "dailyVerse"
     private let dailyVerseDateKey = "dailyVerseDate"
@@ -25,8 +26,19 @@ class DailyVerseService: DailyVerseServiceProtocol {
         ("Romans", 12, 2)
     ]
     
-    init(bibleService: BibleService = .shared) {
+    // Lazy access to avoid circular dependency with ServiceContainer
+    // Access ServiceContainer on main thread to ensure thread safety
+    private var aiService: AIServiceProtocol? {
+        if let injected = injectedAIService {
+            return injected
+        }
+        // Access ServiceContainer safely - it's initialized on main thread
+        return ServiceContainer.shared.aiService
+    }
+    
+    init(bibleService: BibleService = .shared, aiService: AIServiceProtocol? = nil) {
         self.bibleService = bibleService
+        self.injectedAIService = aiService
     }
     
     func getVerseOfTheDay(date: Date?) async throws -> DailyVerse {
@@ -42,6 +54,16 @@ class DailyVerseService: DailyVerseServiceProtocol {
         
         // Generate a new verse of the day
         return try await generateAndSaveDailyVerse(for: targetDate)
+    }
+    
+    /// Force refresh the verse of the day by clearing cache and regenerating
+    func forceRefreshVerseOfTheDay() async throws -> DailyVerse {
+        // Clear the cached verse
+        userDefaults.removeObject(forKey: dailyVerseKey)
+        userDefaults.removeObject(forKey: dailyVerseDateKey)
+        
+        // Generate a new verse
+        return try await generateAndSaveDailyVerse(for: Date())
     }
     
     func getCuratedVerses(category: String?) async throws -> [CuratedVerse] {
@@ -64,11 +86,16 @@ class DailyVerseService: DailyVerseServiceProtocol {
             PrayerLogStore.shared.logs.first(where: { $0.date > twoDaysAgo })
         }
         
+        // Get app language for localization
+        let appLanguage = await MainActor.run {
+            SettingsStore.shared.appLanguage
+        }
+        
         if let prayer = recentPrayer {
             // Use the verse from the prayer
             selection = (prayer.verseBook, prayer.verseChapter, prayer.verseNumber)
             let topicDisplay = prayer.customTopicText ?? prayer.topic
-            reason = "From your recent prayer"
+            reason = appLanguage.localizedString("FromYourPrayer").replacingOccurrences(of: "%@", with: topicDisplay)
             source = "Based on your prayer about \(topicDisplay)"
         } else {
             // 2. Check recent Chat/Ask (exploring questions)
@@ -78,7 +105,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
             
             if let chat = recentChat, let book = chat.book, let chapter = chat.chapter, let verse = chat.verseNumber {
                 selection = (book, chapter, verse)
-                reason = "From your recent question"
+                // Extract topic from chat if available, otherwise use verse reference
+                let chatTopic = chat.messages.first?.content ?? "\(book) \(chapter):\(verse)"
+                reason = appLanguage.localizedString("BecauseYouAsked").replacingOccurrences(of: "%@", with: chatTopic)
                 source = "Based on your conversation about \(book) \(chapter):\(verse)"
             } else {
                 // 3. Check recent Saved Note
@@ -88,7 +117,8 @@ class DailyVerseService: DailyVerseServiceProtocol {
                 
                 if let note = recentNote {
                     selection = (note.book, note.chapter, note.verse)
-                    reason = "A verse you saved"
+                    let noteRef = "\(note.book) \(note.chapter):\(note.verse)"
+                    reason = appLanguage.localizedString("YouSavedNotes").replacingOccurrences(of: "%@", with: noteRef)
                     source = "From your notes on \(note.book) \(note.chapter):\(note.verse)"
                 } else {
                     // 4. Check Active Reading Plan
@@ -101,7 +131,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
                         // Get first verse of the current reading day
                         let verseNum = currentDay.verseStart ?? 1
                         selection = (currentDay.book, currentDay.chapter, verseNum)
-                        reason = "From your reading plan"
+                        reason = appLanguage.localizedString("SinceYouRead").replacingOccurrences(of: "%@", with: plan.title)
                         source = "Today's reading: \(plan.title)"
                     } else {
                         // 5. Check Reading History
@@ -111,7 +141,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
                         
                         if let history = recentHistory, history.timestamp > twoDaysAgo {
                             selection = (history.book, history.chapter, 1)
-                            reason = "Continue your journey"
+                            reason = appLanguage.localizedString("SinceYouRead").replacingOccurrences(of: "%@", with: history.book)
                             source = "Based on your reading in \(history.book)"
                         } else {
                             // 6. Fallback to Popular Verses
@@ -191,6 +221,37 @@ class DailyVerseService: DailyVerseServiceProtocol {
             throw NSError(domain: "DailyVerseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Verse not found"])
         }
         
+        // Get primary language text for rationale generation
+        let primaryLanguage = await MainActor.run {
+            SettingsStore.shared.primaryLanguage
+        }
+        let verseText: String
+        switch primaryLanguage {
+        case .bsb: verseText = textBsb
+        case .cuv: verseText = textCuv
+        case .cu1: verseText = textCu1
+        case .kjv: verseText = textKjv
+        case .web: verseText = textWeb
+        case .spa_r09: verseText = textSpa
+        case .por_blj: verseText = textPor
+        case .none: verseText = textBsb.isEmpty ? textCuv : textBsb
+        }
+        
+        // Generate rationale using AI if available and source exists
+        var rationale: String? = nil
+        if let aiService = aiService, let source = source, !verseText.isEmpty {
+            let verseReference = "\(selection.book) \(selection.chapter):\(selection.verse)"
+            rationale = try? await aiService.generateVerseRationale(
+                verseReference: verseReference,
+                verseText: verseText,
+                userAction: source,
+                appLanguage: appLanguage
+            )
+        }
+        
+        // Select random background from SereneBackgroundManager
+        let backgroundImage = SereneBackgroundManager.shared.randomBackground()
+        
         // Create DailyVerse object
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -210,7 +271,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
             reference: "\(selection.book) \(selection.chapter):\(selection.verse)",
             selectedDate: dateString,
             reason: reason,
-            source: source
+            source: source,
+            rationale: rationale,
+            backgroundImage: backgroundImage
         )
         
         // Save to UserDefaults

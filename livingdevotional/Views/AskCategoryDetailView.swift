@@ -128,7 +128,7 @@ struct AskCategoryDetailView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 28))
                         .foregroundColor(AppTheme.secondaryText)
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "AI 服務暫時無法使用" : "AI service is currently unavailable")
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "服務暫時無法使用" : "Service is currently unavailable")
                         .font(.subheadline)
                         .foregroundColor(AppTheme.secondaryText)
                 }

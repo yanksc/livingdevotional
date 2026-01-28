@@ -311,6 +311,8 @@ struct SettingsView: View {
     @State private var showProfileEditor = false
     @State private var showReadingHistory = false
     @State private var showPrayerHistory = false
+    @State private var isRefreshingVerse = false
+    @State private var showVerseRefreshedAlert = false
     
     
     var body: some View {
@@ -518,6 +520,37 @@ struct SettingsView: View {
                                 showPrayerHistory = true
                             }
                         )
+                        
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        // Refresh Verse of the Day
+                        Button(action: {
+                            refreshVerseOfTheDay()
+                        }) {
+                            HStack(spacing: 16) {
+                                if isRefreshingVerse {
+                                    ProgressView()
+                                        .frame(width: 24)
+                                } else {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(AppTheme.accentColor)
+                                        .frame(width: 24)
+                                }
+                                
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "重新生成今日經文" :
+                                     settingsStore.appLanguage == .chineseSimplified ? "重新生成今日经文" :
+                                     "Refresh Verse of the Day")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(isRefreshingVerse ? AppTheme.secondaryText : AppTheme.primaryText)
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                        }
+                        .disabled(isRefreshingVerse)
                     }
                     
                     // Notifications Section
@@ -686,6 +719,37 @@ struct SettingsView: View {
             NavigationStack {
                 PrayerHistoryView()
                     .environmentObject(router)
+            }
+        }
+        .alert(
+            settingsStore.appLanguage == .chineseTraditional ? "今日經文已更新" :
+            settingsStore.appLanguage == .chineseSimplified ? "今日经文已更新" :
+            "Verse Updated",
+            isPresented: $showVerseRefreshedAlert
+        ) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(settingsStore.appLanguage == .chineseTraditional ? "返回首頁查看新的經文" :
+                 settingsStore.appLanguage == .chineseSimplified ? "返回首页查看新的经文" :
+                 "Return to Today to see your new verse")
+        }
+    }
+    
+    private func refreshVerseOfTheDay() {
+        isRefreshingVerse = true
+        Task {
+            do {
+                _ = try await DailyVerseService.shared.forceRefreshVerseOfTheDay()
+                await MainActor.run {
+                    isRefreshingVerse = false
+                    showVerseRefreshedAlert = true
+                    // Post notification so HomeView can reload
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshVerseOfTheDay"), object: nil)
+                }
+            } catch {
+                await MainActor.run {
+                    isRefreshingVerse = false
+                }
             }
         }
     }

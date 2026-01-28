@@ -29,15 +29,52 @@ class ProgressStore: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private let progressKey = "readingProgress"
     private let historyKey = "readingHistory"
+    private let readChaptersKey = "readChapters"
     private let maxHistoryItems = 50
     
     @Published var currentBook: String?
     @Published var currentChapter: Int?
     @Published var readingHistory: [ReadingHistoryItem] = []
+    @Published var readChapters: Set<String> = []
     
     private init() {
         loadProgress()
         loadHistory()
+        loadReadChapters()
+    }
+    
+    // MARK: - Read Chapters Management
+    
+    private func chapterKey(book: String, chapter: Int) -> String {
+        return "\(book):\(chapter)"
+    }
+    
+    func markChapterAsRead(book: String, chapter: Int) {
+        let key = chapterKey(book: book, chapter: chapter)
+        readChapters.insert(key)
+        saveReadChapters()
+    }
+    
+    func isChapterRead(book: String, chapter: Int) -> Bool {
+        let key = chapterKey(book: book, chapter: chapter)
+        return readChapters.contains(key)
+    }
+    
+    private func loadReadChapters() {
+        if let data = userDefaults.data(forKey: readChaptersKey),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            readChapters = Set(decoded)
+        } else {
+            // If no saved set exists, build it from reading history
+            readChapters = Set(readingHistory.map { chapterKey(book: $0.book, chapter: $0.chapter) })
+        }
+    }
+    
+    private func saveReadChapters() {
+        let array = Array(readChapters)
+        if let encoded = try? JSONEncoder().encode(array) {
+            userDefaults.set(encoded, forKey: readChaptersKey)
+        }
     }
     
     func saveProgress(book: String, chapter: Int) {
@@ -90,6 +127,9 @@ class ProgressStore: ObservableObject {
             readingHistory = Array(readingHistory.prefix(maxHistoryItems))
         }
         
+        // Mark chapter as read
+        markChapterAsRead(book: book, chapter: chapter)
+        
         // Save to UserDefaults
         saveHistory()
     }
@@ -113,6 +153,8 @@ class ProgressStore: ObservableObject {
     func clearHistory() {
         readingHistory = []
         userDefaults.removeObject(forKey: historyKey)
+        readChapters = []
+        userDefaults.removeObject(forKey: readChaptersKey)
     }
     
     func getRecentHistory(limit: Int = 3) -> [ReadingHistoryItem] {

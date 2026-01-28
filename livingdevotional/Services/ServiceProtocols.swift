@@ -27,8 +27,11 @@ protocol AIServiceProtocol {
     func getChapterContext(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
     func searchBible(query: String, language: Language) async throws -> [SearchResult]
     func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage) async throws -> DailyVerse
+    func generateVerseRationale(verseReference: String, verseText: String, userAction: String, appLanguage: AppLanguage) async throws -> String
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis
     func chatGeneral(appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
+    func generatePersonalizedPlanQuestions(profile: UserProfile, history: AIService.UserHistoryContext?, appLanguage: AppLanguage) async throws -> [AIService.PlanQuestion]
+    func generateReadingPlan(answers: [String: String], profile: UserProfile, appLanguage: AppLanguage) async throws -> ReadingPlan
 }
 
 // MARK: - User Service Protocol

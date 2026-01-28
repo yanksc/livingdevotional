@@ -6,6 +6,7 @@ import SwiftUI
 struct JourneyCard: View {
     @StateObject private var viewModel = JourneyViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     @Binding var showJourney: Bool
     
     var body: some View {
@@ -13,7 +14,7 @@ struct JourneyCard: View {
             showJourney = true
         } label: {
             VStack(alignment: .leading, spacing: 12) {
-                // Header with sparkle icon for AI
+                // Header with sparkle icon
                 HStack {
                     ZStack {
                         Circle()
@@ -30,8 +31,8 @@ struct JourneyCard: View {
                     
                     Spacer()
                     
-                    // AI Badge
-                    Text("AI")
+                    // Insight Badge
+                    Text("INSIGHT")
                         .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundColor(.white)
@@ -51,9 +52,9 @@ struct JourneyCard: View {
                         .font(.caption)
                 }
                 
-                // Content based on AI analysis or fallback
+                // Content based on spiritual analysis or fallback
                 if let analysis = viewModel.aiAnalysis {
-                    // Show AI path status as teaser
+                    // Show path status as teaser
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -89,12 +90,12 @@ struct JourneyCard: View {
                     .cornerRadius(10)
                     
                 } else if viewModel.isLoadingAI {
-                    // Loading AI analysis
+                    // Loading analysis
                     HStack(spacing: 12) {
                         ProgressView()
                             .scaleEffect(0.8)
                         
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "AI 正在分析您的旅程..." : "AI is analyzing your journey...")
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "正在回顧您的信仰歷程..." : "Reflecting on your journey...")
                             .font(.caption)
                             .foregroundColor(AppTheme.secondaryText)
                     }
@@ -140,7 +141,7 @@ struct JourneyCard: View {
                             .font(.title3)
                             .foregroundColor(AppTheme.accentColor.opacity(0.6))
                         
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "探索 AI 為您準備的個人化分析" : "Discover AI-powered insights about your journey")
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "探索您的個人化屬靈分析" : "Discover spiritual insights about your journey")
                             .font(.caption)
                             .foregroundColor(AppTheme.secondaryText)
                             .multilineTextAlignment(.leading)
@@ -151,14 +152,18 @@ struct JourneyCard: View {
                     .cornerRadius(10)
                 }
                 
-                // Stats preview row
+                Spacer(minLength: 8)
+                
+                // Stats row at the bottom
                 if let stats = viewModel.stats, (stats.totalChaptersRead > 0 || stats.totalVersesSaved > 0 || stats.currentStreak > 0) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: 0) {
                         StatPreview(
                             icon: "book.fill",
                             value: "\(stats.totalChaptersRead)",
                             label: settingsStore.appLanguage == .chineseTraditional ? "章" : "chapters"
                         )
+                        
+                        Spacer()
                         
                         StatPreview(
                             icon: "bookmark.fill",
@@ -167,33 +172,41 @@ struct JourneyCard: View {
                         )
                         
                         if stats.currentStreak > 0 {
+                            Spacer()
+                            
                             StatPreview(
                                 icon: "flame.fill",
                                 value: "\(stats.currentStreak)",
                                 label: settingsStore.appLanguage == .chineseTraditional ? "連續" : "streak"
                             )
                         }
-                        
-                        Spacer()
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
                 }
             }
             .padding(14)
             .background(
                 ZStack {
-                    AppTheme.cardGradient
+                    // Serene background image
+                    Image(backgroundManager.journeyBackground)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                    
+                    // Light overlay for text readability
+                    Color.white.opacity(0.85)
                     
                     // Subtle decorative gradient
                     LinearGradient(
-                        colors: [AppTheme.accentColor.opacity(0.03), Color.clear],
+                        colors: [AppTheme.accentColor.opacity(0.05), Color.clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 }
             )
+            .clipped()
             .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
         .onAppear {
@@ -221,19 +234,22 @@ struct StatPreview: View {
     let label: String
     
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.caption2)
-                .foregroundColor(AppTheme.accentColor.opacity(0.7))
-            
-            Text(value)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(AppTheme.primaryText)
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.accentColor.opacity(0.7))
+                
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.primaryText)
+            }
             
             Text(label)
                 .font(.caption2)
                 .foregroundColor(AppTheme.secondaryText)
         }
+        .frame(maxWidth: .infinity)
     }
 }

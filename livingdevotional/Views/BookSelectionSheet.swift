@@ -6,9 +6,10 @@ struct BookSelectionSheet: View {
     @ObservedObject var viewModel: BibleViewModel
     @Binding var isPresented: Bool
     @ObservedObject var settingsStore = SettingsStore.shared
+    @ObservedObject var progressStore = ProgressStore.shared
     @State private var selectedTab = 0
     @State private var selectedBook: BibleBook?
-    @State private var selectedChapter: Int = 1
+    @State private var selectedChapter: Int? = nil
     
     // Chapter grid columns - 5 per row
     private let chapterColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
@@ -44,7 +45,7 @@ struct BookSelectionSheet: View {
                                             withAnimation {
                                                 if isExpanded {
                                                     selectedBook = book
-                                                    selectedChapter = 1
+                                                    selectedChapter = nil
                                                 } else {
                                                     selectedBook = nil
                                                 }
@@ -58,6 +59,7 @@ struct BookSelectionSheet: View {
                                             ChapterSelectionButton(
                                                 chapter: chapter,
                                                 isSelected: selectedChapter == chapter,
+                                                isRead: progressStore.readingHistory.contains { $0.book == book.name && $0.chapter == chapter },
                                                 onSelect: {
                                                     selectedChapter = chapter
                                                     viewModel.selectBook(book)
@@ -81,7 +83,7 @@ struct BookSelectionSheet: View {
                                                 } else {
                                                     // Otherwise, expand
                                                     selectedBook = book
-                                                    selectedChapter = 1
+                                                    selectedChapter = nil
                                                 }
                                             }
                                         }
@@ -100,7 +102,7 @@ struct BookSelectionSheet: View {
                                             withAnimation {
                                                 if isExpanded {
                                                     selectedBook = book
-                                                    selectedChapter = 1
+                                                    selectedChapter = nil
                                                 } else {
                                                     selectedBook = nil
                                                 }
@@ -114,6 +116,7 @@ struct BookSelectionSheet: View {
                                             ChapterSelectionButton(
                                                 chapter: chapter,
                                                 isSelected: selectedChapter == chapter,
+                                                isRead: progressStore.readingHistory.contains { $0.book == book.name && $0.chapter == chapter },
                                                 onSelect: {
                                                     selectedChapter = chapter
                                                     viewModel.selectBook(book)
@@ -137,7 +140,7 @@ struct BookSelectionSheet: View {
                                                 } else {
                                                     // Otherwise, expand
                                                     selectedBook = book
-                                                    selectedChapter = 1
+                                                    selectedChapter = nil
                                                 }
                                             }
                                         }
@@ -168,7 +171,7 @@ struct BookSelectionSheet: View {
             // Initialize with current selection if available
             if let currentBook = viewModel.selectedBook {
                 selectedBook = currentBook
-                selectedChapter = viewModel.selectedChapter ?? 1
+                selectedChapter = viewModel.selectedChapter
                 selectedTab = currentBook.testament == .old ? 0 : 1
             }
         }
@@ -215,18 +218,25 @@ struct BookSelectionRow: View {
 struct ChapterSelectionButton: View {
     let chapter: Int
     let isSelected: Bool
+    let isRead: Bool
     let onSelect: () -> Void
     
     var body: some View {
         Button(action: onSelect) {
             Text("\(chapter)")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(isSelected ? AppTheme.chapterButtonColor : AppTheme.primaryText)
+                .font(.system(size: 16, weight: isRead ? .semibold : .medium))
+                .foregroundColor(
+                    isSelected 
+                        ? AppTheme.chapterButtonColor 
+                        : (isRead ? AppTheme.primaryText : AppTheme.secondaryText)
+                )
                 .frame(width: 60, height: 60)
                 .background(
                     isSelected 
                         ? AppTheme.chapterButtonColor.opacity(0.15)
-                        : Color(red: 0.96, green: 0.96, blue: 0.98)
+                        : (isRead 
+                            ? Color(red: 0.96, green: 0.96, blue: 0.98)
+                            : Color(red: 0.96, green: 0.96, blue: 0.98).opacity(0.6))
                 )
                 .cornerRadius(12)
                 .overlay(

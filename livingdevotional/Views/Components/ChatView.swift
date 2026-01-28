@@ -170,6 +170,11 @@ struct ChatView: View {
         }
         .background(AppTheme.backgroundGradient)
         .onAppear {
+            // Auto-focus the input field with a slight delay for sheet presentation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isInputFocused = true
+            }
+            
             Task {
                 // Load verse text first if needed (for Ask questions with verse context)
                 await viewModel.loadVerseTextIfNeeded(primaryLanguage: settingsStore.primaryLanguage)

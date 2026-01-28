@@ -206,15 +206,19 @@ struct PrayerFlowView: View {
                     }
                 }
             }
-            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "禱告" : "Prayer")
+            .navigationTitle(selectedVerse != nil && !generatedPrayer.isEmpty ? "" : (settingsStore.appLanguage == .chineseTraditional ? "禱告" : "Prayer"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(settingsStore.appLanguage == .chineseTraditional ? "取消" : "Cancel") {
-                        dismiss()
+                // Only show cancel button when NOT showing prayer result
+                if !(selectedVerse != nil && !generatedPrayer.isEmpty) {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(settingsStore.appLanguage == .chineseTraditional ? "取消" : "Cancel") {
+                            dismiss()
+                        }
                     }
                 }
             }
+            .toolbarBackground(selectedVerse != nil && !generatedPrayer.isEmpty ? .hidden : .visible, for: .navigationBar)
             .onAppear {
                 // If initial verse is provided, convert it to a VerseOption and set it
                 if let verse = initialVerse {
@@ -981,51 +985,95 @@ struct PrayerResultView: View {
     var onDismiss: () -> Void
     @ObservedObject private var settingsStore = SettingsStore.shared
     
+    // Randomly select a dark serene background (1-5) - persisted across renders
+    @State private var backgroundImageName: String = {
+        let randomIndex = Int.random(in: 1...5)
+        return "dark_serene_\(randomIndex)"
+    }()
+    
+    // Control Amen button visibility
+    @State private var showAmenButton = false
+    
     var body: some View {
         ZStack {
-            SereneGradientBackground()
+            // Dark serene background image
+            Image(backgroundImageName)
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
+            
+            // Black overlay to ensure text readability
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 0) {
-                    // Prayer text - starts from top, animated
-                    TypewriterText(
-                        text: prayer,
-                        speed: 0.05,
-                        font: .system(size: 18, weight: .regular, design: .serif)
-                    )
-                    .foregroundColor(AppTheme.primaryText)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(8)
+                    // Verse display - at the top with elegant rounded transparent background
+                    VStack(spacing: 10) {
+                        Text(verse.text(for: settingsStore.primaryLanguage))
+                            .font(.system(size: 16, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundColor(.white.opacity(0.95))
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(5)
+                            .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
+                        
+                        if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
+                            Text(verse.text(for: settingsStore.secondaryLanguage))
+                                .font(.system(size: 15, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundColor(.white.opacity(0.85))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+                                .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
+                        }
+                        
+                        Text("\(BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)) \(verse.chapter):\(verse.verseNumber)")
+                            .font(.system(size: 13, weight: .medium, design: .serif))
+                            .foregroundColor(.white.opacity(0.8))
+                            .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 1)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.ultraThinMaterial.opacity(0.6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            )
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 40)
+                    
+                    // Prayer text - below verse, left-aligned, animated
+                    // Fixed width container to prevent wiggling when text wraps
+                    VStack(alignment: .leading, spacing: 0) {
+                        TypewriterText(
+                            text: prayer,
+                            speed: 0.03,
+                            font: .system(size: 18, weight: .regular, design: .serif),
+                            onComplete: {
+                                // Fade in Amen button when prayer completes
+                                withAnimation(.easeIn(duration: 1.0)) {
+                                    showAmenButton = true
+                                }
+                            }
+                        )
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
+                        .lineSpacing(8)
+                        .shadow(color: Color.black.opacity(0.6), radius: 3, x: 0, y: 1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 32)
                     .padding(.top, 40)
                     .padding(.bottom, 40)
                     
-                    // Verse display - below prayer text
-                    VStack(spacing: 12) {
-                        Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(.system(size: 20, weight: .medium, design: .serif))
-                            .foregroundColor(AppTheme.primaryText)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(6)
-                        
-                        if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
-                            Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(.system(size: 18, design: .serif))
-                                .foregroundColor(AppTheme.secondaryText)
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(4)
-                        }
-                        
-                        Text("\(BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)) \(verse.chapter):\(verse.verseNumber)")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.accentColor)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 40)
-                    
-                    // Amen Button
+                    // Amen Button - fades in when prayer completes
                     AmenButton(onComplete: onDismiss)
+                        .opacity(showAmenButton ? 1.0 : 0.0)
                         .padding(.horizontal, 32)
                         .padding(.bottom, 40)
                 }
@@ -1040,49 +1088,65 @@ struct TypewriterText: View {
     let text: String
     let speed: Double
     let font: Font
+    var onComplete: (() -> Void)? = nil
     
     @State private var displayedText: String = ""
     @State private var currentIndex: Int = 0
+    @State private var hasCompleted: Bool = false
     
     var body: some View {
         Text(displayedText)
             .font(font)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             .onAppear {
                 startTyping()
             }
     }
     
     private func startTyping() {
-        guard currentIndex < text.count else { return }
-        
-        // Check if text contains Chinese characters
-        let isChinese = text.range(of: "\\p{Han}", options: .regularExpression) != nil
-        
-        if isChinese {
-            // Character by character for Chinese (including punctuation)
-            let nextIndex = min(currentIndex + 1, text.count)
-            let index = text.index(text.startIndex, offsetBy: nextIndex)
-            displayedText = String(text[..<index])
-            currentIndex = nextIndex
-            
-            if currentIndex < text.count {
-                DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
-                    startTyping()
+        guard currentIndex < text.count else {
+            // Animation complete
+            if !hasCompleted {
+                hasCompleted = true
+                // Small delay before calling completion
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    onComplete?()
                 }
             }
-        } else {
-            // Word by word for English
-            let words = text.split(separator: " ", omittingEmptySubsequences: false)
-            let currentWordCount = displayedText.isEmpty ? 0 : displayedText.split(separator: " ", omittingEmptySubsequences: false).count
+            return
+        }
+        
+        // Character by character for all languages (smoother than word-by-word)
+        let nextIndex = min(currentIndex + 1, text.count)
+        let index = text.index(text.startIndex, offsetBy: nextIndex)
+        displayedText = String(text[..<index])
+        currentIndex = nextIndex
+        
+        if currentIndex < text.count {
+            // Adjust speed slightly based on character type for natural feel
+            let char = text[text.index(text.startIndex, offsetBy: currentIndex - 1)]
+            let delay: Double
+            if char.isWhitespace {
+                // Slightly longer pause for spaces
+                delay = speed * 1.5
+            } else if char.isPunctuation {
+                // Longer pause for punctuation
+                delay = speed * 2.5
+            } else {
+                // Normal speed for regular characters
+                delay = speed
+            }
             
-            if currentWordCount < words.count {
-                let nextWords = Array(words[0..<min(currentWordCount + 1, words.count)])
-                displayedText = nextWords.joined(separator: " ")
-                
-                if currentWordCount + 1 < words.count {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + speed * 2) {
-                        startTyping()
-                    }
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                startTyping()
+            }
+        } else {
+            // Reached end of text
+            if !hasCompleted {
+                hasCompleted = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    onComplete?()
                 }
             }
         }
@@ -1116,9 +1180,9 @@ struct AmenButton: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                AppTheme.accentColor.opacity(0.9),
-                                AppTheme.accentColor,
-                                AppTheme.accentColor.opacity(0.7)
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.8),
+                                Color.white.opacity(0.5)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1130,29 +1194,26 @@ struct AmenButton: View {
                     .animation(.linear(duration: 0.05), value: progress)
             }
             
-            // Button background
+            // Button background - gray transparent
             Circle()
                 .fill(
-                    LinearGradient(
-                        colors: isHolding ? [
-                            AppTheme.accentColor.opacity(0.9),
-                            AppTheme.accentColor
-                        ] : [
-                            AppTheme.accentColor.opacity(0.8),
-                            AppTheme.accentColor.opacity(0.9)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    Color.white.opacity(0.15)
+                )
+                .overlay(
+                    Circle()
+                        .stroke(
+                            Color.white.opacity(0.3),
+                            lineWidth: 1.5
+                        )
                 )
                 .frame(width: buttonSize, height: buttonSize)
-                .shadow(color: AppTheme.accentColor.opacity(isHolding ? 0.5 : 0.3), radius: isHolding ? 15 : 8)
+                .shadow(color: Color.black.opacity(0.2), radius: isHolding ? 10 : 5)
                 .scaleEffect(isHolding ? 1.05 : 1.0)
             
             // Button text
             Text(settingsStore.appLanguage == .chineseTraditional ? "阿們" : "Amen")
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
                 .scaleEffect(isHolding ? 1.1 : 1.0)
         }
         .frame(width: buttonSize + progressRingWidth * 2, height: buttonSize + progressRingWidth * 2)

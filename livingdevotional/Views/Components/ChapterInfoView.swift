@@ -215,7 +215,7 @@ struct ChapterInfoView: View {
         }
         
         guard let aiService = services.aiService else {
-            errorMessage = settingsStore.appLanguage == .chineseTraditional ? "AI 服務不可用" : "AI service not available"
+            errorMessage = settingsStore.appLanguage == .chineseTraditional ? "服務不可用" : "Service not available"
             return
         }
         
