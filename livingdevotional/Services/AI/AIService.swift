@@ -2000,11 +2000,11 @@ class AIService: AIServiceProtocol {
             請生成以下內容（以JSON格式回應）：
 
             {
-              "encouragement": "一段溫暖的鼓勵話語（50-80字），直接稱呼用戶，肯定他們的努力和成長。要特別關注他們的有意識行為（禱告、提問、筆記），而不是只讀章節數",
+              "encouragement": "簡短的一句鼓勵（15-20字以內）。要具體且溫暖但簡潔。例如：「你在箴言中尋求智慧，顯示一顆渴望成長的心。」",
               "journeySummary": "簡短總結用戶的信仰歷程特點（30-50字），重點分析他們與經文的互動模式和屬靈狀態",
               "pathStatus": {
                 "title": "路上的你 - 必須基於最近5個行動中的實際經文內容和用戶行為，創造一個具體、有創意、令人印象深刻的狀態描述。例如：如果用戶最近保存了約翰福音3:16並寫了關於愛的筆記，可以說「在愛的真理中扎根」；如果最近為焦慮禱告並使用腓立比書4:6-7，可以說「在憂慮中尋求平安」。絕對不要用模糊的詞彙如「成長中」、「理解中」等。要具體引用經文主題或用戶關注的屬靈主題。",
-                "description": "解釋為什麼是這個狀態（20-30字），必須引用最近5個行動中的具體經文或主題，說明這些行動如何反映用戶目前的屬靈狀態",
+                "description": "擴展的情境分析（約60字）。分析用戶最近的行動，提供具體洞察。結構：以一句簡短的鼓勵開頭，然後提供關於他們旅程的分析內容。引用他們歷史中的具體經文、筆記、禱告或問題。避免泛泛的鼓勵 - 專注於他們的行動揭示了什麼關於他們的屬靈焦點和成長。要有洞察力但不過度情緒化。",
                 "iconName": "SF Symbol 名稱（如 figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill）"
               },
               "recommendedVerse": {
@@ -2021,17 +2021,19 @@ class AIService: AIServiceProtocol {
             }
 
             **重要規則：**
-            1. 語氣要溫暖、鼓勵、正面
-            2. **pathStatus的title必須基於最近5個行動的實際內容**：仔細閱讀最近5個行動中的經文內容、筆記、禱告主題，創造一個具體、有創意、令人印象深刻的狀態描述
-            3. **絕對避免模糊詞彙**：不要用「成長中」、「理解中」、「學習中」等泛泛而談的詞。要具體引用經文主題、屬靈主題或用戶關注的焦點
-            4. **必須引用具體內容**：如果用戶最近保存了某節經文，pathStatus應該反映那節經文的主題；如果最近為某個主題禱告，應該反映那個主題；如果有筆記，應該反映筆記中的思考
-            5. 優先分析用戶的「有意識行為」（自訂禱告、提問、筆記），這些比單純閱讀更能反映屬靈狀態
-            6. 仔細閱讀用戶保存的經文內容和筆記，分析他們關注的主題和屬靈需要
-            7. 「pathStatus」要描述用戶「在路徑上的狀態」，而不是「性格類型」。要反映他們如何與神的話語互動，以及目前的屬靈狀態
-            8. 如果用戶有自訂禱告或筆記，要特別關注這些內容，分析他們關注的主題和需要
-            9. 閱讀章節數只是背景資訊，不要過度解讀（用戶可能只是快速瀏覽）
-            10. recommendedVerse 的 reference 必須用英文書名
-            11. 只回傳JSON，不要其他文字
+            1. 語氣要溫暖但分析性 - 避免過度情緒化的語言
+            2. **encouragement 必須是簡短的一句話（15-20字）**：這只是一個簡短的開場，不是主要內容
+            3. **pathStatus.description 是主要內容（約60字）**：在這裡提供實質性分析。引用最近行動中的具體經文/主題。解釋他們的行動揭示了什麼關於他們的屬靈旅程
+            4. **pathStatus的title必須基於最近5個行動的實際內容**：仔細閱讀最近5個行動中的經文內容、筆記、禱告主題，創造一個具體、有創意、令人印象深刻的狀態描述
+            5. **絕對避免模糊詞彙**：不要用「成長中」、「理解中」、「學習中」等泛泛而談的詞。要具體引用經文主題、屬靈主題或用戶關注的焦點
+            6. **必須引用具體內容**：如果用戶最近保存了某節經文，pathStatus應該反映那節經文的主題；如果最近為某個主題禱告，應該反映那個主題；如果有筆記，應該反映筆記中的思考
+            7. 優先分析用戶的「有意識行為」（自訂禱告、提問、筆記），這些比單純閱讀更能反映屬靈狀態
+            8. 仔細閱讀用戶保存的經文內容和筆記，分析他們關注的主題和屬靈需要
+            9. 「pathStatus」要描述用戶「在路徑上的狀態」，而不是「性格類型」。要反映他們如何與神的話語互動，以及目前的屬靈狀態
+            10. 如果用戶有自訂禱告或筆記，要特別關注這些內容，分析他們關注的主題和需要
+            11. 閱讀章節數只是背景資訊，不要過度解讀（用戶可能只是快速瀏覽）
+            12. recommendedVerse 的 reference 必須用英文書名
+            13. 只回傳JSON，不要其他文字
             """
         } else {
             prompt = """
@@ -2074,11 +2076,11 @@ class AIService: AIServiceProtocol {
             Please generate the following content (respond in JSON format):
 
             {
-              "encouragement": "A warm encouraging message (50-80 words), address the user directly, affirm their effort and growth. Pay special attention to their intentional actions (prayers, questions, notes), not just chapter counts",
+              "encouragement": "A SHORT 1-sentence encouragement (15-20 words max). Be specific and warm but concise. Example: 'Your pursuit of wisdom in Proverbs shows a heart eager to grow.'",
               "journeySummary": "Brief summary of the user's journey characteristics (20-40 words), focus on their interaction patterns with Scripture and spiritual state",
               "pathStatus": {
                 "title": "Along the Path - MUST be based on actual verse content and user actions from the recent 5 actions. Create a specific, creative, and impressive status description. For example: if user recently saved John 3:16 with a note about love, say 'Rooted in Love's Truth'; if recently prayed about anxiety using Philippians 4:6-7, say 'Seeking Peace in Worry'. NEVER use vague terms like 'growing', 'understanding', 'learning'. Must specifically reference verse themes or spiritual themes the user is focusing on.",
-                "description": "Explain why this status fits (20-30 words), MUST reference specific verses or themes from the recent 5 actions, explaining how these actions reflect user's current spiritual state",
+                "description": "EXPANDED in-context analysis (~60 words). Analyze the user's recent actions to provide specific insights. Structure: Start with one brief encouraging sentence, then provide analytical content about their journey. Reference specific verses, notes, prayers, or questions from their history. Avoid generic encouragement - focus on what their actions reveal about their spiritual focus and growth. Be insightful but not overly emotional.",
                 "iconName": "SF Symbol name (e.g., figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill)"
               },
               "recommendedVerse": {
@@ -2095,17 +2097,19 @@ class AIService: AIServiceProtocol {
             }
 
             **Important Rules:**
-            1. Tone should be warm, encouraging, and positive
-            2. **pathStatus title MUST be based on actual content from recent 5 actions**: Carefully read the verse content, notes, and prayer topics from the recent 5 actions, create a specific, creative, and impressive status description
-            3. **Absolutely avoid vague terms**: Don't use generic phrases like "growing", "understanding", "learning". Must specifically reference verse themes, spiritual themes, or focus areas the user is engaging with
-            4. **Must reference specific content**: If user recently saved a verse, pathStatus should reflect that verse's theme; if recently prayed about a topic, should reflect that topic; if has notes, should reflect the thoughts in those notes
-            5. Prioritize analyzing user's "intentional actions" (custom prayers, questions, notes) - these better reflect spiritual state than just reading
-            6. Carefully read the verse content and notes user saved, analyze themes they're focusing on and spiritual needs
-            7. "pathStatus" should describe user's "status along the path", NOT a "personality type". Reflect how they interact with God's Word and their current spiritual state
-            8. If user has custom prayers or notes, pay special attention to these contents, analyze themes and needs they're focusing on
-            9. Chapter reading count is just background info, don't over-interpret (user may have just skimmed)
-            10. recommendedVerse reference must use English book names
-            11. Return only JSON, no other text
+            1. Tone should be warm but analytical - avoid excessive emotional language
+            2. **encouragement MUST be 1 short sentence (15-20 words)**: This is just a brief opener, not the main content
+            3. **pathStatus.description is the MAIN content (~60 words)**: Provide substantive analysis here. Reference specific verses/themes from recent actions. Explain what their actions reveal about their spiritual journey
+            4. **pathStatus title MUST be based on actual content from recent 5 actions**: Carefully read the verse content, notes, and prayer topics from the recent 5 actions, create a specific, creative, and impressive status description
+            5. **Absolutely avoid vague terms**: Don't use generic phrases like "growing", "understanding", "learning". Must specifically reference verse themes, spiritual themes, or focus areas the user is engaging with
+            6. **Must reference specific content**: If user recently saved a verse, pathStatus should reflect that verse's theme; if recently prayed about a topic, should reflect that topic; if has notes, should reflect the thoughts in those notes
+            7. Prioritize analyzing user's "intentional actions" (custom prayers, questions, notes) - these better reflect spiritual state than just reading
+            8. Carefully read the verse content and notes user saved, analyze themes they're focusing on and spiritual needs
+            9. "pathStatus" should describe user's "status along the path", NOT a "personality type". Reflect how they interact with God's Word and their current spiritual state
+            10. If user has custom prayers or notes, pay special attention to these contents, analyze themes and needs they're focusing on
+            11. Chapter reading count is just background info, don't over-interpret (user may have just skimmed)
+            12. recommendedVerse reference must use English book names
+            13. Return only JSON, no other text
             """
         }
         

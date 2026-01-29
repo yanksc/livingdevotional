@@ -174,7 +174,7 @@ struct AILoadingView: View {
     }
 }
 
-// MARK: - Encouragement Hero View
+// MARK: - Encouragement Hero View (Short 1-sentence encouragement with light serene background)
 
 struct EncouragementHeroView: View {
     let encouragement: String
@@ -188,31 +188,32 @@ struct EncouragementHeroView: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             Text(encouragement)
-                .font(.body)
-                .fontWeight(.medium)
+                .font(.title3)
+                .fontWeight(.semibold)
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
-                .lineSpacing(6)
+                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
         }
-        .padding(24)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
         .frame(maxWidth: .infinity)
         .background(
             ZStack {
-                // Serene background image
+                // Serene background image - lighter overlay for short text
                 SereneBackgroundImage(
                     filename: backgroundFilename,
-                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 200)
+                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 120)
                 )
                 .aspectRatio(contentMode: .fill)
                 
-                // Dark gradient overlay for text readability
+                // Very light gradient overlay - just enough for text readability
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.6),
-                        Color.black.opacity(0.5),
-                        Color.black.opacity(0.6)
+                        Color.black.opacity(0.25),
+                        Color.black.opacity(0.15),
+                        Color.black.opacity(0.25)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -220,65 +221,58 @@ struct EncouragementHeroView: View {
             }
         )
         .clipped()
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 4)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 3)
     }
 }
 
-// MARK: - Path Status Card View
+// MARK: - Path Status Card View (Redesigned with dark serene background, centered text, no icon)
 
 struct PathStatusCardView: View {
     let pathStatus: PathStatus
     @ObservedObject private var settingsStore = SettingsStore.shared
     
+    // Randomly select a dark serene background (1-5) - persisted across renders
+    @State private var backgroundImageName: String = {
+        let randomIndex = Int.random(in: 1...5)
+        return "dark_serene_\(randomIndex)"
+    }()
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(settingsStore.appLanguage == .chineseTraditional ? "路上的你" : "Along the Path")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.secondaryText)
-                    .textCase(.uppercase)
-                Spacer()
-            }
+        VStack(spacing: 16) {
+            // Centered title - creative status based on user's journey
+            Text(pathStatus.title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .shadow(color: Color.black.opacity(0.4), radius: 3, x: 0, y: 2)
             
-            HStack(spacing: 16) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [AppTheme.accentColor, AppTheme.primaryBlue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                    
-                    Image(systemName: pathStatus.iconName)
-                        .font(.system(size: 24))
-                        .foregroundColor(.white)
-                }
-                
-                // Text
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(pathStatus.title)
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Text(pathStatus.description)
-                        .font(.caption)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .lineLimit(2)
-                }
-                
-                Spacer()
-            }
+            // Expanded description - ~60 words of in-context analysis
+            Text(pathStatus.description)
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .lineSpacing(5)
+                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
         }
-        .padding(16)
-        .background(AppTheme.cardGradient)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                // Dark serene background image
+                Image(backgroundImageName)
+                    .resizable()
+                    .scaledToFill()
+                
+                // Subtle overlay for text readability
+                Color.black.opacity(0.35)
+            }
+        )
+        .clipped()
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -383,37 +377,68 @@ struct RecommendedVerseView: View {
     }
 }
 
-// MARK: - Path Highlights View
+// MARK: - Path Highlights View (Collapsible)
 
 struct PathHighlightsView: View {
     let highlights: [PathHighlight]
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @State private var isExpanded: Bool = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(settingsStore.appLanguage == .chineseTraditional ? "路徑亮點" : "Path Highlights")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(AppTheme.secondaryText)
-                .textCase(.uppercase)
-            
-            VStack(spacing: 10) {
-                ForEach(highlights) { highlight in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text(highlight.emoji)
-                            .font(.title3)
-                        
-                        Text(highlight.fact)
-                            .font(.subheadline)
-                            .foregroundColor(AppTheme.primaryText)
-                            .lineSpacing(2)
-                        
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(AppTheme.cardGradient)
-                    .cornerRadius(12)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header - tappable to expand/collapse
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isExpanded.toggle()
                 }
+            }) {
+                HStack {
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "路徑亮點" : "Path Highlights")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .textCase(.uppercase)
+                    
+                    Spacer()
+                    
+                    // Chevron indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(AppTheme.cardGradient)
+                .cornerRadius(isExpanded ? 12 : 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Expandable content
+            if isExpanded {
+                VStack(spacing: 10) {
+                    ForEach(highlights) { highlight in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text(highlight.emoji)
+                                .font(.title3)
+                            
+                            Text(highlight.fact)
+                                .font(.subheadline)
+                                .foregroundColor(AppTheme.primaryText)
+                                .lineSpacing(2)
+                            
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(AppTheme.sectionBackground.opacity(0.5))
+                        .cornerRadius(10)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(AppTheme.cardGradient)
+                .cornerRadius(12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
