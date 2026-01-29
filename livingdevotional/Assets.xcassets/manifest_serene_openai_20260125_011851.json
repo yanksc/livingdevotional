@@ -1,0 +1,49 @@
+{
+  "generated_at": "20260125_011851",
+  "count": 6,
+  "provider": "openai-dall-e-3",
+  "images": [
+    {
+      "scene": "serene_beach_dawn",
+      "filename": "SereneBackground1",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground1.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-XvzHfq12qbje4QzS9qEasxau.png?st=2026-01-25T08%3A19%3A06Z&se=2026-01-25T10%3A19%3A06Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=b2c0e1c0-cf97-4e19-8986-8073905d5723&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-24T10%3A05%3A19Z&ske=2026-01-25T10%3A05%3A19Z&sks=b&skv=2024-08-04&sig=cNMDWhQkUSsBLEuARqrJ3A8kFmf2gJq5bvwNvwMuHXU%3D",
+      "prompt": "A natural and majestic Peaceful beach at dawn, calm turquoise water, soft sand, pastel sky colors, serene coastal scene, color palette featuring soft peach and light blue with golden hour glow, with calm turquoise water, soft sandy beach, pastel sky gradient, peaceful coastal atmosphere. Style: realistic natural beauty, professional nature photography, dreamlike serene atmosphere. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    },
+    {
+      "scene": "mountain_valley_mist",
+      "filename": "SereneBackground2",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground2.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-QPNJvgt2CnlLGTTBD7WgT5l4.png?st=2026-01-25T08%3A19%3A24Z&se=2026-01-25T10%3A19%3A24Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=b2c0e1c0-cf97-4e19-8986-8073905d5723&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-25T07%3A51%3A56Z&ske=2026-01-26T07%3A51%3A56Z&sks=b&skv=2024-08-04&sig=7b2eN%2BRtZ8lhd1nUsdfP/II/a%2BQQ9K95wFCDfRkL3lQ%3D",
+      "prompt": "A light and majestic Misty mountain valley at sunrise, layers of blue mountains fading into fog, warm light breaking through, color palette featuring soft peach and light blue with golden hour glow, with layered mountain ridges, soft morning mist, warm sunrise glow, peaceful valley. Style: high resolution detail, soft natural lighting, dreamlike serene atmosphere. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    },
+    {
+      "scene": "calm_forest_path",
+      "filename": "SereneBackground3",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground3.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-wIffMG6wVvq7MpiI0OatEfxW.png?st=2026-01-25T08%3A19%3A41Z&se=2026-01-25T10%3A19%3A41Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=38e27a3b-6174-4d3e-90ac-d7d9ad49543f&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-25T09%3A19%3A41Z&ske=2026-01-26T09%3A19%3A41Z&sks=b&skv=2024-08-04&sig=itT2qRHTPHAtEVYzms/nm%2BGz6z2dKX55d1ixSotUH6o%3D",
+      "prompt": "A serene and stunning Tranquil forest path with dappled sunlight, lush green ferns, peaceful woodland atmosphere, color palette featuring warm amber and soft teal with natural lighting, with dappled golden light rays, soft green ferns, moss-covered trees, serene forest path. Style: realistic natural beauty, professional nature photography, cinematic composition. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    },
+    {
+      "scene": "serene_lake_morning",
+      "filename": "SereneBackground4",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground4.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-NlRqf8z7KKDeLiWxKarO20eB.png?st=2026-01-25T08%3A19%3A58Z&se=2026-01-25T10%3A19%3A58Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=0e2a3d55-e963-40c9-9c89-2a1aa28cb3ac&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-25T05%3A33%3A50Z&ske=2026-01-26T05%3A33%3A50Z&sks=b&skv=2024-08-04&sig=fzILb0hMcpXTourtQaRvI/EuuGTcKdQV34Prk2RiTRc%3D",
+      "prompt": "A gentle and stunning Calm mountain lake at dawn, perfectly still water reflecting mountains, soft pink and blue sky, color palette featuring soft pastel blues and warm golden sunrise tones, with mirror-like water surface, distant mountain peaks, soft dawn colors, peaceful atmosphere. Style: cinematic composition, high resolution detail, soft natural lighting. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    },
+    {
+      "scene": "gentle_stream_nature",
+      "filename": "SereneBackground5",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground5.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-ccXbu9FUdFz67ls4hxklpzUi.png?st=2026-01-25T08%3A20%3A13Z&se=2026-01-25T10%3A20%3A13Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=32836cae-d25f-4fe9-827b-1c8c59c442cc&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-25T05%3A49%3A00Z&ske=2026-01-26T05%3A49%3A00Z&sks=b&skv=2024-08-04&sig=h9VrbKmnUn/gsWq5J2iG/0a6IH1H5CbAwUTX1yQPjyg%3D",
+      "prompt": "A soft and stunning Gentle stream flowing through a peaceful forest clearing, sunlight filtering through leaves, natural serenity, color palette featuring soft peach and light blue with golden hour glow, with clear flowing water, sunlit forest clearing, natural rocks and pebbles, tranquil setting. Style: professional nature photography, high resolution detail, dreamlike serene atmosphere. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    },
+    {
+      "scene": "serene_meadow_sunrise",
+      "filename": "SereneBackground6",
+      "path": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/SereneBackgrounds/SereneBackground6.imageset/image.png",
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Ec0xl4XnFhOvTWeapeu0o5OW/user-CthUvIJqLnJ37fhOILhQt8nn/img-yS4NZEsstaDYPhAiwvoZYWJ2.png?st=2026-01-25T08%3A20%3A30Z&se=2026-01-25T10%3A20%3A30Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=b2c0e1c0-cf97-4e19-8986-8073905d5723&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-24T18%3A24%3A32Z&ske=2026-01-25T18%3A24%3A32Z&sks=b&skv=2024-08-04&sig=5lBhWELxyPnAXjD2xIgzXBLVvLnxnYPSPp/ZLCr/2fc%3D",
+      "prompt": "A soft and beautiful Peaceful meadow at sunrise with wildflowers, soft morning mist, golden hour light filtering through, color palette featuring soft peach and light blue with golden hour glow, with delicate wildflowers, gentle morning mist, warm golden sunlight, rolling green hills. Style: soft natural lighting, professional nature photography, cinematic composition. Vertical composition perfectly framed for mobile phone wallpaper (9:16 aspect ratio). Absolutely no text, no people, no man-made objects except natural paths. Ultra high quality photorealistic nature photography with exceptional detail. Light and serene atmosphere, real nature scene."
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import WidgetKit
 
 class ReadingPlanStore: ObservableObject {
     static let shared = ReadingPlanStore()
@@ -137,6 +138,7 @@ class ReadingPlanStore: ObservableObject {
         }
         progress[planId] = planProgress
         saveProgress()
+        syncToWidget()
     }
     
     func completeDay(_ planId: String, dayNumber: Int) {
@@ -151,6 +153,15 @@ class ReadingPlanStore: ObservableObject {
         
         progress[planId] = planProgress
         saveProgress()
+        syncToWidget()
+    }
+    
+    // MARK: - Widget Sync
+    
+    private func syncToWidget() {
+        Task { @MainActor in
+            WidgetDataSync.shared.syncToWidget()
+        }
     }
     
     func getProgress(for planId: String) -> ReadingPlanProgress? {

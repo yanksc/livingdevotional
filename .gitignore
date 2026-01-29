@@ -122,3 +122,4 @@ bible_api/*
 !bible_api/cu1/
 download.log
 
+.env

@@ -8,53 +8,67 @@ import json
 import requests
 from pathlib import Path
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# OpenAI API Key - set via environment variable
+# Load environment variables
+load_dotenv()
+
+# OpenAI API Key
 API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent.parent / "livingdevotional" / "Assets.xcassets"
 
-# Ask category-specific prompts - minimalist, serene style matching the topic
+# Common style for all Ask backgrounds
+STYLE_PROMPT = """
+Style: Soft abstract watercolor with a torn paper edge aesthetic. 
+Light and airy atmosphere, predominantly white/cream background with soft watercolor washes.
+Minimalist, clean, high quality, vertical composition.
+NO text, NO people, NO realistic photos.
+Artistic, gentle, and serene.
+"""
+
+# Ask category-specific prompts with distinct colors
 ASK_CATEGORY_PROMPTS = [
     {
         "id": "bible-knowledge",
         "name": "AskBackground_BibleKnowledge",
-        "prompt": "Minimalist ancient scroll or open book with soft warm light, knowledge and wisdom theme, serene scholarly atmosphere, soft focus, peaceful, high quality, vertical composition, no text, no people, ethereal divine light illuminating pages"
+        "prompt": "Abstract watercolor of an ancient scroll or open book. Color palette: Warm Gold, Amber, and Soft Cream. Theme: Wisdom and Light."
     },
     {
         "id": "spiritual-growth",
         "name": "AskBackground_SpiritualGrowth",
-        "prompt": "Minimalist young plant sprouting from soil with gentle sunlight, growth and transformation theme, serene nature, soft focus, peaceful, high quality, vertical composition, no text, no people, hopeful new life"
+        "prompt": "Abstract watercolor of a young plant sprouting. Color palette: Soft Sage Green, Earthy Brown, and White. Theme: New Life and Growth."
     },
     {
         "id": "faith-doubt",
         "name": "AskBackground_FaithDoubt",
-        "prompt": "Minimalist candle flame in soft darkness, flickering light representing faith, contemplative atmosphere, serene peaceful, soft focus, high quality, vertical composition, no text, no people, warm gentle glow"
+        "prompt": "Abstract watercolor of a flickering light or path in mist. Color palette: Muted Blue, Soft Grey, and Warm White. Theme: Contemplation and Hope."
     },
     {
         "id": "prayer-worship",
         "name": "AskBackground_PrayerWorship",
-        "prompt": "Minimalist hands in prayer position with soft golden light, worship and devotion theme, serene spiritual atmosphere, soft focus, peaceful, high quality, vertical composition, no text, no people, ethereal divine connection"
+        "prompt": "Abstract watercolor of uplifting rays of light or hands. Color palette: Soft Lavender, Pale Purple, and Golden hues. Theme: Devotion and Peace."
     },
     {
         "id": "christian-living",
         "name": "AskBackground_ChristianLiving",
-        "prompt": "Minimalist path through peaceful garden, daily life and journey theme, serene walkway with soft morning light, contemplative, high quality, vertical composition, no text, no people, tranquil everyday path"
+        "prompt": "Abstract watercolor of a peaceful path or garden walkway. Color palette: Warm Terracotta, Soft Peach, and Sand. Theme: Daily Journey."
     }
 ]
 
-def generate_image(client: OpenAI, prompt: str, filename: str) -> dict:
+def generate_image(client: OpenAI, prompt_base: str, filename: str) -> dict:
     """Generate an image using OpenAI DALL-E 3."""
+    full_prompt = f"{prompt_base} {STYLE_PROMPT}"
     print(f"\n🎨 Generating: {filename}")
-    print(f"   Prompt: {prompt[:80]}...")
+    print(f"   Prompt: {full_prompt[:100]}...")
     
     try:
         # DALL-E 3 supports 1024x1024, 1024x1792 (portrait), or 1792x1024 (landscape)
         # Using portrait for card backgrounds
         response = client.images.generate(
             model="dall-e-3",
-            prompt=prompt,
+            prompt=full_prompt,
             size="1024x1792",  # Portrait orientation for cards
             quality="standard",
             n=1,

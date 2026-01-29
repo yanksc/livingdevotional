@@ -1,0 +1,44 @@
+# SwiftUI Code Editing Guidelines
+
+## Preventing Indentation and Nesting Bugs
+
+When editing SwiftUI code, follow these critical rules to avoid structural bugs:
+
+### 1. Indentation Consistency
+- **Always match the indentation level of surrounding code** when inserting or replacing content
+- In SwiftUI ViewBuilder closures, all sibling views must be at the same indentation level
+- View modifiers (`.padding()`, `.frame()`, etc.) must be at the **same indentation** as the view's closing brace
+
+### 2. Before Making Changes
+- Count the opening `{` and closing `}` braces in the section being modified
+- Verify which struct/view each closing brace belongs to
+- Note the indentation level (number of spaces/tabs) of the target location
+
+### 3. When Using StrReplace
+- Include enough surrounding context to preserve proper indentation
+- After replacement, the brace count must remain balanced
+- Verify modifiers are attached to the correct view by checking indentation
+
+### 4. Common SwiftUI Nesting Pattern
+```swift
+VStack {                          // Level 0
+    Text("Hello")                 // Level 1
+        .font(.title)             // Level 2 (modifier)
+    
+    HStack {                      // Level 1
+        Button("Tap") { }         // Level 2
+    }                             // Level 1 (closing HStack)
+    .padding()                    // Level 1 (modifier on HStack)
+}                                 // Level 0 (closing VStack)
+.background(Color.blue)           // Level 0 (modifier on VStack)
+```
+
+### 5. Red Flags to Check
+- If `private func` appears inside a `body` property, there's a nesting error
+- If linter shows "Closure containing a declaration cannot be used with ViewBuilder", check brace matching
+- If "Expected '}' in struct" appears, count braces from struct declaration to end
+
+### 6. After Editing SwiftUI Views
+- Run the linter immediately to catch structural issues
+- Verify no functions accidentally ended up inside the `body` property
+- Check that GeometryReader/ForEach closures are properly closed before modifiers

@@ -54,6 +54,13 @@ struct HomeView: View {
         .onAppear {
             viewModel.loadHomeData()
         }
+        .onChange(of: router.showVerseOfTheDayFullScreen) { _, newValue in
+            // Handle deep link from widget to show verse full screen
+            if newValue && viewModel.verseOfTheDay != nil {
+                showVerseFullScreen = true
+                router.showVerseOfTheDayFullScreen = false
+            }
+        }
     }
     
     // MARK: - Computed Properties

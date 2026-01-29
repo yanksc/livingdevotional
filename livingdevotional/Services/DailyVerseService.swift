@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import WidgetKit
 
 class DailyVerseService: DailyVerseServiceProtocol {
     static let shared = DailyVerseService()
@@ -280,6 +281,11 @@ class DailyVerseService: DailyVerseServiceProtocol {
         if let encoded = try? JSONEncoder().encode(dailyVerse) {
             userDefaults.set(encoded, forKey: dailyVerseKey)
             userDefaults.set(date, forKey: dailyVerseDateKey)
+        }
+        
+        // Sync to widget
+        await MainActor.run {
+            WidgetDataSync.shared.syncVerseToWidget(verse: dailyVerse, language: primaryLanguage)
         }
         
         return dailyVerse

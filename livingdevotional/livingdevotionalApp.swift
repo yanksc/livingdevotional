@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import WidgetKit
 
 @main
 struct livingdevotionalApp: App {
@@ -30,6 +31,11 @@ struct livingdevotionalApp: App {
                 .preferredColorScheme(.light)
                 .fontDesign(.serif)
                 .onAppear {
+                    // Sync widget data immediately on app launch (bypass throttling)
+                    Task { @MainActor in
+                        WidgetDataSync.shared.syncToWidgetImmediately()
+                    }
+                    
                     // Request notification permission on first launch
                     Task {
                         let hasRequestedBefore = UserDefaults.standard.bool(forKey: "hasRequestedNotificationPermission")
@@ -51,6 +57,15 @@ struct livingdevotionalApp: App {
                     if settingsStore.notificationsEnabled {
                         NotificationManager.shared.refreshNotifications()
                     }
+                    
+                    // Sync widget data immediately when app becomes active
+                    Task { @MainActor in
+                        WidgetDataSync.shared.syncToWidgetImmediately()
+                    }
+                }
+                .onOpenURL { url in
+                    // Handle deep links from widgets
+                    router.handleDeepLink(url)
                 }
         }
         .modelContainer(for: SavedVerse.self)

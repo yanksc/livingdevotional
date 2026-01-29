@@ -7,23 +7,91 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6291CDB12F2A7DB7008A9CF0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */; };
+		6291CDB32F2A7DB7008A9CF0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */; };
+		6291CDBF2F2A7DB9008A9CF0 /* livingpathwidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		62CBE41F2F02752F00A2C3D1 /* BibleData.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		6291CDBC2F2A7DB9008A9CF0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 62CB970E2F0267DE00A2C3D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6291CDAD2F2A7DB7008A9CF0;
+			remoteInfo = livingpathwidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6291CDBE2F2A7DB9008A9CF0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6291CDBF2F2A7DB9008A9CF0 /* livingpathwidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = livingpathwidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = livingpathwidgetExtension.entitlements; sourceTree = "<group>"; };
 		62CB97162F0267DE00A2C3D1 /* livingdevotional.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = livingdevotional.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = BibleData.bundle; path = livingdevotional/Resources/BibleData.bundle; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6291CDC02F2A7DB9008A9CF0 /* Exceptions for "livingpathwidget" folder in "livingpathwidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */;
+		};
+		6291CDD52F2A8089008A9CF0 /* Exceptions for "livingdevotional" folder in "livingdevotional" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 62CB97152F0267DE00A2C3D1 /* livingdevotional */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6291CDC02F2A7DB9008A9CF0 /* Exceptions for "livingpathwidget" folder in "livingpathwidgetExtension" target */,
+			);
+			path = livingpathwidget;
+			sourceTree = "<group>";
+		};
 		62CB97182F0267DE00A2C3D1 /* livingdevotional */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6291CDD52F2A8089008A9CF0 /* Exceptions for "livingdevotional" folder in "livingdevotional" target */,
+			);
 			path = livingdevotional;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6291CDAB2F2A7DB7008A9CF0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6291CDB32F2A7DB7008A9CF0 /* SwiftUI.framework in Frameworks */,
+				6291CDB12F2A7DB7008A9CF0 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		62CB97132F0267DE00A2C3D1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -34,11 +102,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6291CDAF2F2A7DB7008A9CF0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */,
+				6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		62CB970D2F0267DE00A2C3D1 = {
 			isa = PBXGroup;
 			children = (
+				6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */,
 				62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */,
 				62CB97182F0267DE00A2C3D1 /* livingdevotional */,
+				6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */,
+				6291CDAF2F2A7DB7008A9CF0 /* Frameworks */,
 				62CB97172F0267DE00A2C3D1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				62CB97162F0267DE00A2C3D1 /* livingdevotional.app */,
+				6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -54,6 +135,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "livingpathwidgetExtension" */;
+			buildPhases = (
+				6291CDAA2F2A7DB7008A9CF0 /* Sources */,
+				6291CDAB2F2A7DB7008A9CF0 /* Frameworks */,
+				6291CDAC2F2A7DB7008A9CF0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */,
+			);
+			name = livingpathwidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = livingpathwidgetExtension;
+			productReference = 6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		62CB97152F0267DE00A2C3D1 /* livingdevotional */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 62CB97242F0267E000A2C3D1 /* Build configuration list for PBXNativeTarget "livingdevotional" */;
@@ -61,10 +164,12 @@
 				62CB97122F0267DE00A2C3D1 /* Sources */,
 				62CB97132F0267DE00A2C3D1 /* Frameworks */,
 				62CB97142F0267DE00A2C3D1 /* Resources */,
+				6291CDBE2F2A7DB9008A9CF0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6291CDBD2F2A7DB9008A9CF0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				62CB97182F0267DE00A2C3D1 /* livingdevotional */,
@@ -86,6 +191,9 @@
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					6291CDAD2F2A7DB7008A9CF0 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					62CB97152F0267DE00A2C3D1 = {
 						CreatedOnToolsVersion = 16.0;
 					};
@@ -106,11 +214,19 @@
 			projectRoot = "";
 			targets = (
 				62CB97152F0267DE00A2C3D1 /* livingdevotional */,
+				6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		6291CDAC2F2A7DB7008A9CF0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		62CB97142F0267DE00A2C3D1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -122,6 +238,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6291CDAA2F2A7DB7008A9CF0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		62CB97122F0267DE00A2C3D1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -131,7 +254,71 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		6291CDBD2F2A7DB9008A9CF0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */;
+			targetProxy = 6291CDBC2F2A7DB9008A9CF0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		6291CDC22F2A7DB9008A9CF0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = livingpathwidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TGD728798Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = livingpathwidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = livingpathwidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.livingpathwidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6291CDC32F2A7DB9008A9CF0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = livingpathwidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TGD728798Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = livingpathwidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = livingpathwidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.livingpathwidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		62CB97222F0267E000A2C3D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -184,7 +371,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -241,7 +428,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -256,12 +443,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = livingdevotional/livingdevotional.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"livingdevotional/Preview Content\"";
 				DEVELOPMENT_TEAM = TGD728798Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = livingdevotional/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Living Path";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIAppFonts = "SourceHanSerifCN-Regular-1.otf SourceHanSerifTC-VF.otf";
@@ -277,6 +466,10 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -288,12 +481,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = livingdevotional/livingdevotional.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"livingdevotional/Preview Content\"";
 				DEVELOPMENT_TEAM = TGD728798Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = livingdevotional/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Living Path";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIAppFonts = "SourceHanSerifCN-Regular-1.otf SourceHanSerifTC-VF.otf";
@@ -309,6 +504,10 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -318,6 +517,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "livingpathwidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6291CDC22F2A7DB9008A9CF0 /* Debug */,
+				6291CDC32F2A7DB9008A9CF0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		62CB97112F0267DE00A2C3D1 /* Build configuration list for PBXProject "livingdevotional" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

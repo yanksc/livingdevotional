@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import WidgetKit
 
 enum CheckInType: String, Codable {
     case appOpen
@@ -69,6 +70,10 @@ class CheckInStore: ObservableObject {
         let today = formatDate(Date())
         updateRecord(date: today, type: .appOpen)
         updateStreak()
+        // Use immediate sync to ensure widget gets fresh streak data on app open
+        Task { @MainActor in
+            WidgetDataSync.shared.syncToWidgetImmediately()
+        }
     }
     
     func recordPrayer() {
@@ -80,6 +85,7 @@ class CheckInStore: ObservableObject {
         
         // Cancel evening prayer reminder since user already prayed
         NotificationManager.shared.cancelPrayerReminder()
+        syncToWidget()
     }
     
     func recordReading() {
@@ -91,6 +97,15 @@ class CheckInStore: ObservableObject {
         updateRecord(date: today, type: .reading)
         hasReadToday = true
         updateTaskStreak() // Update task completion streak
+        syncToWidget()
+    }
+    
+    // MARK: - Widget Sync
+    
+    private func syncToWidget() {
+        Task { @MainActor in
+            WidgetDataSync.shared.syncToWidget()
+        }
     }
     
     func getRecord(for date: Date) -> DailyRecord? {

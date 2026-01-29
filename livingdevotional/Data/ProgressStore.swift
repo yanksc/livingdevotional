@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import WidgetKit
 
 struct ReadingProgressData: Codable {
     let book: String
@@ -92,6 +93,17 @@ class ProgressStore: ObservableObject {
         
         // Add to reading history
         addToHistory(book: book, chapter: chapter)
+        
+        // Sync to widget
+        syncToWidget()
+    }
+    
+    // MARK: - Widget Sync
+    
+    private func syncToWidget() {
+        Task { @MainActor in
+            WidgetDataSync.shared.syncToWidget()
+        }
     }
     
     func loadProgress() {

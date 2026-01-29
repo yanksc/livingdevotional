@@ -1,0 +1,25 @@
+{
+  "generated_at": "20260123_143835",
+  "count": 2,
+  "type": "button_backgrounds",
+  "images": [
+    {
+      "filename": "pray_background.png",
+      "filepath": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/ButtonBackgrounds/PrayButtonBackground.imageset/pray_background.png",
+      "prompt": "A calming and beautiful Serene sky at golden hour with soft pink and purple clouds, divine peaceful atmosphere, contemplative spiritual mood, color palette featuring warm golden and soft amber with gentle white light, with pastel sunset clouds, gentle light rays from above, soft color gradient, ethereal glow. Style: high resolution detail, soft natural lighting, dreamlike ethereal atmosphere. Horizontal composition suitable for app button background. Absolutely no text, no people. Soft blurred edges for overlay text readability. Ultra high quality nature photography with serene spiritual atmosphere.",
+      "seed": 317655,
+      "size": "512x256",
+      "model": "flux",
+      "imageset_name": "PrayButtonBackground"
+    },
+    {
+      "filename": "search_background.png",
+      "filepath": "/Users/yhuang10/Code/livingdevotional/livingdevotional/Assets.xcassets/ButtonBackgrounds/SearchButtonBackground.imageset/search_background.png",
+      "prompt": "A serene and beautiful Beautiful path leading toward bright light on horizon, symbolic journey of discovery, warm hopeful atmosphere, color palette featuring gentle green and warm amber with discovery tones, with light at end of path, soft golden glow, inviting perspective, gentle nature surroundings. Style: high resolution detail, soft focus bokeh, dreamlike ethereal atmosphere. Horizontal composition suitable for app button background. Absolutely no text, no people. Soft blurred edges for overlay text readability. Ultra high quality nature photography with serene spiritual atmosphere.",
+      "seed": 877604,
+      "size": "512x256",
+      "model": "flux",
+      "imageset_name": "SearchButtonBackground"
+    }
+  ]
+}

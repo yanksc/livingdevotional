@@ -1,0 +1,16 @@
+---
+name: xcode_livingpath
+description: xcode practice for the ios development
+---
+
+# Overview
+
+the project is developing on xcode16, which has different practice than the previous version, specifically that the file and folder will be auto sync'ed in xcode without the extra "adding to the target" action, please generate the instruction and code accordingly
+
+while writing the python or need any dependent package always use venv.
+
+make sure the implementation, answers and plans are comply and up-to-date based on the xcode 16 above as the xcode has changed. 
+
+don't run the xcodebuild.
+
+ask for commit to github after the major feature update using the personal github account yanksc@gmail.com

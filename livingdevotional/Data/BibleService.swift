@@ -78,6 +78,11 @@ class BibleService {
         }
         
         do {
+            // Verify file exists before reading (handles stale bundle references)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw BibleServiceError.fileNotFound(book: book, chapter: chapter, translation: translation.rawValue)
+            }
+            
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
             
