@@ -5,36 +5,80 @@ import SwiftUI
 struct AskCategoryDetailView: View {
     let category: AskCategory
     @Environment(\.services) var services
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: AppRouter
     @ObservedObject private var settingsStore = SettingsStore.shared
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     @State private var selectedQuestion: AskQuestion?
+    
+    // Get category index for consistent background assignment
+    private var categoryIndex: Int {
+        AskCategoryStore.shared.categories.firstIndex(where: { $0.id == category.id }) ?? 0
+    }
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                // Category header
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: category.icon)
-                            .font(.title2)
-                            .foregroundColor(AppTheme.accentColor)
+            VStack(alignment: .leading, spacing: 24) {
+                // Header with large image - full width, extends to top edge
+                GeometryReader { geometry in
+                    let imageHeight = UIScreen.main.bounds.height * 0.4
+                    ZStack(alignment: .bottomLeading) {
+                        SereneBackgroundImage(filename: backgroundManager.background(at: categoryIndex))
+                            .frame(width: geometry.size.width, height: imageHeight)
+                            .clipped()
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(category.localizedTitle(for: settingsStore.appLanguage))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(AppTheme.primaryText)
+                        // Gradient overlay for text readability
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.7),
+                                Color.black.opacity(0.4),
+                                Color.clear
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                        
+                        // Title and description overlay on image
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Icon and title
+                            HStack(spacing: 12) {
+                                Image(systemName: category.icon)
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .shadow(color: Color.black.opacity(0.5), radius: 4, x: 0, y: 2)
+                                
+                                Text(category.localizedTitle(for: settingsStore.appLanguage))
+                                    .font(.system(size: 28, weight: .bold, design: .serif))
+                                    .foregroundColor(.white)
+                                    .shadow(color: Color.black.opacity(0.5), radius: 6, x: 0, y: 3)
+                            }
                             
+                            // Description
                             Text(category.localizedDescription(for: settingsStore.appLanguage))
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.secondaryText)
+                                .font(.system(size: 16, weight: .medium, design: .serif))
+                                .foregroundColor(.white)
+                                .shadow(color: Color.black.opacity(0.5), radius: 4, x: 0, y: 2)
+                            
+                            // Question count badge
+                            HStack(spacing: 8) {
+                                Image(systemName: "questionmark.circle.fill")
+                                    .font(.caption)
+                                Text("\(category.questions.count) \(settingsStore.appLanguage == .chineseTraditional ? "問題" : settingsStore.appLanguage == .chineseSimplified ? "问题" : "questions")")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.3))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
-                        
-                        Spacer()
+                        .padding(20)
                     }
                 }
-                .padding()
-                .background(AppTheme.cardGradient)
+                .frame(height: UIScreen.main.bounds.height * 0.4)
+                .ignoresSafeArea(edges: .top)
                 
                 // Questions list
                 VStack(spacing: 0) {
@@ -98,11 +142,29 @@ struct AskCategoryDetailView: View {
                 .padding()
             }
         }
+        .ignoresSafeArea(edges: .top)
         .background(AppTheme.backgroundGradient.ignoresSafeArea())
-        .navigationTitle(category.localizedTitle(for: settingsStore.appLanguage))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "返回" : settingsStore.appLanguage == .chineseSimplified ? "返回" : "Back")
+                            .font(.body)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(8)
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(item: $selectedQuestion) { question in
             if let aiService = services.aiService {
                 ChatView(

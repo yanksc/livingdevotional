@@ -50,6 +50,8 @@ struct MainTabView: View {
                 .tag(4)
         }
         .tint(AppTheme.accentColor)
+        .toolbarBackground(AppTheme.backgroundGradient, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .onChange(of: router.currentRoute) { oldRoute, newRoute in
             // Handle navigation to reading view
             if case .reading(let book, let chapter, let verse) = newRoute {
@@ -84,39 +86,255 @@ struct MainTabView: View {
 
 struct BibleTabView: View {
     @ObservedObject var viewModel: BibleViewModel
+    @ObservedObject var profileStore = UserProfileStore.shared
+    @ObservedObject var settingsStore = SettingsStore.shared
     @State private var showBookSelector = false
     
     var body: some View {
         NavigationStack {
             ZStack {
+                AppTheme.backgroundGradient
+                    .ignoresSafeArea()
+                
                 // Show ReadingView if book and chapter are selected
                 if let book = viewModel.selectedBook, let chapter = viewModel.selectedChapter {
                     ReadingView(book: book, chapter: chapter, bibleViewModel: viewModel)
+                } else if let recommendedBooks = profileStore.profile.recommendedBooks, !recommendedBooks.isEmpty {
+                    // Show recommended books when no selection
+                    RecommendedBooksStartView(
+                        books: recommendedBooks,
+                        viewModel: viewModel,
+                        showBookSelector: $showBookSelector
+                    )
                 } else {
-                    // Placeholder when no selection
+                    // Fallback placeholder when no selection and no recommendations
                     VStack(spacing: 20) {
                         Image(systemName: "book.closed.fill")
                             .font(.system(size: 60))
                             .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                        Text("Select a book to begin reading")
+                        Text(placeholderText)
                             .font(.headline)
                             .foregroundColor(AppTheme.secondaryText)
+                        
+                        Button(action: { showBookSelector = true }) {
+                            Text(browseButtonText)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(AppTheme.buttonGradient)
+                                .cornerRadius(10)
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Bible")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showBookSelector) {
                 BookSelectionSheet(viewModel: viewModel, isPresented: $showBookSelector)
             }
         }
-        .onAppear {
-            // Show book selector on first entry if no book/chapter selected
-            if viewModel.selectedBook == nil && viewModel.selectedChapter == nil {
-                showBookSelector = true
+    }
+    
+    private var placeholderText: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "選擇一卷書開始閱讀" : "Select a book to begin reading"
+    }
+    
+    private var browseButtonText: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "瀏覽聖經" : "Browse Bible"
+    }
+    
+    private var navigationTitle: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "聖經" : "Bible"
+    }
+}
+
+// MARK: - Recommended Books Start View
+
+struct RecommendedBooksStartView: View {
+    let books: [RecommendedBook]
+    @ObservedObject var viewModel: BibleViewModel
+    @Binding var showBookSelector: Bool
+    @ObservedObject var settingsStore = SettingsStore.shared
+    @ObservedObject var profileStore = UserProfileStore.shared
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Text(headerText)
+                        .font(.system(size: 24, weight: .semibold, design: .serif))
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Text(subtitleText)
+                        .font(.system(size: 15))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, 24)
+                
+                // Book cards
+                VStack(spacing: 16) {
+                    ForEach(books, id: \.bookName) { book in
+                        RecommendedBookCard(book: book) {
+                            selectBook(book.bookName)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                
+                // Browse all books button
+                Button(action: { showBookSelector = true }) {
+                    HStack {
+                        Image(systemName: "books.vertical")
+                        Text(browseAllText)
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(AppTheme.accentColor)
+                    .padding(.vertical, 16)
+                }
+                .padding(.bottom, 40)
             }
         }
+    }
+    
+    private var headerText: String {
+        let name = profileStore.profile.name
+        let displayName = name.isEmpty ? "" : "\(name), "
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        
+        if isChinese {
+            return "\(displayName)可以從這裡開始"
+        } else {
+            return "\(displayName)begin your journey here"
+        }
+    }
+    
+    private var subtitleText: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "根據你分享的內容，這些書卷特別適合你" : "Based on what you shared, these books are perfect for you"
+    }
+    
+    private var browseAllText: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "瀏覽所有書卷" : "Browse all books"
+    }
+    
+    private var allBooks: [BibleBook] {
+        viewModel.oldTestamentBooks + viewModel.newTestamentBooks
+    }
+    
+    private func selectBook(_ bookName: String) {
+        // Find the Bible book matching the name
+        if let book = allBooks.first(where: { $0.name == bookName }) {
+            viewModel.selectBook(book)
+            // Start from chapter 1
+            viewModel.selectChapter(1)
+        } else {
+            // If not found by exact name, try localized names
+            for bibleBook in allBooks {
+                if bibleBook.localizedName(for: settingsStore.appLanguage) == bookName ||
+                   bibleBook.name.lowercased() == bookName.lowercased() {
+                    viewModel.selectBook(bibleBook)
+                    viewModel.selectChapter(1)
+                    return
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Recommended Book Card
+
+struct RecommendedBookCard: View {
+    let book: RecommendedBook
+    let onTap: () -> Void
+    @ObservedObject var settingsStore = SettingsStore.shared
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(localizedBookName)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    Spacer()
+                    
+                    Image(systemName: bookIcon)
+                        .font(.system(size: 16))
+                        .foregroundColor(AppTheme.accentColor.opacity(0.7))
+                }
+                
+                Text(book.personalizedIntro)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(AppTheme.secondaryText)
+                    .multilineTextAlignment(.leading)
+                    .lineSpacing(4)
+                
+                HStack {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Text(startReadingText)
+                            .font(.system(size: 14, weight: .medium))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(AppTheme.accentColor)
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.95))
+                    .shadow(color: AppTheme.accentColor.opacity(0.08), radius: 12, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(AppTheme.accentColor.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var localizedBookName: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        let chineseNames: [String: String] = [
+            "Psalms": "詩篇",
+            "Matthew": "馬太福音",
+            "Philippians": "腓立比書",
+            "John": "約翰福音",
+            "Romans": "羅馬書",
+            "Proverbs": "箴言"
+        ]
+        
+        if isChinese, let chinese = chineseNames[book.bookName] {
+            return chinese
+        }
+        return book.bookName
+    }
+    
+    private var bookIcon: String {
+        switch book.bookName {
+        case "Psalms": return "music.note"
+        case "Matthew": return "book.closed"
+        case "Philippians": return "heart"
+        case "John": return "sun.max"
+        case "Romans": return "lightbulb"
+        case "Proverbs": return "brain"
+        default: return "book"
+        }
+    }
+    
+    private var startReadingText: String {
+        let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+        return isChinese ? "開始閱讀" : "Start reading"
     }
 }
 

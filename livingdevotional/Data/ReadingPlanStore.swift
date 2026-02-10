@@ -280,7 +280,7 @@ class ReadingPlanStore: ObservableObject {
     // Valid SF Symbols for reading plans
     private static let validIcons: Set<String> = [
         "book.fill", "heart.fill", "lightbulb.fill", "leaf.fill", "mountain.2.fill",
-        "star.fill", "sun.max.fill", "flame.fill", "sparkles", "cross.fill",
+        "star.fill", "sun.max.fill", "sparkles", "cross.fill",
         "hand.raised.fill", "person.fill", "figure.walk", "figure.mind.and.body",
         "water.waves", "moon.fill", "bolt.fill", "shield.fill", "crown.fill",
         "graduationcap.fill", "book.closed.fill", "text.book.closed.fill",

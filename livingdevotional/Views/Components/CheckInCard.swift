@@ -23,13 +23,13 @@ struct CheckInCard: View {
                 HStack(spacing: 12) {
                     // App Open Streak
                     HStack(spacing: 4) {
-                        Image(systemName: "flame.fill")
-                            .foregroundColor(.orange)
+                        Image(systemName: "cross.fill")
+                            .foregroundColor(AppTheme.accentColor)
                             .font(.caption)
                         Text("\(checkInStore.currentStreak)")
                             .font(.subheadline)
                             .fontWeight(.bold)
-                            .foregroundColor(.orange)
+                            .foregroundColor(AppTheme.accentColor)
                         Text(settingsStore.appLanguage == .chineseTraditional ? "天" : "d")
                             .font(.caption2)
                             .foregroundColor(AppTheme.secondaryText)

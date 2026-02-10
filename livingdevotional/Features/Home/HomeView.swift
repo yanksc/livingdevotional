@@ -327,12 +327,31 @@ struct HomeView: View {
                     .clipped()
                     .cornerRadius(16)
                 } else {
-                    Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
-                        .foregroundColor(AppTheme.secondaryText)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(AppTheme.cardGradient)
-                        .cornerRadius(12)
+                    VStack(spacing: 12) {
+                        Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
+                            .foregroundColor(AppTheme.secondaryText)
+                        
+                        Button(action: {
+                            viewModel.retryLoadVerse()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.subheadline)
+                                Text(settingsStore.appLanguage == .chineseTraditional ? "重試" : "Retry")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(AppTheme.accentColor)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(AppTheme.accentColor.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(AppTheme.cardGradient)
+                    .cornerRadius(12)
                 }
             }
         }
@@ -358,9 +377,7 @@ struct HomeView: View {
     }
     
     private func formatVerseForShare(_ verse: DailyVerse) -> String {
-        let text = verse.text(for: settingsStore.primaryLanguage)
-        let reference = localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber)
-        return "\"\(text)\"\n- \(reference)\n\nShared from Living Path"
+        VerseShareFormatter.format(verse, language: settingsStore.primaryLanguage, bookNameLanguage: settingsStore.primaryLanguage)
     }
     
     // MARK: - Continue Reading Plan

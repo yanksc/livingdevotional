@@ -5,6 +5,29 @@
 import WidgetKit
 import SwiftUI
 
+// MARK: - Custom Cross Shape
+
+struct ThinCrossShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let strokeWidth: CGFloat = 1.5
+        
+        // Vertical beam (full height)
+        let vLeft = rect.midX - strokeWidth / 2
+        path.addRect(CGRect(x: vLeft, y: rect.minY, 
+                           width: strokeWidth, height: rect.height))
+        
+        // Horizontal beam (positioned ~30% from top, shorter width)
+        let hTop = rect.height * 0.3 - strokeWidth / 2
+        let hWidth = rect.width * 0.7
+        let hLeft = rect.midX - hWidth / 2
+        path.addRect(CGRect(x: hLeft, y: hTop, 
+                           width: hWidth, height: strokeWidth))
+        
+        return path
+    }
+}
+
 // MARK: - Timeline Entry
 
 struct StreakEntry: TimelineEntry {
@@ -54,12 +77,7 @@ struct StreakProvider: TimelineProvider {
             hasPrayedToday: data.hasPrayedToday
         )
         
-        // Refresh at midnight or after 1 hour
-        let midnight = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
-        let oneHourLater = Date().addingTimeInterval(3600)
-        let refreshDate = min(midnight, oneHourLater)
-        
-        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
+        let timeline = Timeline(entries: [entry], policy: .after(WidgetTimelineHelper.nextRefreshDate()))
         completion(timeline)
     }
 }
@@ -113,35 +131,15 @@ struct CircularStreakView: View {
             
             // Center content
             VStack(spacing: 0) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.orange)
+                ThinCrossShape()
+                    .fill(Color.widgetSageGreen)
+                    .frame(width: 10, height: 14)
                 
                 Text("\(entry.streak)")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .minimumScaleFactor(0.8)
             }
         }
-        .widgetURL(URL(string: "livingpath://widget/home"))
-    }
-}
-
-// MARK: - Alternative Gauge Style (iOS 16+)
-
-struct GaugeStreakView: View {
-    let entry: StreakEntry
-    
-    var body: some View {
-        let tasksCompleted = (entry.hasReadToday ? 1 : 0) + (entry.hasPrayedToday ? 1 : 0)
-        
-        Gauge(value: Double(tasksCompleted), in: 0...2) {
-            Image(systemName: "flame.fill")
-        } currentValueLabel: {
-            Text("\(entry.streak)")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-        }
-        .gaugeStyle(.accessoryCircular)
-        .tint(.orange)
         .widgetURL(URL(string: "livingpath://widget/home"))
     }
 }

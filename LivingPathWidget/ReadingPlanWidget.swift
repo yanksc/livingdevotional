@@ -33,7 +33,7 @@ struct PlanEntry: TimelineEntry {
             let shortTitle = title.count > 15 ? String(title.prefix(12)) + "..." : title
             return "Day \(day)/\(total) • \(shortTitle)"
         } else if streak > 0 {
-            return "🔥 \(streak) day streak"
+            return "✝ \(streak) day streak"
         } else {
             return "Living Path"
         }
@@ -71,12 +71,7 @@ struct PlanProvider: TimelineProvider {
             streak: data.currentStreak
         )
         
-        // Refresh at midnight or after 1 hour
-        let midnight = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
-        let oneHourLater = Date().addingTimeInterval(3600)
-        let refreshDate = min(midnight, oneHourLater)
-        
-        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
+        let timeline = Timeline(entries: [entry], policy: .after(WidgetTimelineHelper.nextRefreshDate()))
         completion(timeline)
     }
 }
@@ -117,7 +112,7 @@ struct InlinePlanView: View {
             if entry.planTitle != nil {
                 Image(systemName: "book.fill")
             } else if entry.streak > 0 {
-                Image(systemName: "flame.fill")
+                Image(systemName: "cross.fill")
             }
             Text(entry.displayText)
         }

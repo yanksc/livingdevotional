@@ -50,8 +50,15 @@ class UserProfileStore: ObservableObject {
     }
     
     func resetOnboarding() {
+        // Reset onboarding completion status
         hasCompletedOnboarding = false
+        
+        // Reset profile to defaults (clears name, journeyStage, reflection, etc.)
         profile = UserProfile()
+        
+        // Reset onboarding-related flags in SettingsStore
+        SettingsStore.shared.resetOnboardingFlags()
+        
         saveProfile()
     }
     

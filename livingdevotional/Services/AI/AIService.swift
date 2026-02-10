@@ -2005,7 +2005,7 @@ class AIService: AIServiceProtocol {
               "pathStatus": {
                 "title": "路上的你 - 必須基於最近5個行動中的實際經文內容和用戶行為，創造一個具體、有創意、令人印象深刻的狀態描述。例如：如果用戶最近保存了約翰福音3:16並寫了關於愛的筆記，可以說「在愛的真理中扎根」；如果最近為焦慮禱告並使用腓立比書4:6-7，可以說「在憂慮中尋求平安」。絕對不要用模糊的詞彙如「成長中」、「理解中」等。要具體引用經文主題或用戶關注的屬靈主題。",
                 "description": "擴展的情境分析（約60字）。分析用戶最近的行動，提供具體洞察。結構：以一句簡短的鼓勵開頭，然後提供關於他們旅程的分析內容。引用他們歷史中的具體經文、筆記、禱告或問題。避免泛泛的鼓勵 - 專注於他們的行動揭示了什麼關於他們的屬靈焦點和成長。要有洞察力但不過度情緒化。",
-                "iconName": "SF Symbol 名稱（如 figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill）"
+                "iconName": "SF Symbol 名稱（如 figure.walk, heart.fill, lightbulb.fill, star.fill, cross.fill, sparkles, hands.sparkles.fill）"
               },
               "recommendedVerse": {
                 "reference": "推薦經文出處（英文書名 章:節，如 Philippians 4:13）",
@@ -2081,7 +2081,7 @@ class AIService: AIServiceProtocol {
               "pathStatus": {
                 "title": "Along the Path - MUST be based on actual verse content and user actions from the recent 5 actions. Create a specific, creative, and impressive status description. For example: if user recently saved John 3:16 with a note about love, say 'Rooted in Love's Truth'; if recently prayed about anxiety using Philippians 4:6-7, say 'Seeking Peace in Worry'. NEVER use vague terms like 'growing', 'understanding', 'learning'. Must specifically reference verse themes or spiritual themes the user is focusing on.",
                 "description": "EXPANDED in-context analysis (~60 words). Analyze the user's recent actions to provide specific insights. Structure: Start with one brief encouraging sentence, then provide analytical content about their journey. Reference specific verses, notes, prayers, or questions from their history. Avoid generic encouragement - focus on what their actions reveal about their spiritual focus and growth. Be insightful but not overly emotional.",
-                "iconName": "SF Symbol name (e.g., figure.walk, heart.fill, lightbulb.fill, star.fill, flame.fill, sparkles, hands.sparkles.fill)"
+                "iconName": "SF Symbol name (e.g., figure.walk, heart.fill, lightbulb.fill, star.fill, cross.fill, sparkles, hands.sparkles.fill)"
               },
               "recommendedVerse": {
                 "reference": "Recommended verse reference (English book name Chapter:Verse, e.g., Philippians 4:13)",
@@ -2482,7 +2482,7 @@ class AIService: AIServiceProtocol {
               "title": "计划标题（简洁，不超过20字）",
               "description": "简短描述（不超过50字）",
               "extendedDescription": "详细描述（100-150字）",
-              "icon": "SF Symbol名称（必须从以下选择：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles）",
+              "icon": "SF Symbol名称（必须从以下选择：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, cross.fill, sparkles）",
               "category": "book|topical|devotional",
               "days": [
                 {
@@ -2525,7 +2525,7 @@ class AIService: AIServiceProtocol {
               "title": "計劃標題（簡潔，不超過20字）",
               "description": "簡短描述（不超過50字）",
               "extendedDescription": "詳細描述（100-150字）",
-              "icon": "SF Symbol名稱（必須從以下選擇：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles）",
+              "icon": "SF Symbol名稱（必須從以下選擇：book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, cross.fill, sparkles）",
               "category": "book|topical|devotional",
               "days": [
                 {
@@ -2568,7 +2568,7 @@ class AIService: AIServiceProtocol {
               "title": "Plan title (concise, max 20 words)",
               "description": "Brief description (max 50 words)",
               "extendedDescription": "Detailed description (100-150 words)",
-              "icon": "SF Symbol name (must be one of: book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, flame.fill, sparkles)",
+              "icon": "SF Symbol name (must be one of: book.fill, heart.fill, lightbulb.fill, leaf.fill, mountain.2.fill, star.fill, sun.max.fill, cross.fill, sparkles)",
               "category": "book|topical|devotional",
               "days": [
                 {
@@ -2662,7 +2662,7 @@ class AIService: AIServiceProtocol {
             // Validate the icon - use a fallback if the AI returns an invalid SF Symbol
             let validIcons = [
                 "book.fill", "heart.fill", "lightbulb.fill", "leaf.fill", "mountain.2.fill",
-                "star.fill", "sun.max.fill", "flame.fill", "sparkles", "cross.fill",
+                "star.fill", "sun.max.fill", "cross.fill", "sparkles",
                 "hand.raised.fill", "person.fill", "figure.walk", "figure.mind.and.body",
                 "water.waves", "moon.fill", "bolt.fill", "shield.fill", "crown.fill",
                 "graduationcap.fill", "book.closed.fill", "text.book.closed.fill",
@@ -2714,6 +2714,694 @@ class AIService: AIServiceProtocol {
         } catch {
             // If parsing fails, try to repair JSON (basic attempt)
             throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse reading plan: \(error.localizedDescription)"])
+        }
+    }
+    
+    // MARK: - Onboarding AI Methods
+    
+    /// Generates empathetic echo and selects a Bible verse based on user's reflection
+    func generateScriptureEcho(
+        name: String,
+        reflection: String,
+        language: AppLanguage
+    ) async throws -> ScriptureEchoResponse {
+        // If reflection is empty, return fallback without AI call
+        if reflection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return getFallbackVerse(for: "", language: language)
+        }
+        
+        let isChinese = isChineseLanguage(language)
+        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : language.rawValue
+        
+        let prompt = """
+        You are a gentle, empathetic spiritual guide. A person named \(name) has shared what's on their heart:
+
+        "\(reflection)"
+
+        Respond in \(languageInstruction) with:
+
+        1. ECHO (2-3 sentences): 
+           - Rephrase what they shared in a warm, understanding way
+           - Validate their feelings and make them feel heard
+           - Soothe their emotions - say what they need to hear right now
+           - Do NOT use generic phrases like "I hear you" or "I understand"
+           - Instead, reflect back their specific experience with warmth
+
+        2. VERSE: Select ONE Bible verse that speaks directly to their situation. 
+           Choose something comforting and hopeful that addresses their specific need.
+
+        Tone: Gentle, soothing, warm. Like a caring presence who truly listens. 
+        No preaching, no advice-giving, no clichés. Just warmth and comfort.
+
+        Format your response as JSON:
+        {
+          "echo": "Your empathetic response here...",
+          "verse_reference": "Matthew 11:28",
+          "verse_text": "Come to me, all you who are weary and burdened, and I will give you rest."
+        }
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 800
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15 // 15 second timeout
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            return getFallbackVerse(for: reflection, language: language)
+        }
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                return getFallbackVerse(for: reflection, language: language)
+            }
+            
+            // Parse JSON response
+            let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let responseData = cleanedContent.data(using: .utf8),
+                  let responseJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+                  let verseReference = responseJson["verse_reference"] as? String,
+                  let verseText = responseJson["verse_text"] as? String else {
+                return getFallbackVerse(for: reflection, language: language)
+            }
+            
+            let echo = responseJson["echo"] as? String
+            
+            return ScriptureEchoResponse(
+                echo: echo,
+                verseReference: verseReference,
+                verseText: verseText
+            )
+        } catch {
+            return getFallbackVerse(for: reflection, language: language)
+        }
+    }
+    
+    /// Generates a deep dive question based on user's reflection for personalized exploration
+    func generateDeepDiveQuestion(
+        name: String,
+        reflection: String,
+        language: AppLanguage
+    ) async throws -> DeepDiveQuestion {
+        let isChinese = isChineseLanguage(language)
+        let isSpanish = language == .spanish
+        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : (isSpanish ? "Spanish" : "English")
+        
+        let prompt = """
+        Based on \(name)'s reflection about their faith journey:
+        "\(reflection)"
+
+        Generate ONE thoughtful follow-up question that helps them explore their faith more deeply.
+        The question should be specific to what they shared, inviting them to reflect on what they want to grow in or understand better.
+
+        Also provide exactly 4 distinct, meaningful options that represent different directions they might want to explore.
+        Each option should be concise (5-10 words) and directly relate to their reflection.
+
+        Tone: Warm, inviting, non-judgmental. Like a caring guide helping them discover their path.
+
+        Language: \(languageInstruction)
+        Format as JSON:
+        {
+          "question": "...",
+          "options": ["option1", "option2", "option3", "option4"]
+        }
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 400
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            return getDefaultDeepDiveQuestion(language: language)
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            return getDefaultDeepDiveQuestion(language: language)
+        }
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                return getDefaultDeepDiveQuestion(language: language)
+            }
+            
+            let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let responseData = cleanedContent.data(using: .utf8),
+                  let responseJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+                  let question = responseJson["question"] as? String,
+                  let options = responseJson["options"] as? [String],
+                  options.count >= 4 else {
+                return getDefaultDeepDiveQuestion(language: language)
+            }
+            
+            return DeepDiveQuestion(
+                question: question,
+                options: Array(options.prefix(4))
+            )
+        } catch {
+            return getDefaultDeepDiveQuestion(language: language)
+        }
+    }
+    
+    private func getDefaultDeepDiveQuestion(language: AppLanguage) -> DeepDiveQuestion {
+        let isChinese = isChineseLanguage(language)
+        let isSpanish = language == .spanish
+        
+        if isChinese {
+            return DeepDiveQuestion(
+                question: "在你的信仰旅程中，你最想深入探索什麼？",
+                options: [
+                    "更認識神的話語",
+                    "在禱告中經歷更深的連結",
+                    "在困難中找到平安",
+                    "在日常生活中活出信仰"
+                ]
+            )
+        } else if isSpanish {
+            return DeepDiveQuestion(
+                question: "En tu camino de fe, ¿qué te gustaría explorar más profundamente?",
+                options: [
+                    "Conocer mejor la Palabra de Dios",
+                    "Experimentar una conexión más profunda en la oración",
+                    "Encontrar paz en los momentos difíciles",
+                    "Vivir mi fe en la vida diaria"
+                ]
+            )
+        } else {
+            return DeepDiveQuestion(
+                question: "In your faith journey, what would you most like to explore?",
+                options: [
+                    "Understanding God's Word more deeply",
+                    "Experiencing deeper connection in prayer",
+                    "Finding peace in difficult times",
+                    "Living out my faith in daily life"
+                ]
+            )
+        }
+    }
+    
+    /// Generates personalized book intros for Psalms, Matthew, and Philippians
+    func generateBookIntros(
+        name: String,
+        reflection: String,
+        deepDiveSelection: DeepDiveSelection?,
+        language: AppLanguage
+    ) async throws -> [RecommendedBook] {
+        // If reflection is empty, return defaults
+        if reflection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return getDefaultBookIntros(language: language)
+        }
+        
+        let isChinese = isChineseLanguage(language)
+        let isSpanish = language == .spanish
+        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : (isSpanish ? "Spanish" : "English")
+        
+        // Build context including deep dive selection if available
+        var contextSection = """
+        Based on \(name)'s reflection:
+        "\(reflection)"
+        """
+        
+        if let selection = deepDiveSelection, !selection.displayText.isEmpty {
+            contextSection += """
+            
+            
+            They also expressed wanting to explore:
+            "\(selection.displayText)"
+            """
+        }
+        
+        let prompt = """
+        \(contextSection)
+
+        Generate a 5-10 word personalized intro for each book (Psalms, Matthew, Philippians),
+        connecting the book's themes to what they shared and their area of exploration.
+
+        Make each intro feel like it was chosen specifically for them.
+        Warm, inviting tone - like a friend suggesting a book.
+
+        Language: \(languageInstruction)
+        Format as JSON:
+        {
+          "books": [
+            {"name": "Psalms", "intro": "..."},
+            {"name": "Matthew", "intro": "..."},
+            {"name": "Philippians", "intro": "..."}
+          ]
+        }
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 500
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            return getDefaultBookIntros(language: language)
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            return getDefaultBookIntros(language: language)
+        }
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                return getDefaultBookIntros(language: language)
+            }
+            
+            let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let responseData = cleanedContent.data(using: .utf8),
+                  let responseJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+                  let booksArray = responseJson["books"] as? [[String: Any]] else {
+                return getDefaultBookIntros(language: language)
+            }
+            
+            let now = Date()
+            return booksArray.compactMap { bookJson -> RecommendedBook? in
+                guard let name = bookJson["name"] as? String,
+                      let intro = bookJson["intro"] as? String else { return nil }
+                return RecommendedBook(bookName: name, personalizedIntro: intro, recommendedAt: now)
+            }
+        } catch {
+            return getDefaultBookIntros(language: language)
+        }
+    }
+    
+    /// Generates related verses based on user's deep dive selection
+    func generateRelatedVerses(
+        name: String,
+        reflection: String,
+        deepDiveSelection: DeepDiveSelection?,
+        language: AppLanguage
+    ) async throws -> [OnboardingRecommendedVerse] {
+        // If no selection, return defaults
+        guard let selection = deepDiveSelection, !selection.displayText.isEmpty else {
+            return getDefaultRelatedVerses(language: language)
+        }
+        
+        let isChinese = isChineseLanguage(language)
+        let isSpanish = language == .spanish
+        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : (isSpanish ? "Spanish" : "English")
+        
+        let prompt = """
+        Based on \(name)'s reflection:
+        "\(reflection)"
+        
+        And their desire to explore:
+        "\(selection.displayText)"
+        
+        Recommend 2-3 Bible verses that speak directly to this exploration.
+        For each verse:
+        - Choose a verse that offers comfort, guidance, or insight related to their area of interest
+        - Provide the full verse text
+        - Write a brief (1 sentence) explanation of why this verse connects to what they want to explore
+        
+        Make each recommendation feel personal and relevant to what they shared.
+        Warm, contemplative tone.
+        
+        Language: \(languageInstruction)
+        Format as JSON:
+        {
+          "verses": [
+            {"reference": "Book Chapter:Verse", "text": "...", "reason": "..."},
+            {"reference": "Book Chapter:Verse", "text": "...", "reason": "..."}
+          ]
+        }
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 800
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            return getDefaultRelatedVerses(language: language)
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 20
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            return getDefaultRelatedVerses(language: language)
+        }
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                return getDefaultRelatedVerses(language: language)
+            }
+            
+            let cleanedContent = content.replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let responseData = cleanedContent.data(using: .utf8),
+                  let responseJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+                  let versesArray = responseJson["verses"] as? [[String: Any]] else {
+                return getDefaultRelatedVerses(language: language)
+            }
+            
+            let now = Date()
+            return versesArray.compactMap { verseJson -> OnboardingRecommendedVerse? in
+                guard let reference = verseJson["reference"] as? String,
+                      let text = verseJson["text"] as? String,
+                      let reason = verseJson["reason"] as? String else { return nil }
+                return OnboardingRecommendedVerse(reference: reference, text: text, reason: reason, recommendedAt: now)
+            }
+        } catch {
+            return getDefaultRelatedVerses(language: language)
+        }
+    }
+    
+    /// Default related verses when AI fails
+    private func getDefaultRelatedVerses(language: AppLanguage) -> [OnboardingRecommendedVerse] {
+        let isChinese = isChineseLanguage(language)
+        let now = Date()
+        
+        if isChinese {
+            return [
+                OnboardingRecommendedVerse(
+                    reference: "耶利米書 29:11",
+                    text: "耶和華說：我知道我向你們所懷的意念，是賜平安的意念，不是降災禍的意念，要叫你們末後有指望。",
+                    reason: "這節經文提醒我們神對我們有美好的計劃。",
+                    recommendedAt: now
+                ),
+                OnboardingRecommendedVerse(
+                    reference: "詩篇 46:10",
+                    text: "你們要休息，要知道我是神！",
+                    reason: "在忙碌中找到安息，認識神的同在。",
+                    recommendedAt: now
+                )
+            ]
+        } else {
+            return [
+                OnboardingRecommendedVerse(
+                    reference: "Jeremiah 29:11",
+                    text: "For I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope.",
+                    reason: "This verse reminds us that God has good plans for our lives.",
+                    recommendedAt: now
+                ),
+                OnboardingRecommendedVerse(
+                    reference: "Psalm 46:10",
+                    text: "Be still, and know that I am God.",
+                    reason: "Finding rest in God's presence amid life's busyness.",
+                    recommendedAt: now
+                )
+            ]
+        }
+    }
+    
+    /// Generates personalized closing prayer for onboarding
+    func generateOnboardingPrayer(
+        name: String,
+        reflection: String,
+        language: AppLanguage
+    ) async throws -> String {
+        let isChinese = isChineseLanguage(language)
+        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : language.rawValue
+        
+        // Use default prayer if reflection is empty
+        if reflection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return getDefaultPrayer(name: name, language: language)
+        }
+        
+        let prompt = """
+        Generate a heartfelt opening prayer (5-6 sentences) for a person named "\(name)" who shared:
+        "\(reflection)"
+
+        The prayer should:
+        - Thank God for bringing them to this moment
+        - Acknowledge what's on their heart (without repeating their exact words)
+        - Ask for guidance, wisdom, and peace on their journey
+        - Include a blessing or hope for their spiritual growth
+        - Be warm, personal, and conversational - not formal or churchy
+        - Use the person's name "\(name)" exactly as written (do NOT translate the name)
+        - Do NOT end with "Amen" - we will add that separately
+
+        Language: \(languageInstruction)
+        Format: Just the prayer text, no JSON, no "Amen" at the end.
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 400
+        ]
+        
+        guard let url = URL(string: heliconeBaseURL) else {
+            return getDefaultPrayer(name: name, language: language)
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 20
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            return getDefaultPrayer(name: name, language: language)
+        }
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                return getDefaultPrayer(name: name, language: language)
+            }
+            
+            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return getDefaultPrayer(name: name, language: language)
+        }
+    }
+    
+    // MARK: - Fallback Content
+    
+    /// Fallback verse library for when AI fails
+    private func getFallbackVerse(for reflection: String, language: AppLanguage) -> ScriptureEchoResponse {
+        let isChinese = isChineseLanguage(language)
+        let lowercasedReflection = reflection.lowercased()
+        
+        // Keyword matching for common themes
+        let anxietyKeywords = ["stress", "anxious", "worry", "afraid", "fear", "overwhelm", "pressure", "壓力", "焦慮", "擔心", "害怕"]
+        let griefKeywords = ["loss", "grief", "death", "died", "miss", "gone", "sad", "mourn", "失去", "傷心", "難過", "思念"]
+        let directionKeywords = ["lost", "direction", "purpose", "confused", "uncertain", "future", "path", "迷失", "方向", "未來", "困惑"]
+        let healingKeywords = ["sick", "heal", "pain", "hurt", "broken", "病", "醫治", "痛", "受傷"]
+        let peaceKeywords = ["peace", "calm", "rest", "quiet", "still", "平安", "安靜", "休息"]
+        
+        if anxietyKeywords.contains(where: { lowercasedReflection.contains($0) }) {
+            return ScriptureEchoResponse(
+                echo: nil,
+                verseReference: "Philippians 4:6-7",
+                verseText: isChinese 
+                    ? "應當一無掛慮，只要凡事藉著禱告、祈求和感謝，將你們所要的告訴神。神所賜出人意外的平安，必在基督耶穌裡保守你們的心懷意念。"
+                    : "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."
+            )
+        }
+        
+        if griefKeywords.contains(where: { lowercasedReflection.contains($0) }) {
+            return ScriptureEchoResponse(
+                echo: nil,
+                verseReference: "Psalm 34:18",
+                verseText: isChinese
+                    ? "耶和華靠近傷心的人，拯救靈性痛悔的人。"
+                    : "The Lord is close to the brokenhearted and saves those who are crushed in spirit."
+            )
+        }
+        
+        if directionKeywords.contains(where: { lowercasedReflection.contains($0) }) {
+            return ScriptureEchoResponse(
+                echo: nil,
+                verseReference: "Proverbs 3:5-6",
+                verseText: isChinese
+                    ? "你要專心仰賴耶和華，不可倚靠自己的聰明，在你一切所行的事上都要認定他，他必指引你的路。"
+                    : "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight."
+            )
+        }
+        
+        if healingKeywords.contains(where: { lowercasedReflection.contains($0) }) {
+            return ScriptureEchoResponse(
+                echo: nil,
+                verseReference: "Psalm 147:3",
+                verseText: isChinese
+                    ? "他醫好傷心的人，裹好他們的傷處。"
+                    : "He heals the brokenhearted and binds up their wounds."
+            )
+        }
+        
+        if peaceKeywords.contains(where: { lowercasedReflection.contains($0) }) {
+            return ScriptureEchoResponse(
+                echo: nil,
+                verseReference: "Isaiah 41:10",
+                verseText: isChinese
+                    ? "你不要害怕，因為我與你同在；不要驚惶，因為我是你的神。我必堅固你，我必幫助你，我必用我公義的右手扶持你。"
+                    : "So do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you and help you; I will uphold you with my righteous right hand."
+            )
+        }
+        
+        // Default fallback for empty or unmatched reflection
+        return ScriptureEchoResponse(
+            echo: nil,
+            verseReference: "Psalm 46:10",
+            verseText: isChinese
+                ? "你們要休息，要知道我是神。"
+                : "Be still, and know that I am God."
+        )
+    }
+    
+    /// Default book intros when AI fails
+    private func getDefaultBookIntros(language: AppLanguage) -> [RecommendedBook] {
+        let isChinese = isChineseLanguage(language)
+        let now = Date()
+        
+        if isChinese {
+            return [
+                RecommendedBook(bookName: "Psalms", personalizedIntro: "給每個季節的心靈詩歌", recommendedAt: now),
+                RecommendedBook(bookName: "Matthew", personalizedIntro: "與耶穌同行，日復一日", recommendedAt: now),
+                RecommendedBook(bookName: "Philippians", personalizedIntro: "不論環境如何都有的喜樂", recommendedAt: now)
+            ]
+        } else {
+            return [
+                RecommendedBook(bookName: "Psalms", personalizedIntro: "Songs for every season of the heart", recommendedAt: now),
+                RecommendedBook(bookName: "Matthew", personalizedIntro: "Walking with Jesus, day by day", recommendedAt: now),
+                RecommendedBook(bookName: "Philippians", personalizedIntro: "Joy that doesn't depend on circumstances", recommendedAt: now)
+            ]
+        }
+    }
+    
+    /// Default prayer when AI fails
+    private func getDefaultPrayer(name: String, language: AppLanguage) -> String {
+        let isChinese = isChineseLanguage(language)
+        let displayName = name.isEmpty ? (isChinese ? "這位朋友" : "this friend") : name
+        
+        if isChinese {
+            return """
+            親愛的天父，
+            
+            感謝祢帶領\(displayName)來到這裡，開始這段與祢同行的旅程。
+            祢知道\(displayName)心中所承載的一切渴望與疑問。
+            求祢在每一天中與\(displayName)同行，賜下智慧與平安。
+            願祢的話語成為腳前的燈、路上的光，照亮前方的道路。
+            求祢堅固\(displayName)的信心，在每一個季節中都能經歷祢豐盛的愛。
+            
+            奉耶穌的名禱告，
+            """
+        } else {
+            return """
+            Dear Heavenly Father,
+            
+            Thank you for bringing \(displayName) here to begin this journey with You.
+            You know the questions, hopes, and longings that \(displayName) carries.
+            Walk with \(displayName) each day, granting wisdom and peace along the way.
+            May Your Word be a lamp for their feet and a light on their path.
+            Strengthen \(displayName)'s faith and let them experience Your abundant love in every season.
+            
+            In Jesus' name,
+            """
         }
     }
 }

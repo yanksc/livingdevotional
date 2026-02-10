@@ -140,8 +140,11 @@ struct SplashScreenModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         ZStack {
-            content
-                .opacity(showSplash ? 0 : 1)
+            // Use conditional rendering so content only mounts after splash dismisses
+            // This ensures TypewriterText.onAppear fires at the right time
+            if !showSplash {
+                content
+            }
             
             if showSplash {
                 SplashView(isPresented: $showSplash)

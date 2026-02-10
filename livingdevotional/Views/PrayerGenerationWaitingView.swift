@@ -5,8 +5,8 @@ import SwiftUI
 
 struct PrayerGenerationWaitingView: View {
     let verse: DailyVerse?
-    let focus: PrayerFlowView.PrayerFocus?
-    let emotionalNeed: PrayerFlowView.EmotionalNeed?
+    let focus: PrayerFocus?
+    let emotionalNeed: EmotionalNeed?
     
     @ObservedObject private var settingsStore = SettingsStore.shared
     @State private var currentCalmingWordIndex = 0
@@ -328,51 +328,57 @@ struct PrayerGenerationWaitingView: View {
     }
     
     var body: some View {
-        ZStack {
-            SereneGradientBackground()
-            
-            VStack(spacing: 40) {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
                 Spacer()
+                    .frame(height: geometry.size.height * 0.35)
                 
-                // Verse display with fade-in animation
-                if let verse = verse {
-                    VStack(spacing: 16) {
-                        Text(verse.text(for: settingsStore.primaryLanguage))
-                            .font(.system(size: 22, weight: .medium, design: .serif))
-                            .foregroundColor(AppTheme.primaryText)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(8)
-                            .padding(.horizontal, 32)
-                        
-                        if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
-                            Text(verse.text(for: settingsStore.secondaryLanguage))
-                                .font(.system(size: 18, design: .serif))
-                                .foregroundColor(AppTheme.secondaryText)
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(6)
-                                .padding(.horizontal, 32)
+                VStack(spacing: 40) {
+                        // Verse display with fade-in animation
+                        if let verse = verse {
+                            VStack(spacing: 16) {
+                                Text(verse.text(for: settingsStore.primaryLanguage))
+                                    .font(.system(size: 22, weight: .medium, design: .serif))
+                                    .foregroundColor(.white.opacity(0.95))
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(8)
+                                    .padding(.horizontal, 32)
+                                    .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
+                                
+                                if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
+                                    Text(verse.text(for: settingsStore.secondaryLanguage))
+                                        .font(.system(size: 18, design: .serif))
+                                        .foregroundColor(.white.opacity(0.85))
+                                        .multilineTextAlignment(.center)
+                                        .lineSpacing(6)
+                                        .padding(.horizontal, 32)
+                                        .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
+                                }
+                                
+                                Text("\(BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)) \(verse.chapter):\(verse.verseNumber)")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 1)
+                            }
+                            .opacity(verseOpacity)
+                            .transition(.opacity)
                         }
                         
-                        Text("\(BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)) \(verse.chapter):\(verse.verseNumber)")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.accentColor)
-                    }
-                    .opacity(verseOpacity)
-                    .transition(.opacity)
+                        // Calming words
+                        Text(calmingWords[currentCalmingWordIndex])
+                            .font(.title3)
+                            .fontWeight(.light)
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                            .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                 }
                 
-                // Calming words
-                Text(calmingWords[currentCalmingWordIndex])
-                    .font(.title3)
-                    .fontWeight(.light)
-                    .foregroundColor(AppTheme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .opacity(0.8)
-                
                 Spacer()
+                    .frame(height: geometry.size.height * 0.65)
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .onAppear {
             // Animate verse fade-in

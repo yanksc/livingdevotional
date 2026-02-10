@@ -1,5 +1,10 @@
 // WidgetData - Data model shared between main app and widget extension
 //
+// NOTE: The WidgetData struct is duplicated in livingdevotional/Shared/WidgetData.swift
+// and LivingPathWidget/WidgetData.swift. Both copies MUST be kept in sync.
+// The Shared version also contains WidgetDataManager (used only by the main app).
+// Future improvement: use dual target membership in Xcode to share a single file.
+//
 // This model contains all data needed to render widget views
 
 import Foundation

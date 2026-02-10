@@ -175,7 +175,7 @@ struct JourneyCard: View {
                             Spacer()
                             
                             StatPreview(
-                                icon: "flame.fill",
+                                icon: "cross.fill",
                                 value: "\(stats.currentStreak)",
                                 label: settingsStore.appLanguage == .chineseTraditional ? "連續" : "streak"
                             )

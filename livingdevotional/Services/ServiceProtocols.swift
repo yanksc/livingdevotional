@@ -48,6 +48,7 @@ protocol UserServiceProtocol {
 protocol DailyVerseServiceProtocol {
     func getVerseOfTheDay(date: Date?) async throws -> DailyVerse
     func getCuratedVerses(category: String?) async throws -> [CuratedVerse]
+    func forceRefreshVerseOfTheDay() async throws -> DailyVerse
 }
 
 // MARK: - Conversation Service Protocol

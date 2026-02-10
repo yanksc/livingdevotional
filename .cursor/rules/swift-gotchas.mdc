@@ -1,0 +1,69 @@
+---
+description: Swift language gotchas, type patterns, and codebase conventions
+globs: **/*.swift
+alwaysApply: true
+---
+
+# Swift String Subsequence Conversions
+
+Methods like `dropFirst()`, `dropLast()`, `prefix()`, and `suffix()` return `Substring` (or similar sequence types), NOT `String`. Always wrap with `String()` when concatenating or returning as `String`.
+
+```swift
+// ❌ BAD - Type mismatch error
+return name + question.prefix(1).lowercased() + question.dropFirst()
+
+// ✅ GOOD - Explicit conversion to String
+return name + question.prefix(1).lowercased() + String(question.dropFirst())
+```
+
+## Common methods that return Substring/Sequence:
+- `dropFirst()` / `dropLast()` → `Substring`
+- `prefix(_:)` / `suffix(_:)` → `Substring`
+- `split(separator:)` → `[Substring]`
+
+Always convert with `String()` when needed.
+
+---
+
+# Check for Existing Types Before Creating New Ones
+
+**CRITICAL**: Before defining a new `struct`, `class`, or `enum`, search the codebase to ensure the name doesn't already exist.
+
+## Known type locations to check:
+- `ServiceProtocols.swift` - Contains shared types like `RecommendedVerse`, `PathStatus`, `PathHighlight`, `JourneyMilestone`, etc.
+- `UserProfile.swift` - Contains user-related models
+- `Models/` directory - Contains core data models
+
+```swift
+// ❌ BAD - Created RecommendedVerse in UserProfile.swift, conflicting with ServiceProtocols.swift
+struct RecommendedVerse: Codable { ... }
+
+// ✅ GOOD - Use a unique, descriptive name to avoid conflicts
+struct OnboardingRecommendedVerse: Codable { ... }
+```
+
+**Always use `Grep` to search for existing type names before defining new ones.**
+
+---
+
+# Verify ViewModel Properties Before Use
+
+**CRITICAL**: Before using a property on a ViewModel, verify it exists by checking the ViewModel source file.
+
+## BibleViewModel properties:
+- `oldTestamentBooks` - Array of Old Testament BibleBook
+- `newTestamentBooks` - Array of New Testament BibleBook
+- `selectedBook` - Currently selected book (optional)
+- `selectedChapter` - Currently selected chapter (optional)
+- Does NOT have `allBooks` - use `oldTestamentBooks + newTestamentBooks`
+
+```swift
+// ❌ BAD - allBooks doesn't exist on BibleViewModel
+viewModel.allBooks.first(where: { $0.name == bookName })
+
+// ✅ GOOD - Use the actual properties
+let allBooks = viewModel.oldTestamentBooks + viewModel.newTestamentBooks
+allBooks.first(where: { $0.name == bookName })
+```
+
+**Always verify properties exist before using them. When in doubt, read the ViewModel file.**

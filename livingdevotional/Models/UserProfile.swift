@@ -23,10 +23,10 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
     
     var displayNameChinese: String {
         switch self {
-        case .seeker: return "尋求者"
-        case .newBeliever: return "初信者"
-        case .growing: return "成長中"
-        case .mature: return "成熟穩健"
+        case .seeker: return "正在探索"
+        case .newBeliever: return "信主不久"
+        case .growing: return "持續成長中"
+        case .mature: return "信主多年"
         }
     }
     
@@ -35,15 +35,43 @@ enum SpiritualMaturity: String, Codable, CaseIterable, Identifiable {
         switch languageCode {
         case "zh-Hans":
             switch self {
-            case .seeker: return "寻求者"
-            case .newBeliever: return "初信者"
-            case .growing: return "成长中"
-            case .mature: return "成熟稳健"
+            case .seeker: return "正在探索"
+            case .newBeliever: return "信主不久"
+            case .growing: return "持续成长中"
+            case .mature: return "信主多年"
             }
         case "zh-Hant":
             return displayNameChinese
         default:
             return displayName
+        }
+    }
+    
+    /// Adaptive intro for Step 4 based on journey stage
+    func adaptiveIntro(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans", "zh-Hant":
+            switch self {
+            case .seeker: return "每段旅程都有起點。"
+            case .newBeliever: return "起初的腳步最珍貴。"
+            case .growing: return "成長常在安靜中發生。"
+            case .mature: return "根深的樹也需要水。"
+            }
+        case "es":
+            switch self {
+            case .seeker: return "Todo viaje comienza en algún lugar."
+            case .newBeliever: return "Los primeros pasos son los más importantes."
+            case .growing: return "El crecimiento a menudo viene en momentos de quietud."
+            case .mature: return "Incluso las raíces profundas necesitan agua."
+            }
+        default:
+            switch self {
+            case .seeker: return "Every journey starts somewhere."
+            case .newBeliever: return "The early steps matter most."
+            case .growing: return "Growth often comes in quiet moments."
+            case .mature: return "Even deep roots need water."
+            }
         }
     }
 }
@@ -432,6 +460,65 @@ enum ExplanationDepth: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Onboarding Saved Verse (lightweight struct for onboarding flow)
+
+struct OnboardingSavedVerse: Codable, Equatable {
+    let reference: String      // e.g., "Matthew 11:28"
+    let text: String           // The verse text
+    let savedAt: Date
+    let source: OnboardingVerseSource
+    
+    enum OnboardingVerseSource: String, Codable {
+        case onboarding
+        case reading
+        case search
+    }
+}
+
+// MARK: - Recommended Book (for Bible view empty state)
+
+struct RecommendedBook: Codable, Equatable {
+    let bookName: String       // e.g., "Psalms"
+    let personalizedIntro: String
+    let recommendedAt: Date
+}
+
+// MARK: - Onboarding Recommended Verse (from onboarding Step 7)
+
+struct OnboardingRecommendedVerse: Codable, Equatable {
+    let reference: String       // e.g., "Philippians 4:6-7"
+    let text: String            // The verse text
+    let reason: String          // Brief explanation why this verse is recommended
+    let recommendedAt: Date
+}
+
+// MARK: - Scripture Echo Response (from AI)
+
+struct ScriptureEchoResponse: Codable, Equatable {
+    let echo: String?          // nil if empty reflection
+    let verseReference: String
+    let verseText: String
+}
+
+// MARK: - Deep Dive Question (from onboarding Step 7)
+
+struct DeepDiveQuestion: Codable, Equatable {
+    let question: String       // AI-generated question based on reflection
+    let options: [String]      // 4 options for user to choose from
+}
+
+struct DeepDiveSelection: Codable, Equatable {
+    let selectedOption: String?    // One of the 4 options, or nil if "Other"
+    let customInput: String?       // Custom input if "Other" selected
+    
+    var displayText: String {
+        if let custom = customInput, !custom.isEmpty {
+            return custom
+        }
+        return selectedOption ?? ""
+    }
+}
+
 // MARK: - User Profile
 
 struct UserProfile: Codable {
@@ -444,6 +531,12 @@ struct UserProfile: Codable {
     var dailyTimeCommitment: DailyTimeCommitment
     var explanationDepth: ExplanationDepth
     
+    // New onboarding fields
+    var personalReflection: String?
+    var savedOnboardingVerse: OnboardingSavedVerse?
+    var recommendedBooks: [RecommendedBook]?
+    var recommendedVerses: [OnboardingRecommendedVerse]?
+    
     init(
         name: String = "",
         spiritualMaturity: SpiritualMaturity = .growing,
@@ -452,7 +545,11 @@ struct UserProfile: Codable {
         companionStyle: AICompanionStyle = .mentor,
         lifeFocusAreas: [LifeFocusArea] = [],
         dailyTimeCommitment: DailyTimeCommitment = .tenMinutes,
-        explanationDepth: ExplanationDepth = .someBackground
+        explanationDepth: ExplanationDepth = .someBackground,
+        personalReflection: String? = nil,
+        savedOnboardingVerse: OnboardingSavedVerse? = nil,
+        recommendedBooks: [RecommendedBook]? = nil,
+        recommendedVerses: [OnboardingRecommendedVerse]? = nil
     ) {
         self.name = name
         self.spiritualMaturity = spiritualMaturity
@@ -462,5 +559,9 @@ struct UserProfile: Codable {
         self.lifeFocusAreas = lifeFocusAreas
         self.dailyTimeCommitment = dailyTimeCommitment
         self.explanationDepth = explanationDepth
+        self.personalReflection = personalReflection
+        self.savedOnboardingVerse = savedOnboardingVerse
+        self.recommendedBooks = recommendedBooks
+        self.recommendedVerses = recommendedVerses
     }
 }

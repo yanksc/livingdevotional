@@ -132,11 +132,11 @@ struct ProfileEditorView: View {
     }
     
     private var maturityDisplayValue: String {
-        isChinese ? selectedMaturity.displayNameChinese : selectedMaturity.displayName
+        selectedMaturity.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private func maturityDisplayName(_ maturity: SpiritualMaturity) -> String {
-        isChinese ? maturity.displayNameChinese : maturity.displayName
+        maturity.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private var goalsField: some View {
@@ -152,7 +152,7 @@ struct ProfileEditorView: View {
             return isChinese ? "無" : "None"
         }
         return selectedGoals.map { goal in
-            isChinese ? goal.displayNameChinese : goal.displayName
+            goal.localizedDisplayName(for: settingsStore.appLanguage)
         }.joined(separator: ", ")
     }
     
@@ -169,7 +169,7 @@ struct ProfileEditorView: View {
             return isChinese ? "無" : "None"
         }
         return selectedLifeFocusAreas.map { area in
-            isChinese ? area.displayNameChinese : area.displayName
+            area.localizedDisplayName(for: settingsStore.appLanguage)
         }.joined(separator: ", ")
     }
     
@@ -184,11 +184,11 @@ struct ProfileEditorView: View {
     }
     
     private var timeCommitmentDisplayValue: String {
-        isChinese ? selectedTimeCommitment.displayNameChinese : selectedTimeCommitment.displayName
+        selectedTimeCommitment.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private func timeCommitmentDisplayName(_ commitment: DailyTimeCommitment) -> String {
-        isChinese ? commitment.displayNameChinese : commitment.displayName
+        commitment.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private var explanationDepthField: some View {
@@ -202,11 +202,11 @@ struct ProfileEditorView: View {
     }
     
     private var explanationDepthDisplayValue: String {
-        isChinese ? selectedExplanationDepth.localizedDisplayName(for: settingsStore.appLanguage) : selectedExplanationDepth.displayName
+        selectedExplanationDepth.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private func explanationDepthDisplayName(_ depth: ExplanationDepth) -> String {
-        isChinese ? depth.localizedDisplayName(for: settingsStore.appLanguage) : depth.displayName
+        depth.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private var churchBackgroundField: some View {
@@ -220,11 +220,11 @@ struct ProfileEditorView: View {
     }
     
     private var traditionDisplayValue: String {
-        isChinese ? selectedTradition.displayNameChinese : selectedTradition.displayName
+        selectedTradition.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private func traditionDisplayName(_ tradition: ChristianTradition) -> String {
-        isChinese ? tradition.displayNameChinese : tradition.displayName
+        tradition.localizedDisplayName(for: settingsStore.appLanguage)
     }
     
     private var chatSessionsField: some View {
@@ -322,7 +322,7 @@ struct ProfileEditorView: View {
             FlowLayout(spacing: 8) {
                 ForEach(SpiritualGoal.allCases) { goal in
                     SelectableTag(
-                        title: isChinese ? goal.displayNameChinese : goal.displayName,
+                        title: goal.localizedDisplayName(for: settingsStore.appLanguage),
                         isSelected: selectedGoals.wrappedValue.contains(goal)
                     ) {
                         if selectedGoals.wrappedValue.contains(goal) {
@@ -350,7 +350,7 @@ struct ProfileEditorView: View {
             FlowLayout(spacing: 8) {
                 ForEach(LifeFocusArea.allCases) { area in
                     SelectableTag(
-                        title: isChinese ? area.displayNameChinese : area.displayName,
+                        title: area.localizedDisplayName(for: settingsStore.appLanguage),
                         isSelected: selectedAreas.wrappedValue.contains(area)
                     ) {
                         if selectedAreas.wrappedValue.contains(area) {

@@ -1,0 +1,269 @@
+---
+name: swift_patterns
+description: Swift and SwiftUI patterns to prevent common bugs in this codebase
+---
+
+# Swift & SwiftUI Bug Prevention Rules
+
+This document captures patterns and anti-patterns discovered during development to prevent recurring bugs.
+
+## 1. Naming Collisions with SwiftData Models
+
+### Problem
+Creating a struct with the same name as an existing SwiftData `@Model` class causes "ambiguous type lookup" errors.
+
+### Example Bug
+```swift
+// SavedVerse.swift - existing SwiftData model
+@Model
+final class SavedVerse { ... }
+
+// UserProfile.swift - accidentally created struct with same name
+struct SavedVerse: Codable { ... }  // ❌ CONFLICT
+```
+
+### Prevention
+- **Before creating any new type, search the codebase**: `grep -r "class TypeName\|struct TypeName" --include="*.swift"`
+- **Use distinct naming for lightweight data transfer structs**: Prefix with purpose (e.g., `OnboardingSavedVerse`, `APIResponse`, `DTO`)
+- **SwiftData models own their names**: Never reuse a SwiftData model name for structs
+
+---
+
+## 2. Duplicate Type Declarations Across Files
+
+### Problem
+Declaring the same type name in multiple files causes "Invalid redeclaration" compilation errors, even if the implementations differ.
+
+### Example Bug
+```swift
+// OnboardingComponents.swift - shared component file
+struct TypewriterText: View { ... }  // ✅ Shared component
+
+// PrayerFlowView.swift - separate feature file
+struct TypewriterText: View { ... }  // ❌ CONFLICT: Same name, different implementation
+```
+
+### Prevention
+- **Before creating any new type, search for existing declarations**:
+  ```bash
+  grep -r "struct TypeName\|class TypeName\|enum TypeName" --include="*.swift"
+  ```
+- **For shared components**: Place in dedicated component files (e.g., `OnboardingComponents.swift`)
+- **For feature-specific components**: Use descriptive prefixes (e.g., `PrayerTypewriterText`, `OnboardingTypewriterText`)
+- **If types serve different purposes**: Rename one to reflect its specific context
+- **When creating reusable components**: Check if a similar component already exists before creating a new one
+
+### Resolution
+If duplicate found:
+1. Determine which is the "canonical" version (usually the one in shared component files)
+2. Rename the duplicate with a context-specific prefix
+3. Update all usages of the renamed type
+
+---
+
+## 3. Protocol Conformance for SwiftUI onChange
+
+### Problem
+Using `onChange(of:)` on an `@Published` property requires the type to conform to `Equatable`.
+
+### Example Bug
+```swift
+struct ScriptureEchoResponse: Codable {  // ❌ Missing Equatable
+    let echo: String?
+    let verseText: String
+}
+
+// In View:
+.onChange(of: state.scriptureEcho) { ... }  // Error: requires Equatable
+```
+
+### Prevention
+- **Always add `Equatable` conformance to types used with `onChange`**:
+  ```swift
+  struct ScriptureEchoResponse: Codable, Equatable { ... }  // ✅
+  ```
+- **For complex types**, implement `Equatable` manually if auto-synthesis fails
+
+---
+
+## 4. SwiftUI Type Mismatches in Ternary Expressions
+
+### Problem
+Ternary operators with different view/style types cause compilation errors.
+
+### Example Bug
+```swift
+.background(condition ? Color.green : AppTheme.buttonGradient)  // ❌ Color vs LinearGradient
+```
+
+### Prevention
+- **Use `Group { if/else }` for heterogeneous types**:
+  ```swift
+  .background(
+      Group {
+          if condition {
+              Color.green
+          } else {
+              AppTheme.buttonGradient
+          }
+      }
+  )  // ✅
+  ```
+- **Or use `AnyShapeStyle`** for shape styles
+
+---
+
+## 5. Protocol Method Declarations Must Match Implementations
+
+### Problem
+Calling a method on a protocol-typed variable when the method isn't declared in the protocol.
+
+### Example Bug
+```swift
+protocol DailyVerseServiceProtocol {
+    func getVerseOfTheDay() async throws -> DailyVerse
+    // Missing: forceRefreshVerseOfTheDay()
+}
+
+class DailyVerseService: DailyVerseServiceProtocol {
+    func forceRefreshVerseOfTheDay() async throws -> DailyVerse { ... }  // Exists here
+}
+
+// Usage:
+let service: DailyVerseServiceProtocol = ...
+service.forceRefreshVerseOfTheDay()  // ❌ Error: method not in protocol
+```
+
+### Prevention
+- **When adding methods to concrete implementations, also add to protocols**
+- **Search for protocol usages** before calling methods on protocol-typed variables
+- **Prefer concrete types** when protocol abstraction isn't needed
+
+---
+
+## 6. Duplicate Files in Different Directories
+
+### Problem
+This project has duplicate file paths (e.g., `/Services/` and `/livingdevotional/Services/`). Editing one doesn't fix the other.
+
+### Prevention
+- **Always verify file paths**: The main source is under `livingdevotional/livingdevotional/`
+- **Check for duplicates**: `find . -name "FileName.swift" -type f`
+- **When editing, search for all occurrences**: `grep -r "content to find" --include="*.swift"`
+
+---
+
+## 7. Set.insert() Return Value in withAnimation
+
+### Problem
+`Set.insert()` returns `(inserted: Bool, memberAfterInsert: Element)`, but `withAnimation` expects `Void`.
+
+### Example Bug
+```swift
+withAnimation(.spring()) {
+    visibleItems.insert(i)  // ❌ Returns tuple, not Void
+}
+```
+
+### Prevention
+- **Discard the return value**:
+  ```swift
+  withAnimation(.spring()) {
+      _ = visibleItems.insert(i)  // ✅
+  }
+  ```
+
+---
+
+## 8. Async Content Loading in SwiftUI Views
+
+### Problem
+Views that depend on async-loaded content may appear before content is ready.
+
+### Example Bug
+```swift
+// Content loaded async but view only checks onAppear
+.onAppear {
+    if let content = state.content {
+        startAnimation(content)  // Never runs if content loads after appear
+    }
+}
+```
+
+### Prevention
+- **Always add `onChange` observers for async-loaded content**:
+  ```swift
+  .onAppear {
+      handleAppear()
+  }
+  .onChange(of: state.content) { _, newContent in
+      if let content = newContent {
+          startAnimation(content)
+      }
+  }
+  ```
+
+---
+
+## 9. Verify Method Signatures Before Calling
+
+### Problem
+Calling methods with wrong parameter names or types.
+
+### Example Bug
+```swift
+// Actual signature:
+func adaptiveIntro(for language: AppLanguage) -> String
+
+// Wrong call:
+stage.adaptiveIntro(isChinese: true)  // ❌ Wrong parameter
+```
+
+### Prevention
+- **Always read the method signature** from the source file before calling
+- **Use Xcode autocomplete** to verify parameter names
+- **Search for the method definition**: `grep "func methodName" --include="*.swift"`
+
+---
+
+## 10. ObservableObject State Management
+
+### Problem
+Multiple sources of truth for the same state, or missing `@Published` markers.
+
+### Prevention
+- **Single source of truth**: Use a dedicated state class (e.g., `OnboardingState`)
+- **Mark all mutable properties with `@Published`**
+- **Use `@StateObject` for owned state, `@ObservedObject` for passed state**
+
+---
+
+## Pre-Implementation Checklist
+
+Before implementing any significant feature:
+
+1. [ ] **Search for duplicate type names**: `grep -r "struct TypeName\|class TypeName\|enum TypeName" --include="*.swift"`
+2. [ ] Check if protocols need to be updated
+3. [ ] Verify file paths (use `livingdevotional/livingdevotional/` as source)
+4. [ ] Plan state management approach
+5. [ ] Identify async operations and their observers
+6. [ ] Run `ReadLints` after each file edit
+7. [ ] Test with clean build if seeing stale errors
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Find type definitions
+grep -r "struct TypeName\|class TypeName\|enum TypeName" --include="*.swift"
+
+# Find all files with a name
+find . -name "FileName.swift" -type f
+
+# Find method definitions
+grep -r "func methodName" --include="*.swift"
+
+# Clean build (in Xcode)
+# Product → Clean Build Folder (Shift+Cmd+K)
+```

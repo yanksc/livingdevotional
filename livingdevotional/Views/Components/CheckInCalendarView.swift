@@ -139,11 +139,11 @@ struct WeekCalendarView: View {
                                     .frame(width: 32, height: 32)
                             }
                             
-                            // App open streak indicator (flame) - centered
+                            // App open streak indicator (cross) - centered
                             if day.hasAppOpen {
-                                Image(systemName: "flame.fill")
+                                Image(systemName: "cross.fill")
                                     .font(.system(size: day.appOpenStreakPosition > 0 ? 14 : 12, weight: .bold))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(AppTheme.accentColor)
                             }
                             
                             // Task completion only (no app open) - show checkmark
@@ -399,11 +399,11 @@ struct MonthCalendarView: View {
                     .frame(width: 20, height: 20)
             }
             
-            // App open indicator (flame) - centered
+            // App open indicator (cross) - centered
             if day.hasAppOpen {
-                Image(systemName: "flame.fill")
+                Image(systemName: "cross.fill")
                     .font(.system(size: 10))
-                    .foregroundColor(.orange)
+                    .foregroundColor(AppTheme.accentColor)
             }
             
             // Task completion only (no app open) - show checkmark

@@ -314,6 +314,37 @@ struct SettingsView: View {
     @State private var isRefreshingVerse = false
     @State private var showVerseRefreshedAlert = false
     
+    // MARK: - Computed Properties
+    
+    private var isChinese: Bool {
+        settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func localizedBookName(_ name: String) -> String {
+        let chineseNames: [String: String] = [
+            "Psalms": "詩篇",
+            "Matthew": "馬太福音",
+            "Philippians": "腓立比書",
+            "John": "約翰福音",
+            "Romans": "羅馬書",
+            "Proverbs": "箴言",
+            "Genesis": "創世記",
+            "Exodus": "出埃及記",
+            "Isaiah": "以賽亞書",
+            "Jeremiah": "耶利米書",
+            "Luke": "路加福音",
+            "Mark": "馬可福音",
+            "Acts": "使徒行傳",
+            "Revelation": "啟示錄"
+        ]
+        
+        if isChinese, let chinese = chineseNames[name] {
+            return chinese
+        }
+        return name
+    }
     
     var body: some View {
         ZStack {
@@ -386,6 +417,7 @@ struct SettingsView: View {
                     )
                     
                     SettingsCard {
+                        // Name and Spiritual Journey
                         SettingsProfileRow(
                             name: profileStore.profile.name.isEmpty ? settingsStore.appLanguage.localizedString("NotSet") : profileStore.profile.name,
                             maturity: profileStore.profile.spiritualMaturity.localizedDisplayName(for: settingsStore.appLanguage),
@@ -394,57 +426,88 @@ struct SettingsView: View {
                             }
                         )
                         
-                        if !profileStore.profile.spiritualGoals.isEmpty || !profileStore.profile.lifeFocusAreas.isEmpty {
+                        // Saved Onboarding Verse (from Step 6)
+                        if let savedVerse = profileStore.profile.savedOnboardingVerse {
                             Divider()
                                 .padding(.horizontal, 20)
                             
-                            if !profileStore.profile.spiritualGoals.isEmpty {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "target")
-                                        .font(.system(size: 18, weight: .medium))
-                                        .foregroundColor(AppTheme.accentColor)
-                                        .frame(width: 24)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(settingsStore.appLanguage == .chineseTraditional ? "目標" : "Goals")
-                                            .font(.caption)
-                                            .foregroundColor(AppTheme.secondaryText)
-                                        Text(profileStore.profile.spiritualGoals.prefix(2).map { 
-                                            settingsStore.appLanguage == .chineseTraditional ? $0.displayNameChinese : $0.displayName 
-                                        }.joined(separator: ", ") + (profileStore.profile.spiritualGoals.count > 2 ? "..." : ""))
-                                            .font(.system(size: 14))
-                                            .foregroundColor(AppTheme.primaryText)
-                                    }
-                                    
-                                    Spacer()
+                            HStack(spacing: 16) {
+                                Image(systemName: "heart.text.square")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(isChinese ? "收藏的經文" : "Saved Verse")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.secondaryText)
+                                    Text(savedVerse.reference)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(AppTheme.primaryText)
+                                    Text(savedVerse.text)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(AppTheme.secondaryText)
+                                        .lineLimit(2)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
+                                
+                                Spacer()
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        }
+                        
+                        // Recommended Books (from Step 7)
+                        if let books = profileStore.profile.recommendedBooks, !books.isEmpty {
+                            Divider()
+                                .padding(.horizontal, 20)
                             
-                            if !profileStore.profile.lifeFocusAreas.isEmpty {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "heart")
-                                        .font(.system(size: 18, weight: .medium))
-                                        .foregroundColor(AppTheme.accentColor)
-                                        .frame(width: 24)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(settingsStore.appLanguage == .chineseTraditional ? "生活焦點" : "Life Focus")
-                                            .font(.caption)
-                                            .foregroundColor(AppTheme.secondaryText)
-                                        Text(profileStore.profile.lifeFocusAreas.prefix(2).map { 
-                                            settingsStore.appLanguage == .chineseTraditional ? $0.displayNameChinese : $0.displayName 
-                                        }.joined(separator: ", ") + (profileStore.profile.lifeFocusAreas.count > 2 ? "..." : ""))
-                                            .font(.system(size: 14))
-                                            .foregroundColor(AppTheme.primaryText)
-                                    }
-                                    
-                                    Spacer()
+                            HStack(spacing: 16) {
+                                Image(systemName: "books.vertical")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(isChinese ? "推薦書卷" : "Recommended Books")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.secondaryText)
+                                    Text(books.map { localizedBookName($0.bookName) }.joined(separator: ", "))
+                                        .font(.system(size: 14))
+                                        .foregroundColor(AppTheme.primaryText)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
+                                
+                                Spacer()
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        }
+                        
+                        // Personal Reflection (from Step 4)
+                        if let reflection = profileStore.profile.personalReflection, !reflection.isEmpty {
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            HStack(spacing: 16) {
+                                Image(systemName: "text.quote")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(isChinese ? "心裡的話" : "Your Reflection")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.secondaryText)
+                                    Text(reflection)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(AppTheme.primaryText)
+                                        .lineLimit(2)
+                                        .italic()
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
                         }
                         
                         Divider()
@@ -644,7 +707,7 @@ struct SettingsView: View {
                                 .padding(.horizontal, 20)
                             
                             SettingsToggleRow(
-                                icon: "flame",
+                                icon: "cross",
                                 title: settingsStore.appLanguage.localizedString("StreakAlerts"),
                                 isOn: $settingsStore.streakProtectionEnabled
                             ) { _ in

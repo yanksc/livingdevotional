@@ -17,6 +17,8 @@ class SettingsStore: ObservableObject {
     private let morningTimeKey = "morningTime"
     private let eveningTimeKey = "eveningTime"
     private let streakProtectionEnabledKey = "streakProtectionEnabled"
+    private let hasSeenNotificationInvitationKey = "hasSeenNotificationInvitation"
+    private let hasSeenOnboardingPaywallKey = "hasSeenOnboardingPaywall"
     
     @Published var primaryLanguage: Language {
         didSet {
@@ -83,6 +85,18 @@ class SettingsStore: ObservableObject {
     @Published var streakProtectionEnabled: Bool {
         didSet {
             saveStreakProtectionEnabled()
+        }
+    }
+    
+    @Published var hasSeenNotificationInvitation: Bool {
+        didSet {
+            userDefaults.set(hasSeenNotificationInvitation, forKey: hasSeenNotificationInvitationKey)
+        }
+    }
+    
+    @Published var hasSeenOnboardingPaywall: Bool {
+        didSet {
+            userDefaults.set(hasSeenOnboardingPaywall, forKey: hasSeenOnboardingPaywallKey)
         }
     }
     
@@ -164,6 +178,10 @@ class SettingsStore: ObservableObject {
             self.streakProtectionEnabled = true // Default to enabled
         }
         
+        // Load onboarding flags
+        self.hasSeenNotificationInvitation = userDefaults.bool(forKey: hasSeenNotificationInvitationKey)
+        self.hasSeenOnboardingPaywall = userDefaults.bool(forKey: hasSeenOnboardingPaywallKey)
+        
         // Ensure secondary language is different from primary language
         if self.secondaryLanguage == self.primaryLanguage {
             let availableLanguages = Language.allCases.filter { $0 != .none && $0 != self.primaryLanguage }
@@ -211,6 +229,51 @@ class SettingsStore: ObservableObject {
     
     private func saveStreakProtectionEnabled() {
         userDefaults.set(streakProtectionEnabled, forKey: streakProtectionEnabledKey)
+    }
+    
+    // MARK: - Smart Defaults
+    
+    /// Apply smart defaults based on selected app language and journey stage
+    func applySmartDefaults(for appLang: AppLanguage, journeyStage: SpiritualMaturity) {
+        // Bible translation defaults based on language
+        switch appLang {
+        case .english, .system:
+            primaryLanguage = .bsb  // BSB (English) as primary
+            secondaryLanguage = .cuv // CUV (Chinese) as secondary
+        case .chineseTraditional, .chineseSimplified:
+            primaryLanguage = .cuv  // 和合本 as primary
+            secondaryLanguage = .bsb // English as secondary
+        case .spanish:
+            primaryLanguage = .spa_r09  // Reina-Valera as primary
+            secondaryLanguage = .bsb // English as secondary
+        case .portuguese:
+            primaryLanguage = .por_blj  // Portuguese as primary
+            secondaryLanguage = .bsb // English as secondary
+        }
+        
+        // Update app language
+        self.appLanguage = appLang
+        
+        // Explanation depth defaults based on journey stage
+        // (will be applied via UserProfileStore)
+    }
+    
+    /// Get default explanation depth based on journey stage
+    static func defaultExplanationDepth(for journeyStage: SpiritualMaturity) -> ExplanationDepth {
+        switch journeyStage {
+        case .seeker, .newBeliever:
+            return .simple
+        case .growing:
+            return .someBackground
+        case .mature:
+            return .deeper
+        }
+    }
+    
+    /// Reset all onboarding-related flags
+    func resetOnboardingFlags() {
+        hasSeenNotificationInvitation = false
+        hasSeenOnboardingPaywall = false
     }
 }
 

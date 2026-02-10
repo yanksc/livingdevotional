@@ -22,9 +22,13 @@ enum AppConfig {
             return key
         }
         
-        // Fallback for development/testing (should be replaced in production)
-        // TODO: Remove this fallback before production release
-        return "sk-helicone-mgqn4ly-q4tuuaq-qggr7va-ppikchq"
+        #if DEBUG
+        fatalError("HELICONE_API_KEY not configured. Set it via Info.plist (build settings) or HELICONE_API_KEY environment variable.")
+        #else
+        // Graceful degradation in production - AI features will be unavailable
+        print("⚠️ HELICONE_API_KEY not configured. AI features will be unavailable.")
+        return ""
+        #endif
     }
     
     /// Helicone AI Gateway base URL

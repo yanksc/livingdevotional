@@ -33,12 +33,7 @@ struct VerseProvider: TimelineProvider {
         let data = SharedDataManager.shared.loadWidgetData()
         let entry = VerseEntry(date: Date(), data: data)
         
-        // Refresh at midnight for new verse, or after 1 hour
-        let midnight = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
-        let oneHourLater = Date().addingTimeInterval(3600)
-        let refreshDate = min(midnight, oneHourLater)
-        
-        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
+        let timeline = Timeline(entries: [entry], policy: .after(WidgetTimelineHelper.nextRefreshDate()))
         completion(timeline)
     }
 }
@@ -51,7 +46,13 @@ struct VerseOfTheDayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: VerseProvider()) { entry in
             VerseWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [.widgetWarmCream, .widgetCardBackground],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
         }
         .configurationDisplayName("Verse of the Day")
         .description("Daily inspiration from Scripture")
@@ -92,40 +93,37 @@ struct SmallVerseView: View {
     let data: WidgetData
     
     var body: some View {
-        ZStack {
-            // Background gradient
-            Color.widgetBackgroundGradient
+        VStack(alignment: .leading, spacing: 6) {
+            // Verse text - primary focus, allow wrapping
+            Text(data.verseText)
+                .font(WidgetStyles.verseFont(size: 12))
+                .foregroundColor(.primary.opacity(0.85))
+                .multilineTextAlignment(.leading)
+                .lineSpacing(2)
+                .minimumScaleFactor(0.7)
+                .layoutPriority(1)
             
-            VStack(alignment: .leading, spacing: 6) {
-                // Verse text - primary focus, allow wrapping
-                Text(data.verseText)
-                    .font(WidgetStyles.verseFont(size: 12))
-                    .foregroundColor(.primary.opacity(0.85))
-                    .multilineTextAlignment(.leading)
-                    .lineSpacing(2)
+            Spacer(minLength: 4)
+            
+            // Footer: subtle reference + streak
+            HStack(alignment: .bottom) {
+                Text("— \(data.localizedReference)")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.widgetWarmSand.opacity(0.8))
                 
-                Spacer(minLength: 4)
+                Spacer()
                 
-                // Footer: subtle reference + streak
-                HStack(alignment: .bottom) {
-                    Text("— \(data.verseReference)")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.widgetWarmSand.opacity(0.8))
-                    
-                    Spacer()
-                    
-                    // Subtle streak badge
-                    HStack(spacing: 2) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 9))
-                        Text("\(data.currentStreak)")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundColor(.widgetSageGreen)
+                // Subtle streak badge
+                HStack(spacing: 2) {
+                    Image(systemName: "cross.fill")
+                        .font(.system(size: 9))
+                    Text("\(data.currentStreak)")
+                        .font(.system(size: 10, weight: .semibold))
                 }
+                .foregroundColor(.widgetSageGreen)
             }
-            .padding(12)
         }
+        .padding(8)
         .widgetURL(URL(string: "livingpath://widget/verse"))
     }
 }
@@ -136,44 +134,37 @@ struct MediumVerseView: View {
     let data: WidgetData
     
     var body: some View {
-        ZStack {
-            // Soft gradient background
-            LinearGradient(
-                colors: [.widgetWarmCream, .widgetSoftBeige.opacity(0.3)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            // Verse text - primary focus, allow wrapping
+            Text(data.verseText)
+                .font(WidgetStyles.verseFont(size: 14))
+                .foregroundColor(.primary.opacity(0.85))
+                .multilineTextAlignment(.leading)
+                .lineSpacing(3)
+                .minimumScaleFactor(0.7)
+                .layoutPriority(1)
             
-            VStack(alignment: .leading, spacing: 8) {
-                // Verse text - primary focus, allow wrapping
-                Text(data.verseText)
-                    .font(WidgetStyles.verseFont(size: 14))
-                    .foregroundColor(.primary.opacity(0.85))
-                    .multilineTextAlignment(.leading)
-                    .lineSpacing(3)
+            Spacer(minLength: 6)
+            
+            // Footer: subtle reference + streak
+            HStack(alignment: .bottom) {
+                Text("— \(data.localizedReference)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.widgetWarmSand.opacity(0.85))
                 
-                Spacer(minLength: 6)
+                Spacer()
                 
-                // Footer: subtle reference + streak
-                HStack(alignment: .bottom) {
-                    Text("— \(data.verseReference)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.widgetWarmSand.opacity(0.85))
-                    
-                    Spacer()
-                    
-                    // Subtle streak
-                    HStack(spacing: 3) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 10))
-                        Text("\(data.currentStreak)")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(.widgetSageGreen)
+                // Subtle streak
+                HStack(spacing: 3) {
+                    Image(systemName: "cross.fill")
+                        .font(.system(size: 10))
+                    Text("\(data.currentStreak)")
+                        .font(.system(size: 11, weight: .semibold))
                 }
+                .foregroundColor(.widgetSageGreen)
             }
-            .padding(14)
         }
+        .padding(10)
         .widgetURL(URL(string: "livingpath://widget/verse"))
     }
 }
@@ -184,94 +175,83 @@ struct LargeVerseView: View {
     let data: WidgetData
     
     var body: some View {
-        ZStack {
-            // Serene gradient background
-            LinearGradient(
-                colors: [
-                    .widgetWarmCream,
-                    .widgetSoftBeige.opacity(0.5),
-                    .widgetWarmCream
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        VStack(alignment: .leading, spacing: 12) {
+            // Full verse text - primary focus
+            Text(data.verseText)
+                .font(WidgetStyles.verseFont(size: 17))
+                .foregroundColor(.primary.opacity(0.85))
+                .lineSpacing(5)
+                .multilineTextAlignment(.leading)
+                .minimumScaleFactor(0.7)
+                .layoutPriority(1)
             
-            VStack(alignment: .leading, spacing: 12) {
-                // Full verse text - primary focus
-                Text(data.verseText)
-                    .font(WidgetStyles.verseFont(size: 17))
-                    .foregroundColor(.primary.opacity(0.85))
-                    .lineSpacing(5)
-                    .multilineTextAlignment(.leading)
-                
-                // Subtle reference
-                Text("— \(data.verseReference)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.widgetWarmSand.opacity(0.85))
-                
-                Spacer(minLength: 8)
-                
-                // Reading plan progress (if active)
-                if let planTitle = data.activePlanTitle,
-                   let localizedDay = data.localizedDay() {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Image(systemName: "book.closed.fill")
-                                .font(.caption)
-                                .foregroundColor(.widgetSageGreen)
-                            Text(planTitle)
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary.opacity(0.8))
-                            Spacer()
-                            Text(localizedDay)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Progress bar
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.widgetSoftBeige)
-                                    .frame(height: 5)
-                                
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.widgetSageGreen)
-                                    .frame(width: geometry.size.width * data.activePlanProgress, height: 5)
-                            }
-                        }
-                        .frame(height: 5)
+            // Subtle reference
+            Text("— \(data.localizedReference)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.widgetWarmSand.opacity(0.85))
+            
+            Spacer(minLength: 8)
+            
+            // Reading plan progress (if active)
+            if let planTitle = data.activePlanTitle,
+               let localizedDay = data.localizedDay() {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "book.closed.fill")
+                            .font(.caption)
+                            .foregroundColor(.widgetSageGreen)
+                        Text(planTitle)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
+                        Text(localizedDay)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-                }
-                
-                // Footer: Today's progress + streak
-                HStack(spacing: 12) {
-                    progressItem(
-                        icon: "book.fill",
-                        label: data.localizedRead(),
-                        completed: data.hasReadToday
-                    )
-                    progressItem(
-                        icon: "hands.sparkles.fill",
-                        label: data.localizedPray(),
-                        completed: data.hasPrayedToday
-                    )
                     
-                    Spacer()
-                    
-                    // Subtle streak
-                    HStack(spacing: 3) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 11))
-                        Text("\(data.currentStreak)")
-                            .font(.system(size: 12, weight: .semibold))
+                    // Progress bar
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.widgetSoftBeige)
+                                .frame(height: 5)
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.widgetSageGreen)
+                                .frame(width: geometry.size.width * data.activePlanProgress, height: 5)
+                        }
                     }
-                    .foregroundColor(.widgetSageGreen)
+                    .frame(height: 5)
                 }
             }
-            .padding(16)
+            
+            // Footer: Today's progress + streak
+            HStack(spacing: 12) {
+                progressItem(
+                    icon: "book.fill",
+                    label: data.localizedRead(),
+                    completed: data.hasReadToday
+                )
+                progressItem(
+                    icon: "hands.sparkles.fill",
+                    label: data.localizedPray(),
+                    completed: data.hasPrayedToday
+                )
+                
+                Spacer()
+                
+                // Subtle streak
+                HStack(spacing: 3) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 11))
+                    Text("\(data.currentStreak)")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundColor(.widgetSageGreen)
+            }
         }
+        .padding(12)
         .widgetURL(URL(string: "livingpath://widget/verse"))
     }
     
@@ -300,7 +280,7 @@ struct RectangularVerseView: View {
                 .lineLimit(2)
             
             // Reference
-            Text(data.verseReference)
+            Text(data.localizedReference)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
         }

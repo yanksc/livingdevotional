@@ -46,11 +46,26 @@ class DailyVerseService: DailyVerseServiceProtocol {
         let targetDate = date ?? Date()
         
         // Check if we already have a verse for today stored locally
-        if let storedDate = userDefaults.object(forKey: dailyVerseDateKey) as? Date,
-           Calendar.current.isDate(storedDate, inSameDayAs: targetDate),
-           let storedData = userDefaults.data(forKey: dailyVerseKey),
-           let storedVerse = try? JSONDecoder().decode(DailyVerse.self, from: storedData) {
-            return storedVerse
+        // Use normalized date comparison to avoid timezone issues
+        if let storedDate = userDefaults.object(forKey: dailyVerseDateKey) as? Date {
+            let calendar = Calendar.current
+            let storedDay = calendar.startOfDay(for: storedDate)
+            let targetDay = calendar.startOfDay(for: targetDate)
+            
+            if storedDay == targetDay,
+               let storedData = userDefaults.data(forKey: dailyVerseKey),
+               let storedVerse = try? JSONDecoder().decode(DailyVerse.self, from: storedData) {
+                // Validate cached verse has actual content for at least one translation
+                if !storedVerse.textBsb.isEmpty || !storedVerse.textCuv.isEmpty || 
+                   !storedVerse.textCu1.isEmpty || !storedVerse.textKjv.isEmpty ||
+                   !storedVerse.textWeb.isEmpty || !storedVerse.textSpa.isEmpty ||
+                   !storedVerse.textPor.isEmpty {
+                    return storedVerse
+                }
+                // Cached verse has no content - clear cache and regenerate
+                userDefaults.removeObject(forKey: dailyVerseKey)
+                userDefaults.removeObject(forKey: dailyVerseDateKey)
+            }
         }
         
         // Generate a new verse of the day
@@ -209,17 +224,81 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textPor = verse.textPor
         }
         
-        // If no verse found in any translation, try to fallback to default logic if it was a dynamic selection
-        // But if even popular verses fail, throw error.
+        // If no verse found in any translation, try fallback to popular verses
         if textBsb.isEmpty && textCuv.isEmpty && textCu1.isEmpty && textKjv.isEmpty && textWeb.isEmpty && textSpa.isEmpty && textPor.isEmpty {
-             // If we tried a dynamic selection and it failed (maybe verse doesn't exist?), fallback to popular list
-             let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
-             let index = dayOfYear % popularVerses.count
-             let fallbackSelection = popularVerses[index]
-             
-             // Recursively try one more time with fallback? Or just fail?
-             // Let's just throw for now to avoid complexity in this snippet
-            throw NSError(domain: "DailyVerseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Verse not found"])
+            // The selected verse failed to load - try fallback to popular verses
+            let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 1
+            
+            // Try each popular verse until we find one that loads successfully
+            for offset in 0..<popularVerses.count {
+                let index = (dayOfYear + offset) % popularVerses.count
+                let fallbackSelection = popularVerses[index]
+                
+                // Try to load this fallback verse
+                var fallbackLoaded = false
+                
+                // Load BSB for fallback
+                if let bsbVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .bsb),
+                   let verse = bsbVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textBsb = verse.textBsb
+                    fallbackLoaded = true
+                }
+                
+                // Load CUV for fallback
+                if let cuvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cuv),
+                   let verse = cuvVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textCuv = verse.textCuv
+                    fallbackLoaded = true
+                }
+                
+                // Load CU1 for fallback
+                if let cu1Verses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cu1),
+                   let verse = cu1Verses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textCu1 = verse.textCu1
+                    fallbackLoaded = true
+                }
+                
+                // Load KJV for fallback
+                if let kjvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .kjv),
+                   let verse = kjvVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textKjv = verse.textKjv
+                    fallbackLoaded = true
+                }
+                
+                // Load WEB for fallback
+                if let webVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .web),
+                   let verse = webVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textWeb = verse.textWeb
+                    fallbackLoaded = true
+                }
+                
+                // Load Spanish for fallback
+                if let spaVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .spa_r09),
+                   let verse = spaVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textSpa = verse.textSpa
+                    fallbackLoaded = true
+                }
+                
+                // Load Portuguese for fallback
+                if let porVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .por_blj),
+                   let verse = porVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
+                    textPor = verse.textPor
+                    fallbackLoaded = true
+                }
+                
+                if fallbackLoaded {
+                    // Successfully loaded fallback verse - update selection
+                    selection = fallbackSelection
+                    reason = "Daily inspiration"
+                    source = nil
+                    break
+                }
+            }
+            
+            // If still no verse after trying all fallbacks, throw error
+            if textBsb.isEmpty && textCuv.isEmpty && textCu1.isEmpty && textKjv.isEmpty && textWeb.isEmpty && textSpa.isEmpty && textPor.isEmpty {
+                throw NSError(domain: "DailyVerseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Unable to load verse. Please check your Bible data."])
+            }
         }
         
         // Get primary language text for rationale generation

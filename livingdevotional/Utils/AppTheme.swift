@@ -77,6 +77,10 @@ struct AppTheme {
     static let secondaryText = Color.secondary
     static let verseNumberColor = Color(red: 0.831, green: 0.647, blue: 0.455) // Warm Sand
     
+    // Serene text color for onboarding - softer, more contemplative
+    // A warm, muted gray-brown that's gentler than pure black
+    static let onboardingText = Color(red: 0.35, green: 0.32, blue: 0.30)
+    
     // MARK: - Background Colors
     static let cardBackground = Color.white
     static let sectionBackground = Color(red: 0.980, green: 0.969, blue: 0.949) // Warm Cream

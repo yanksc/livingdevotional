@@ -38,9 +38,10 @@ struct ReadingPlanDetailSheet: View {
                     VStack(alignment: .leading, spacing: 24) {
                         // Header with large image - full width, no padding
                         GeometryReader { geometry in
+                            let imageHeight = UIScreen.main.bounds.height * 0.4
                             ZStack(alignment: .bottomLeading) {
                                 SereneBackgroundImage(filename: backgroundManager.backgroundForPlan(planId: plan.id))
-                                    .frame(width: geometry.size.width, height: 300)
+                                    .frame(width: geometry.size.width, height: imageHeight)
                                     .clipped()
                                 
                                 // Gradient overlay for text readability
@@ -79,7 +80,8 @@ struct ReadingPlanDetailSheet: View {
                                 .padding(20)
                             }
                         }
-                        .frame(height: 300)
+                        .frame(height: UIScreen.main.bounds.height * 0.4)
+                        .ignoresSafeArea(edges: .top)
                         
                         // Description section with horizontal padding
                         VStack(alignment: .leading, spacing: 16) {
@@ -181,18 +183,24 @@ struct ReadingPlanDetailSheet: View {
                         .padding(.bottom, 20)
                     }
                 }
+                .ignoresSafeArea(edges: .top)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(settingsStore.appLanguage.localizedString("Done")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(8)
+                            .background(Color.black.opacity(0.2))
+                            .clipShape(Circle())
                     }
-                    .foregroundColor(AppTheme.accentColor)
                 }
             }
-            .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
         }
         .onAppear {
             progress = planProgress
