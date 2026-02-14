@@ -9,8 +9,9 @@ struct ReadingPlanCard: View {
     @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     
     var progressPercentage: Double {
-        guard let progress = progress, !progress.completedDays.isEmpty else { return 0 }
-        return Double(progress.completedDays.count) / Double(plan.duration) * 100
+        guard let progress = progress, !progress.completedDays.isEmpty, plan.duration > 0 else { return 0 }
+        let percentage = Double(progress.completedDays.count) / Double(plan.duration) * 100
+        return min(100, max(0, percentage))
     }
     
     /// Get background filename for this plan
@@ -70,7 +71,7 @@ struct ReadingPlanCard: View {
                                 // Progress
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(Color.white.opacity(0.9))
-                                    .frame(width: geometry.size.width * CGFloat(progressPercentage / 100), height: 4)
+                                    .frame(width: max(0, geometry.size.width * CGFloat(progressPercentage / 100)), height: 4)
                             }
                         }
                         .frame(height: 4)

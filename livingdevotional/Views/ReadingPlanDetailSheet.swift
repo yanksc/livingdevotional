@@ -134,7 +134,7 @@ struct ReadingPlanDetailSheet: View {
                                                     endPoint: .trailing
                                                 )
                                             )
-                                            .frame(width: geometry.size.width * CGFloat(progressPercentage / 100), height: 12)
+                                            .frame(width: max(0, geometry.size.width * CGFloat(progressPercentage / 100)), height: 12)
                                     }
                                 }
                                 .frame(height: 12)

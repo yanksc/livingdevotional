@@ -219,7 +219,7 @@ struct LargeVerseView: View {
                             
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.widgetSageGreen)
-                                .frame(width: geometry.size.width * data.activePlanProgress, height: 5)
+                                .frame(width: max(0, geometry.size.width * min(1, max(0, data.activePlanProgress.isNaN ? 0 : data.activePlanProgress))), height: 5)
                         }
                     }
                     .frame(height: 5)

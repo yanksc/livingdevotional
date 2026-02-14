@@ -12,6 +12,7 @@ enum PlanCreationStep {
 struct PersonalizedPlanConfigView: View {
     @Environment(\.services) var services
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var router: AppRouter
     @ObservedObject private var profileStore = UserProfileStore.shared
     @ObservedObject private var settingsStore = SettingsStore.shared
     @ObservedObject private var planStore = ReadingPlanStore.shared
@@ -20,8 +21,8 @@ struct PersonalizedPlanConfigView: View {
     @ObservedObject private var chatStore = ChatStore.shared
     @ObservedObject private var progressStore = ProgressStore.shared
     
-    private var aiService: AIService {
-        services.aiService as! AIService
+    private var aiService: AIService? {
+        services.aiService as? AIService
     }
     
     @State private var currentStep: PlanCreationStep = .profileConfirmation
@@ -145,6 +146,9 @@ struct PersonalizedPlanConfigView: View {
         isLoadingQuestions = true
         Task {
             do {
+                guard let aiService = aiService else {
+                    throw NSError(domain: "PersonalizedPlanConfig", code: -1, userInfo: [NSLocalizedDescriptionKey: "AI service unavailable"])
+                }
                 let history = buildHistoryContext()
                 let questions = try await aiService.generatePersonalizedPlanQuestions(
                     profile: profileStore.profile,
@@ -204,11 +208,19 @@ struct PersonalizedPlanConfigView: View {
     }
     
     private func generatePlan() {
+        guard UsageLimitStore.shared.canCreatePersonalizedPlan() else {
+            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("PlanLimitReached"))
+            return
+        }
+        
         currentStep = .generation
         isGeneratingPlan = true
         
         Task {
             do {
+                guard let aiService = aiService else {
+                    throw NSError(domain: "PersonalizedPlanConfig", code: -1, userInfo: [NSLocalizedDescriptionKey: "AI service unavailable"])
+                }
                 let plan = try await aiService.generateReadingPlan(
                     answers: answers,
                     profile: profileStore.profile,
@@ -467,7 +479,7 @@ struct QuestionnaireStep: View {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(AppTheme.accentColor)
                         .frame(
-                            width: geometry.size.width * CGFloat(currentQuestionIndex + 1) / CGFloat(allQuestions.count),
+                            width: max(0, geometry.size.width * CGFloat(currentQuestionIndex + 1) / CGFloat(max(1, allQuestions.count))),
                             height: 6
                         )
                 }
@@ -759,7 +771,7 @@ struct QuestionnaireStep: View {
         switch question {
         case .dynamic(_, let index):
             let key = "question_\(index)"
-            return selectedOptions[key] != nil && !selectedOptions[key]!.isEmpty
+            return !(selectedOptions[key]?.isEmpty ?? true)
         case .duration:
             return true // Always has a default
         case .focus:

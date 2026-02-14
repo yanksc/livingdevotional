@@ -13,6 +13,7 @@ struct HomeView: View {
     @ObservedObject private var readingPlanStore = ReadingPlanStore.shared
     
     @State private var showVerseFullScreen = false
+    @State private var showRecordsSheet = false
     
     var body: some View {
         ZStack {
@@ -47,10 +48,28 @@ struct HomeView: View {
                 .padding(.bottom, 100) // Extra padding for tab bar
             }
         }
-        .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "今日" : "Today")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                HStack(spacing: 12) {
+                    // Records button
+                    Button(action: { showRecordsSheet = true }) {
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(AppTheme.accentColor)
+                    }
+                    
+                    // Profile avatar
+                    ProfileAvatarButton { router.showSettings = true }
+                }
+            }
+        }
+        .sheet(isPresented: $showRecordsSheet) {
+            MyRecordsSheet()
+                .environmentObject(router)
+        }
         .onAppear {
             viewModel.loadHomeData()
         }
@@ -104,7 +123,6 @@ struct HomeView: View {
     private var todayProgressSection: some View {
         let chaptersRead = progressStore.getTodayReadingCount()
         let planDaysCompleted = readingPlanStore.getTodayPlanDaysCompleted()
-        let totalProgress = chaptersRead + planDaysCompleted
         
         return VStack(spacing: 16) {
             // Section Header
@@ -132,22 +150,6 @@ struct HomeView: View {
                     icon: "calendar.badge.checkmark",
                     color: Color.green
                 )
-            }
-            
-            // Encouragement Message
-            if totalProgress > 0 {
-                HStack {
-                    Image(systemName: encouragementIcon(for: totalProgress))
-                        .foregroundColor(encouragementColor(for: totalProgress))
-                    Text(encouragementMessage(for: totalProgress))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(AppTheme.primaryText)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(encouragementColor(for: totalProgress).opacity(0.1))
-                .cornerRadius(12)
             }
         }
         .padding(16)
@@ -177,44 +179,6 @@ struct HomeView: View {
         .cornerRadius(12)
     }
     
-    private func encouragementMessage(for progress: Int) -> String {
-        switch progress {
-        case 1...2:
-            return settingsStore.appLanguage.localizedString("GreatStart")
-        case 3...4:
-            return settingsStore.appLanguage.localizedString("AmazingProgress")
-        case 5...:
-            return settingsStore.appLanguage.localizedString("OnFire")
-        default:
-            return settingsStore.appLanguage.localizedString("StartReading")
-        }
-    }
-    
-    private func encouragementIcon(for progress: Int) -> String {
-        switch progress {
-        case 1...2:
-            return "leaf.fill"
-        case 3...4:
-            return "sun.max.fill"
-        case 5...:
-            return "heart.fill"
-        default:
-            return "book.fill"
-        }
-    }
-    
-    private func encouragementColor(for progress: Int) -> Color {
-        switch progress {
-        case 1...2:
-            return .green
-        case 3...4:
-            return .teal
-        case 5...:
-            return AppTheme.accentColor
-        default:
-            return AppTheme.accentColor
-        }
-    }
     
     private var verseOfTheDaySection: some View {
         GeometryReader { geometry in
@@ -435,7 +399,7 @@ struct HomeView: View {
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(AppTheme.accentColor)
                                     .frame(
-                                        width: geometry.size.width * CGFloat(readingPlanStore.getProgressPercentage(for: plan.id) / 100),
+                                        width: max(0, geometry.size.width * CGFloat(readingPlanStore.getProgressPercentage(for: plan.id) / 100)),
                                         height: 6
                                     )
                             }
@@ -610,7 +574,13 @@ struct VerseFullScreenView: View {
                     
                     // Bottom: Action Buttons
                     HStack(spacing: 12) {
-                        Button(action: { showChat = true }) {
+                        Button(action: {
+                            if !UsageLimitStore.shared.canUseAIQuestion() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                return
+                            }
+                            showChat = true
+                        }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "bubble.left.and.bubble.right.fill")
                                     .font(.caption)

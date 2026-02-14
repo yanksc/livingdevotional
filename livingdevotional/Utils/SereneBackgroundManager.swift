@@ -159,6 +159,8 @@ final class SereneImageCache {
     
     /// Resize image to target size for memory efficiency
     private func resizeImage(_ image: UIImage, targetSize: CGSize) -> UIImage {
+        guard image.size.width > 0, image.size.height > 0 else { return image }
+        
         let scale = UIScreen.main.scale
         let scaledSize = CGSize(width: targetSize.width * scale, height: targetSize.height * scale)
         
@@ -266,12 +268,15 @@ class SereneBackgroundManager: ObservableObject {
     
     /// Select a random background for the journey view
     private func selectJourneyBackground() {
-        journeyBackground = allBackgrounds.randomElement() ?? allBackgrounds[0]
+        journeyBackground = allBackgrounds.randomElement() ?? "photo-1506744038136-46273834b3fb.avif"
     }
     
     /// Get a background for a specific index (wraps around if needed)
     /// Use this to assign non-repeating backgrounds to category cards
     func background(at index: Int) -> String {
+        guard !shuffledBackgrounds.isEmpty else {
+            return allBackgrounds.randomElement() ?? "photo-1506744038136-46273834b3fb.avif"
+        }
         let safeIndex = index % shuffledBackgrounds.count
         return shuffledBackgrounds[safeIndex]
     }
@@ -283,7 +288,7 @@ class SereneBackgroundManager: ObservableObject {
     
     /// Get a random background (may repeat)
     func randomBackground() -> String {
-        return allBackgrounds.randomElement() ?? allBackgrounds[0]
+        return allBackgrounds.randomElement() ?? "photo-1506744038136-46273834b3fb.avif"
     }
     
     // MARK: - Plan Backgrounds (persistent, non-repeating)

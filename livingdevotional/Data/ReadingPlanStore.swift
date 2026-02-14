@@ -174,11 +174,12 @@ class ReadingPlanStore: ObservableObject {
             return 0
         }
         
-        if planProgress.completedDays.isEmpty {
+        if planProgress.completedDays.isEmpty || plan.duration <= 0 {
             return 0
         }
         
-        return Double(planProgress.completedDays.count) / Double(plan.duration) * 100
+        let percentage = Double(planProgress.completedDays.count) / Double(plan.duration) * 100
+        return min(100, max(0, percentage))
     }
     
     func getCurrentDay(for planId: String) -> ReadingPlanDay? {
