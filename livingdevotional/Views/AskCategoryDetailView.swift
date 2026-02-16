@@ -84,6 +84,10 @@ struct AskCategoryDetailView: View {
                 VStack(spacing: 0) {
                     ForEach(category.questions) { question in
                         Button {
+                            if !UsageLimitStore.shared.canUseAIQuestion() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                return
+                            }
                             selectedQuestion = question
                         } label: {
                             HStack(alignment: .top, spacing: 16) {
@@ -145,6 +149,7 @@ struct AskCategoryDetailView: View {
         .ignoresSafeArea(edges: .top)
         .background(AppTheme.backgroundGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
@@ -153,7 +158,7 @@ struct AskCategoryDetailView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "返回" : settingsStore.appLanguage == .chineseSimplified ? "返回" : "Back")
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "返回探索" : settingsStore.appLanguage == .chineseSimplified ? "返回探索" : "Back to Explore")
                             .font(.body)
                     }
                     .foregroundColor(.white)
@@ -175,7 +180,10 @@ struct AskCategoryDetailView: View {
                         verse: question.verseNumber,
                         verseText: nil, // We don't have verse text here, will be loaded if needed
                         appLanguage: settingsStore.appLanguage,
-                        initialQuestion: question.localizedQuestion(for: settingsStore.appLanguage)
+                        initialQuestion: question.localizedQuestion(for: settingsStore.appLanguage),
+                        onLimitReached: {
+                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                        }
                     ),
                     settingsStore: settingsStore,
                     onClose: {

@@ -209,6 +209,20 @@ struct ChatView: View {
                         .foregroundColor(AppTheme.primaryText)
                         .lineSpacing(3)
                         .lineLimit(4) // Limit lines to keep it compact
+                } else if let error = viewModel.verseLoadError {
+                    // Show error message if loading failed
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red.opacity(0.8))
+                        .italic()
+                } else if viewModel.loadedVerseText != nil {
+                    // Verse text loaded but is empty (failed to load without specific error)
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "無法載入經文內容" : 
+                         settingsStore.appLanguage == .chineseSimplified ? "无法载入经文内容" :
+                         "Unable to load verse content")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .italic()
                 } else {
                     // Show loading indicator while verse text is being loaded
                     HStack(spacing: 6) {

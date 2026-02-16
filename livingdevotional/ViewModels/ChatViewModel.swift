@@ -13,9 +13,11 @@ class ChatViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var inputMessage: String = ""
     @Published var loadedVerseText: String?
+    @Published var verseLoadError: String?
     
     private let aiService: AIServiceProtocol
     private let chatStore = ChatStore.shared
+    private let onLimitReached: (() -> Void)?
     
     // Current verse context (exposed for UI display) - optional for general chat
     let book: String?
@@ -35,7 +37,7 @@ class ChatViewModel: ObservableObject {
         return book != nil && chapter != nil && verse != nil
     }
     
-    init(aiService: AIServiceProtocol, book: String? = nil, chapter: Int? = nil, verse: Int? = nil, verseText: String? = nil, appLanguage: AppLanguage, sessionId: String? = nil, initialQuestion: String? = nil) {
+    init(aiService: AIServiceProtocol, book: String? = nil, chapter: Int? = nil, verse: Int? = nil, verseText: String? = nil, appLanguage: AppLanguage, sessionId: String? = nil, initialQuestion: String? = nil, onLimitReached: (() -> Void)? = nil) {
         self.aiService = aiService
         self.book = book
         self.chapter = chapter
@@ -44,6 +46,7 @@ class ChatViewModel: ObservableObject {
         self.loadedVerseText = verseText
         self.appLanguage = appLanguage
         self.initialQuestion = initialQuestion
+        self.onLimitReached = onLimitReached
         
         if let sessionId = sessionId, let existingSession = chatStore.getSession(id: sessionId) {
             self.session = existingSession
@@ -57,16 +60,29 @@ class ChatViewModel: ObservableObject {
         // Only load if we have verse context but no verse text
         guard let book = book, let chapter = chapter, let verse = verse,
               loadedVerseText == nil else {
+            print("ChatViewModel: Skipping verse load - already have text or missing context")
             return
         }
+        
+        print("ChatViewModel: Loading verse text for \(book) \(chapter):\(verse) in \(primaryLanguage)")
         
         do {
             let verses = try await BibleService.shared.loadVerses(book: book, chapter: chapter, translation: primaryLanguage)
             if let matchingVerse = verses.first(where: { $0.verseNumber == verse }) {
                 loadedVerseText = matchingVerse.text(for: primaryLanguage)
+                print("ChatViewModel: Successfully loaded verse text: \(String(loadedVerseText?.prefix(50) ?? ""))")
+            } else {
+                print("ChatViewModel: No matching verse found for verse number \(verse)")
+                verseLoadError = "Verse not found"
+                // Set empty string to prevent infinite loading
+                loadedVerseText = ""
             }
         } catch {
-            print("Failed to load verse text: \(error)")
+            print("ChatViewModel: Failed to load verse text: \(error)")
+            print("ChatViewModel: Error details - book: \(book), chapter: \(chapter), translation: \(primaryLanguage)")
+            verseLoadError = error.localizedDescription
+            // Set empty string to prevent infinite loading
+            loadedVerseText = ""
         }
     }
     
@@ -112,6 +128,13 @@ class ChatViewModel: ObservableObject {
         }
         
         guard let currentSessionId = session?.id else { return }
+        
+        guard UsageLimitStore.shared.canUseAIQuestion() else {
+            errorMessage = appLanguage.localizedString("UsageLimitReached")
+            onLimitReached?()
+            isLoading = false
+            return
+        }
         
         // Capture history before adding new message to avoid duplication in AI request
         let history = session?.messages ?? []
@@ -180,6 +203,7 @@ class ChatViewModel: ObservableObject {
                     }
                 }
                 
+                UsageLimitStore.shared.recordAIQuestionUsed()
                 refreshSession()
             }
         } catch {
