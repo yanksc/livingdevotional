@@ -9,6 +9,7 @@ class PrayerFlowViewModel: ObservableObject {
     // MARK: - Published State
     
     @Published var currentQuestionIndex = 0
+    @Published var selectedIntent: PrayerIntent?
     @Published var selectedFocus: PrayerFocus?
     @Published var customTopicText: String = ""
     @Published var selectedVerseOption: VerseOption?
@@ -22,6 +23,7 @@ class PrayerFlowViewModel: ObservableObject {
     @Published var isLoadingPrayer = false
     @Published var errorMessage: String?
     @Published var backgroundTransitionProgress: Double = 0.0
+    @Published var limitReached: Bool = false
     
     // MARK: - Dependencies
     
@@ -37,12 +39,10 @@ class PrayerFlowViewModel: ObservableObject {
     // MARK: - Computed Properties
     
     var questions: [PrayerQuestionType] {
-        // Skip verse selection if initial verse is provided
-        if initialVerse != nil {
-            return [.heartFocus, .emotionalNeed]
-        } else {
-            return [.heartFocus, .chooseVerse, .emotionalNeed]
-        }
+        // First question: prayer intent; then heart focus, optional verse, emotional need
+        let baseQuestions: [PrayerQuestionType] = [.prayerIntent, .heartFocus]
+        let verseQuestion: [PrayerQuestionType] = initialVerse != nil ? [] : [.chooseVerse]
+        return baseQuestions + verseQuestion + [.emotionalNeed]
     }
     
     // MARK: - Init
@@ -226,6 +226,10 @@ class PrayerFlowViewModel: ObservableObject {
     }
     
     func handleSkip() {
+        // When skipping intent question, default to "Help me pray" for backward compatibility
+        if currentQuestionIndex == 0 && questions.first == .prayerIntent {
+            selectedIntent = .helpMePray
+        }
         if currentQuestionIndex < questions.count - 1 {
             withAnimation(.easeInOut(duration: 0.5)) {
                 currentQuestionIndex += 1
@@ -332,11 +336,16 @@ class PrayerFlowViewModel: ObservableObject {
             return
         }
         
+        guard UsageLimitStore.shared.canGeneratePrayer() else {
+            limitReached = true
+            return
+        }
+        
         isLoadingPrayer = true
         errorMessage = nil
         
         let verseText = verse.text(for: settingsStore.primaryLanguage)
-        let customPrayerPrompt = buildCustomPrayerPrompt(verseText: verseText)
+        let prayerPrompt = buildPrayerPrompt(verseText: verseText)
         
         do {
             var accumulatedPrayer = ""
@@ -349,7 +358,7 @@ class PrayerFlowViewModel: ObservableObject {
                 mode: .pray,
                 appLanguage: settingsStore.appLanguage,
                 conversationHistory: nil,
-                userPrompt: customPrayerPrompt
+                userPrompt: prayerPrompt
             )
             
             for try await chunk in stream {
@@ -358,6 +367,7 @@ class PrayerFlowViewModel: ObservableObject {
             
             generatedPrayer = accumulatedPrayer
             isLoadingPrayer = false
+            UsageLimitStore.shared.recordPrayerGenerated()
             
             withAnimation(.easeInOut(duration: 2.0)) {
                 backgroundTransitionProgress = 1.0
@@ -370,59 +380,105 @@ class PrayerFlowViewModel: ObservableObject {
         }
     }
     
-    private func buildCustomPrayerPrompt(verseText: String) -> String? {
-        guard selectedFocus == .custom,
-              !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return nil
-        }
-        
-        let topic = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let needText = emotionalNeed?.displayName ?? ""
+    private func buildPrayerPrompt(verseText: String) -> String {
+        let intent = selectedIntent ?? .helpMePray
         let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
         let isSimplified = languageCode == "zh-Hans"
         let isChinese = languageCode == "zh-Hans" || languageCode == "zh-Hant"
-        
-        if isSimplified {
-            return """
-            请根据这节经文撰写一篇简短而深刻的祷告文，特别针对以下主题：「\(topic)」
-            \(needText.isEmpty ? "" : "读者现在需要：\(needText)")
-            
-            请简洁地包含：
-            1. 感谢神在这节经文中显明的真理
-            2. 为「\(topic)」这个主题向神祷告
-            3. 祈求神帮助我们活出这节经文的教导
-            
-            请用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 80-120 字以内，精简而深刻。
-            """
-        } else if isChinese {
-            return """
-            請根據這節經文撰寫一篇簡短而深刻的禱告文，特別針對以下主題：「\(topic)」
-            \(needText.isEmpty ? "" : "讀者現在需要：\(needText)")
-            
-            請簡潔地包含：
-            1. 感謝神在這節經文中顯明的真理
-            2. 為「\(topic)」這個主題向神禱告
-            3. 祈求神幫助我們活出這節經文的教導
-            
-            請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。請控制在 80-120 字以內，精簡而深刻。
-            """
+        let needText = emotionalNeed?.displayName ?? ""
+        let focusText: String
+        if selectedFocus == .custom && !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            focusText = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
         } else {
-            return """
-            Please compose a concise and meaningful prayer based on this verse, specifically addressing this topic: "\(topic)"
-            \(needText.isEmpty ? "" : "The reader currently needs: \(needText)")
-            
-            Briefly include:
-            1. Thanksgiving for the truth revealed in this verse
-            2. Prayer to God specifically about "\(topic)"
-            3. Request for God's help to live out this verse's teaching
-            
-            Please write in English, starting with "Dear Heavenly Father" or "Lord". Please keep it concise and meaningful, around 60-100 words.
-            """
+            focusText = selectedFocus?.displayName ?? ""
+        }
+        
+        switch intent {
+        case .prayForMe:
+            let name = UserProfileStore.shared.profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let nameForPrayer: String
+            if isSimplified {
+                nameForPrayer = name.isEmpty ? "这个孩子" : name
+            } else if isChinese {
+                nameForPrayer = name.isEmpty ? "這位孩子" : name
+            } else {
+                nameForPrayer = name.isEmpty ? "this child" : name
+            }
+            if isSimplified {
+                return """
+                请根据这节经文撰写一篇简短的代祷文，为 \(nameForPrayer) 向神祷告。你是在代替别人向神祈求，不是让 \(nameForPrayer) 自己祷告。
+                \(focusText.isEmpty ? "" : "祷告主题：\(focusText)")\(needText.isEmpty ? "" : "\n他们目前需要：\(needText)")
+                
+                请用"我们为 \(nameForPrayer) 祷告"或类似的代祷语开头。用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 80-120 字以内。
+                """
+            } else if isChinese {
+                return """
+                請根據這節經文撰寫一篇簡短的代禱文，為 \(nameForPrayer) 向神禱告。你是在代替別人向神祈求，不是讓 \(nameForPrayer) 自己禱告。
+                \(focusText.isEmpty ? "" : "禱告主題：\(focusText)")\(needText.isEmpty ? "" : "\n他們目前需要：\(needText)")
+                
+                請用「我們為 \(nameForPrayer) 禱告」或類似的代禱語開頭。用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。請控制在 80-120 字以內。
+                """
+            } else {
+                return """
+                Compose an intercessory prayer praying FOR \(nameForPrayer) based on this verse. You are praying on their behalf to God, not as if they are praying themselves.
+                \(focusText.isEmpty ? "" : "Prayer focus: \(focusText)")\(needText.isEmpty ? "" : "\nThey currently need: \(needText)")
+                
+                Use phrases like "We lift up \(nameForPrayer) to You" or "We pray for \(nameForPrayer)". Write in English, starting with "Dear Heavenly Father" or "Lord". Keep it concise and meaningful, around 60-100 words.
+                """
+            }
+        case .helpMePray:
+            guard selectedFocus == .custom, !focusText.isEmpty else {
+                if isSimplified {
+                    return """
+                    请根据这节经文撰写一篇简短而深刻的祷告文，供读者自己向神祷告。
+                    \(focusText.isEmpty ? "" : "读者心中的主题：\(focusText)")\(needText.isEmpty ? "" : "\n读者现在需要：\(needText)")
+                    
+                    请简洁地包含：感谢神显明的真理、认罪悔改（如经文章相关）、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称（我/我们）。请控制在 80-120 字以内。
+                    """
+                } else if isChinese {
+                    return """
+                    請根據這節經文撰寫一篇簡短而深刻的禱告文，供讀者自己向神禱告。
+                    \(focusText.isEmpty ? "" : "讀者心中的主題：\(focusText)")\(needText.isEmpty ? "" : "\n讀者現在需要：\(needText)")
+                    
+                    請簡潔地包含：感謝神顯明的真理、認罪悔改（如經文相關）、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱（我/我們）。請控制在 80-120 字以內。
+                    """
+                } else {
+                    return """
+                    Please compose a concise and meaningful prayer based on this verse for the reader to pray themselves.
+                    \(focusText.isEmpty ? "" : "Their heart's focus: \(focusText)")\(needText.isEmpty ? "" : "\nThey currently need: \(needText)")
+                    
+                    Briefly include: thanksgiving for the truth in this verse, confession/repentance (if relevant), request for God's help to live out the teaching. Please write in English, starting with "Dear Heavenly Father" or "Lord", using first person (I/we). Keep it around 60-100 words.
+                    """
+                }
+            }
+            if isSimplified {
+                return """
+                请根据这节经文撰写一篇简短而深刻的祷告文，特别针对以下主题：「\(focusText)」
+                \(needText.isEmpty ? "" : "读者现在需要：\(needText)")
+                
+                请简洁地包含：感谢神显明的真理、为「\(focusText)」向神祷告、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称。请控制在 80-120 字以内。
+                """
+            } else if isChinese {
+                return """
+                請根據這節經文撰寫一篇簡短而深刻的禱告文，特別針對以下主題：「\(focusText)」
+                \(needText.isEmpty ? "" : "讀者現在需要：\(needText)")
+                
+                請簡潔地包含：感謝神顯明的真理、為「\(focusText)」向神禱告、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱。請控制在 80-120 字以內。
+                """
+            } else {
+                return """
+                Please compose a concise and meaningful prayer based on this verse, specifically addressing: "\(focusText)"
+                \(needText.isEmpty ? "" : "The reader currently needs: \(needText)")
+                
+                Briefly include: thanksgiving, prayer about "\(focusText)", request for God's help. Please write in English, starting with "Dear Heavenly Father" or "Lord", using first person. Keep it around 60-100 words.
+                """
+            }
         }
     }
     
     func resetFlow() {
         currentQuestionIndex = 0
+        selectedIntent = nil
         selectedFocus = nil
         customTopicText = ""
         selectedVerseOption = nil

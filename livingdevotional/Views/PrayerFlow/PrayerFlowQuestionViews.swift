@@ -3,6 +3,98 @@
 
 import SwiftUI
 
+// MARK: - Prayer Intent Question View
+
+struct PrayerIntentQuestionView: View {
+    @Binding var selectedIntent: PrayerIntent?
+    var onNext: () -> Void
+    var onSkip: () -> Void
+    @ObservedObject private var settingsStore = SettingsStore.shared
+    @State private var appearedOptions: Set<PrayerIntent> = []
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text(intentQuestionTitle)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.white.opacity(0.95))
+                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+            
+            VStack(spacing: 12) {
+                ForEach(Array(PrayerIntent.allCases.enumerated()), id: \.element) { index, intent in
+                    Button {
+                        selectedIntent = intent
+                        onNext()
+                    } label: {
+                        HStack {
+                            Text(intent.displayName)
+                                .foregroundColor(.white.opacity(0.95))
+                            Spacer()
+                            if selectedIntent == intent {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                        }
+                        .padding()
+                        .background(
+                            Group {
+                                if selectedIntent == intent {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.ultraThinMaterial.opacity(0.4))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.white.opacity(0.3), lineWidth: 1.5)
+                                        )
+                                } else {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.ultraThinMaterial.opacity(0.2))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                        )
+                                }
+                            }
+                        )
+                        .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                    }
+                    .opacity(appearedOptions.contains(intent) ? 1.0 : 0.0)
+                    .offset(x: appearedOptions.contains(intent) ? 0 : 30)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.1) {
+                            withAnimation(.easeOut(duration: 0.4)) {
+                                let _ = appearedOptions.insert(intent)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Skip button
+            Button {
+                onSkip()
+            } label: {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "跳過" : "Skip")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .padding(.top, 8)
+        }
+    }
+    
+    private var intentQuestionTitle: String {
+        let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
+        if languageCode == "zh-Hans" {
+            return "您想要怎麼禱告？"
+        } else if languageCode == "zh-Hant" {
+            return "您想要怎麼禱告？"
+        } else {
+            return "How would you like to pray?"
+        }
+    }
+}
+
 // MARK: - Heart Focus Question View
 
 struct HeartFocusQuestionView: View {

@@ -47,6 +47,35 @@ enum PrayerFocus: String, CaseIterable {
     }
 }
 
+// MARK: - Prayer Intent
+
+enum PrayerIntent: String, CaseIterable {
+    case prayForMe = "pray_for_me"
+    case helpMePray = "help_me_pray"
+    
+    var displayName: String {
+        let languageCode = SettingsStore.shared.appLanguage.resolvedLanguageCode()
+        let isSimplified = languageCode == "zh-Hans"
+        let isChinese = languageCode == "zh-Hans" || languageCode == "zh-Hant"
+        if isSimplified {
+            switch self {
+            case .prayForMe: return "为我祷告"
+            case .helpMePray: return "帮我祷告"
+            }
+        } else if isChinese {
+            switch self {
+            case .prayForMe: return "為我禱告"
+            case .helpMePray: return "幫我禱告"
+            }
+        } else {
+            switch self {
+            case .prayForMe: return "Pray for me"
+            case .helpMePray: return "Help me pray"
+            }
+        }
+    }
+}
+
 // MARK: - Emotional Need
 
 enum EmotionalNeed: String, CaseIterable {
@@ -73,6 +102,7 @@ enum EmotionalNeed: String, CaseIterable {
 // MARK: - Question Type
 
 enum PrayerQuestionType {
+    case prayerIntent
     case heartFocus
     case chooseVerse
     case emotionalNeed

@@ -7,6 +7,7 @@ struct PrayerGenerationWaitingView: View {
     let verse: DailyVerse?
     let focus: PrayerFocus?
     let emotionalNeed: EmotionalNeed?
+    var prayerIntent: PrayerIntent? = nil
     
     @ObservedObject private var settingsStore = SettingsStore.shared
     @State private var currentCalmingWordIndex = 0
@@ -16,6 +17,58 @@ struct PrayerGenerationWaitingView: View {
         let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
         let isSimplified = languageCode == "zh-Hans"
         let isChinese = languageCode == "zh-Hans" || languageCode == "zh-Hant"
+        
+        // Intent-specific calming words (pray for me = intercessory; help me pray = guided)
+        if let intent = prayerIntent {
+            switch intent {
+            case .prayForMe:
+                if isSimplified {
+                    return [
+                        "我们为你祷告...",
+                        "将你交托给神...",
+                        "神必看顾你...",
+                        "在祷告中等候..."
+                    ]
+                } else if isChinese {
+                    return [
+                        "我們為你禱告...",
+                        "將你交託給神...",
+                        "神必看顧你...",
+                        "在禱告中等候..."
+                    ]
+                } else {
+                    return [
+                        "We are praying for you...",
+                        "Lifting you to the Lord...",
+                        "He will watch over you...",
+                        "Waiting in prayer..."
+                    ]
+                }
+            case .helpMePray:
+                if isSimplified {
+                    return [
+                        "为你预备祷告文...",
+                        "将你的心归向神...",
+                        "在经文中寻见主...",
+                        "安静等候..."
+                    ]
+                } else if isChinese {
+                    return [
+                        "為你預備禱告文...",
+                        "將你的心歸向神...",
+                        "在經文中尋見主...",
+                        "安靜等候..."
+                    ]
+                } else {
+                    return [
+                        "Preparing your prayer...",
+                        "Turn your heart to God...",
+                        "Finding Him in His Word...",
+                        "Wait quietly..."
+                    ]
+                }
+            }
+        }
         
         // Determine words based on focus or emotional need
         if let need = emotionalNeed {

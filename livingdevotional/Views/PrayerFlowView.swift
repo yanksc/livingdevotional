@@ -17,6 +17,7 @@ struct PrayerFlowView: View {
     
     @Environment(\.dismiss) var dismiss
     @Environment(\.services) var services
+    @EnvironmentObject var router: AppRouter
     @ObservedObject private var settingsStore = SettingsStore.shared
     
     init(initialVerse: BibleVerse? = nil) {
@@ -51,7 +52,8 @@ struct PrayerFlowView: View {
                     PrayerGenerationWaitingView(
                         verse: viewModel.selectedVerse,
                         focus: viewModel.selectedFocus,
-                        emotionalNeed: viewModel.emotionalNeed
+                        emotionalNeed: viewModel.emotionalNeed,
+                        prayerIntent: viewModel.selectedIntent
                     )
                 } else if let verse = viewModel.selectedVerse, !viewModel.generatedPrayer.isEmpty {
                     // Show verse and prayer result
@@ -104,6 +106,12 @@ struct PrayerFlowView: View {
                                         // Question content
                                         Group {
                                             switch question {
+                                            case .prayerIntent:
+                                                PrayerIntentQuestionView(
+                                                    selectedIntent: $viewModel.selectedIntent,
+                                                    onNext: viewModel.handleAnswer,
+                                                    onSkip: viewModel.handleSkip
+                                                )
                                             case .heartFocus:
                                                 HeartFocusQuestionView(
                                                     selectedFocus: $viewModel.selectedFocus,
@@ -183,6 +191,12 @@ struct PrayerFlowView: View {
                 }
                 
                 viewModel.setup(services: services)
+            }
+            .onChange(of: viewModel.limitReached) { _, reached in
+                if reached {
+                    router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("PrayerLimitReached"))
+                    viewModel.limitReached = false
+                }
             }
         }
     }
