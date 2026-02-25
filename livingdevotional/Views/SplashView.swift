@@ -1,134 +1,63 @@
-// SplashView - Beautiful splash screen with animations
+// SplashView - Serene splash screen with calm emerging animation
 
 import SwiftUI
+import UIKit
 
 struct SplashView: View {
-    @State private var isAnimating = false
-    @State private var scale: CGFloat = 0.8
-    @State private var opacity: Double = 0.0
-    @State private var rotation: Double = 0
+    @State private var imageOpacity: Double = 0.0
+    @State private var breathingPhase = false
     @Binding var isPresented: Bool
+    
+    private var reduceMotion: Bool {
+        UIAccessibility.isReduceMotionEnabled
+    }
     
     var body: some View {
         ZStack {
-            // Animated gradient background
-            AppTheme.primaryGradient
+            // Full-screen splash background image
+            Image("SplashBackground")
+                .resizable()
+                .scaledToFill()
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .clipped()
                 .ignoresSafeArea()
-                .opacity(isAnimating ? 1.0 : 0.9)
+                .opacity(imageOpacity)
+                .accessibilityLabel("Living Path – your spiritual journey")
             
-            // Secondary gradient overlay for depth
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.2),
-                    Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 30) {
-                Spacer()
-                
-                // App Icon/Logo
-                ZStack {
-                    // Glowing circle behind icon
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color.white.opacity(0.3),
-                                    Color.clear
-                                ],
-                                center: .center,
-                                startRadius: 20,
-                                endRadius: 100
-                            )
-                        )
-                        .frame(width: 200, height: 200)
-                        .blur(radius: 20)
-                        .scaleEffect(isAnimating ? 1.2 : 1.0)
-                        .opacity(isAnimating ? 0.6 : 0.3)
-                    
-                    // Book icon with animation
-                    Image(systemName: "book.closed.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.white)
-                        .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
-                        .scaleEffect(scale)
-                        .rotationEffect(.degrees(rotation))
-                }
-                .padding(.bottom, 20)
-                
-                // App Name
-                VStack(spacing: 8) {
-                    Text("Living")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-                    
-                    Text("Path")
-                        .font(.system(size: 36, weight: .light, design: .rounded))
-                        .foregroundColor(.white.opacity(0.95))
-                        .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-                }
-                .opacity(opacity)
-                
-                // Tagline
-                Text("Your daily journey with God's Word")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .opacity(opacity)
-                    .padding(.top, 8)
-                
-                Spacer()
-                
-                // Loading indicator
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.2)
-                    .opacity(opacity)
-                    .padding(.bottom, 60)
+            // Optional: Very subtle luminosity overlay with slow breathing pulse
+            if !reduceMotion {
+                Color.white
+                    .opacity(breathingPhase ? 0.02 : 0.0)
+                    .ignoresSafeArea()
             }
         }
+        .preferredColorScheme(.light)
         .onAppear {
             startAnimations()
         }
     }
     
     private func startAnimations() {
-        // Initial scale animation
-        withAnimation(.easeOut(duration: 0.8)) {
-            scale = 1.0
-            opacity = 1.0
+        let fadeDuration = reduceMotion ? 0.5 : 1.8
+        
+        withAnimation(.easeIn(duration: fadeDuration)) {
+            imageOpacity = 1.0
         }
         
-        // Rotation animation
-        withAnimation(
-            .easeInOut(duration: 2.0)
-            .repeatForever(autoreverses: true)
-        ) {
-            rotation = 5
+        if !reduceMotion {
+            DispatchQueue.main.asyncAfter(deadline: .now() + fadeDuration) {
+                withAnimation(
+                    Animation.easeInOut(duration: 8.0)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    breathingPhase = true
+                }
+            }
         }
         
-        // Pulsing animation
-        withAnimation(
-            .easeInOut(duration: 1.5)
-            .repeatForever(autoreverses: true)
-        ) {
-            isAnimating = true
-        }
-        
-        // Auto-dismiss after 2.5 seconds
+        // Auto-dismiss after 2.5 seconds (no fade out)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation(.easeOut(duration: 0.5)) {
-                opacity = 0.0
-                scale = 1.2
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isPresented = false
-            }
+            isPresented = false
         }
     }
 }
@@ -164,8 +93,3 @@ extension View {
 #Preview {
     SplashView(isPresented: .constant(true))
 }
-
-
-
-
-
