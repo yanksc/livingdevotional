@@ -6,18 +6,15 @@
 // - JourneyContentViews.swift: EncouragementHeroView, PathStatusCardView, JourneySummaryView,
 //   RecommendedVerseView, PathHighlightsView, NextStepView
 // - JourneyStatsView.swift: JourneyStatsView, StatBox
-// - JourneyWidgetViews.swift: TimelineWidgetView, TimelineItemRow, RecentHistoryWidgetView,
-//   RecentHistoryCard, MyNotesWidgetView, NoteCard
+// - MyRecordsSheet.swift: MyRecordsSheet, RecordCard (opened from nav bar)
 
 import SwiftUI
 
 struct JourneyView: View {
     @StateObject private var viewModel = JourneyViewModel()
     @ObservedObject private var settingsStore = SettingsStore.shared
-    @ObservedObject private var progressStore = ProgressStore.shared
-    @ObservedObject private var noteStore = NoteStore.shared
     @EnvironmentObject var router: AppRouter
-    @State private var showDetails = false
+    @State private var showRecordsSheet = false
     
     var body: some View {
         NavigationStack {
@@ -31,31 +28,16 @@ struct JourneyView: View {
                         if viewModel.isLoadingAI {
                             AILoadingView()
                         } else if let analysis = viewModel.aiAnalysis {
-                            // Hero Encouragement
-                            EncouragementHeroView(encouragement: analysis.encouragement)
-                            
-                            // Path Status Card
+                            // Path Status Card (merged with encouragement and summary)
                             PathStatusCardView(pathStatus: analysis.pathStatus)
-                            
-                            // Journey Summary
-                            if !analysis.journeySummary.isEmpty {
-                                JourneySummaryView(summary: analysis.journeySummary)
-                            }
-                            
-                            // Recommended Verse
-                            if let verse = analysis.recommendedVerse {
-                                RecommendedVerseView(verse: verse)
-                            }
                             
                             // Path Highlights
                             if !analysis.pathHighlights.isEmpty {
                                 PathHighlightsView(highlights: analysis.pathHighlights)
                             }
                             
-                            // Next Step CTA
-                            if !analysis.nextStep.isEmpty {
-                                NextStepView(nextStep: analysis.nextStep)
-                            }
+                            // Recommended Reading (replaced Next Step)
+                            RecommendedReadingView(reading: analysis.recommendedReading)
                             
                         } else if let error = viewModel.aiErrorMessage {
                             // Error state with retry
@@ -64,41 +46,11 @@ struct JourneyView: View {
                                     await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
                                 }
                             }
-                        } else {
-                            // No cache - show button to get spiritual insights
-                            GetAIInsightsButton {
-                                Task {
-                                    await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
-                                }
-                            }
                         }
                         
-                        // Stats Row - Below the summary section, expandable
+                        // Stats Row - Display only
                         if let stats = viewModel.stats {
-                            JourneyStatsView(stats: stats, showDetails: $showDetails)
-                        }
-                        
-                        // Detailed sections - Only shown when expanded
-                        if showDetails {
-                            // Recent History Section - Horizontal Scrollable Widgets
-                            RecentHistoryWidgetView(
-                                historyItems: progressStore.getRecentHistory(limit: 5),
-                                settingsStore: settingsStore,
-                                router: router
-                            )
-                            
-                            // My Notes Section - Horizontal Scrollable Widgets
-                            MyNotesWidgetView(
-                                savedVerses: Array(noteStore.savedVerses.prefix(5)),
-                                settingsStore: settingsStore,
-                                router: router
-                            )
-                            
-                            // Timeline Section - Small Timeline Widget
-                            TimelineWidgetView(
-                                milestones: viewModel.milestones,
-                                isLoading: viewModel.isLoading
-                            )
+                            JourneyStatsView(stats: stats)
                         }
                         
                         Spacer(minLength: 40)
@@ -106,15 +58,23 @@ struct JourneyView: View {
                     .padding()
                 }
             }
-            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "了解你的屬靈之路" : "Discover Your Spiritual Path")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Living Path")
+                        .font(.system(size: 17, weight: .bold, design: .serif))
+                        .foregroundColor(AppTheme.accentColor)
+                }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        Task {
-                            await viewModel.refreshAIAnalysis(appLanguage: settingsStore.appLanguage)
+                        if !UsageLimitStore.shared.canRefreshJourneyAnalysis() {
+                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("JourneyRefreshLimitReached"))
+                        } else {
+                            Task {
+                                await viewModel.refreshAIAnalysis(appLanguage: settingsStore.appLanguage)
+                            }
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -122,14 +82,27 @@ struct JourneyView: View {
                     }
                     .disabled(viewModel.isLoadingAI)
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button { showRecordsSheet = true } label: {
+                            Image(systemName: "bookmark.fill")
+                                .foregroundColor(AppTheme.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        ProfileAvatarButton { router.showSettings = true }
+                    }
+                }
+            }
+            .sheet(isPresented: $showRecordsSheet) {
+                MyRecordsSheet()
+                    .environmentObject(router)
             }
             .onAppear {
+                viewModel.loadPersistedAnalysisIfNeeded(appLanguage: settingsStore.appLanguage)
                 Task {
                     await viewModel.loadData()
-                    // Only auto-load spiritual analysis if cached
-                    if viewModel.hasCachedAnalysis {
-                        await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
-                    }
+                    // Always load AI analysis - service handles cache and persisted store
+                    await viewModel.loadAIAnalysis(appLanguage: settingsStore.appLanguage)
                 }
             }
         }
