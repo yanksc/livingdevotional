@@ -1,4 +1,4 @@
-// JourneySelectionView - Step 3: Spiritual journey selection
+// JourneySelectionView - Step 4: Spiritual journey selection
 
 import SwiftUI
 
@@ -14,7 +14,7 @@ struct JourneySelectionView: View {
             // Prompt with typewriter effect
             TypewriterText(
                 text: promptText,
-                fontSize: 24,
+                fontSize: OnboardingDesign.promptFontSize,
                 isChinese: state.isChinese
             ) {
                 // After prompt completes, start showing options
@@ -65,7 +65,7 @@ struct JourneySelectionView: View {
         // Stagger journey options fade-in
         for i in 0..<SpiritualMaturity.allCases.count {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * OnboardingDesign.optionStaggerDelay) {
-                withAnimation(.easeOut(duration: 0.4)) {
+                withAnimation(.easeOut(duration: 0.8)) {
                     _ = visibleOptions.insert(i)
                 }
             }

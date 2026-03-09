@@ -1,38 +1,82 @@
-// RelatedVersesView - Step 7: AI-personalized related verses based on deep dive selection
+// RelatedVersesView - Step 9: Your first Verse of the Day, personalized from onboarding
 
 import SwiftUI
 
 struct RelatedVersesView: View {
     @ObservedObject var state: OnboardingState
     
-    @State private var showPrompt = false
-    @State private var visibleVerseIndices: Set<Int> = []
+    // Animation states — sequenced: typewriter → label → card → reason → save + continue
+    @State private var showTypewriter = false
+    @State private var showVerseOfDayLabel = false
+    @State private var showVerse = false
+    @State private var showReason = false
+    @State private var showSaveButton = false
     @State private var showContinue = false
+    @State private var isSaved = false
     
     var body: some View {
         VStack(spacing: 0) {
-            // Prompt
-            if showPrompt {
-                VStack(spacing: 8) {
-                    Text(promptText)
-                        .font(.system(size: 22, weight: .regular, design: .serif))
-                        .foregroundColor(AppTheme.primaryText)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(6)
+            // Typewriter prompt — pinned at top, never moves
+            ZStack(alignment: .topLeading) {
+                // Invisible full text to reserve the exact vertical space
+                Text(promptText)
+                    .font(.system(size: OnboardingDesign.promptFontSize, weight: OnboardingDesign.promptFontWeight, design: OnboardingDesign.promptFontDesign))
+                    .lineSpacing(8)
+                    .padding(.horizontal, OnboardingDesign.horizontalPadding)
+                    .hidden()
+                
+                // Visible typewriter text
+                if showTypewriter {
+                    TypewriterText(
+                        text: promptText,
+                        fontSize: OnboardingDesign.promptFontSize,
+                        isChinese: state.isChinese,
+                        onComplete: {
+                            onTypewriterComplete()
+                        }
+                    )
+                    .padding(.horizontal, 8) // TypewriterText already has horizontal padding
                 }
-                .padding(.top, 60)
-                .padding(.horizontal, 24)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
+            .padding(.top, 48)
             
-            Spacer()
+            // "VERSE OF THE DAY" label — fades in after typewriter
+            Text(titleText)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(AppTheme.accentColor.opacity(0.8))
+                .textCase(.uppercase)
+                .tracking(2.0)
+                .padding(.top, 12)
+                .opacity(showVerseOfDayLabel ? 1 : 0)
             
-            if state.isGeneratingVerses {
-                loadingView
-            } else if let verses = state.relatedVerses, !verses.isEmpty {
-                versesListView(verses: verses)
-            } else if state.versesError != nil {
-                errorView
+            // Scrollable content area — verse card grows here without shifting the prompt
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    Spacer()
+                        .frame(height: 16)
+                    
+                    if state.isGeneratingVerses {
+                        loadingView
+                            .padding(.top, 24)
+                    } else if let verses = state.relatedVerses, let verse = verses.first {
+                        // Verse card — fades in after label
+                        verseOfTheDayCard(verse: verse)
+                            .opacity(showVerse ? 1 : 0)
+                            .padding(.horizontal, 24)
+                        
+                        // Save to Notes button — appears after reason
+                        if showSaveButton {
+                            saveToNotesButton(verse: verse)
+                                .padding(.top, 16)
+                                .transition(.opacity)
+                        }
+                    } else if state.versesError != nil {
+                        errorView
+                    }
+                    
+                    Spacer()
+                        .frame(height: 24)
+                }
             }
             
             Spacer()
@@ -45,30 +89,194 @@ struct RelatedVersesView: View {
             }
             .padding(.horizontal, 24)
             .opacity(showContinue ? 1 : 0)
+            .padding(.bottom, 40)
         }
-        .padding(.bottom, 40)
         .onAppear {
             handleAppear()
         }
         .onChange(of: state.relatedVerses) { _, newVerses in
-            // When verses are loaded asynchronously, animate them in
-            if let verses = newVerses, visibleVerseIndices.isEmpty {
-                animateVersesIn(count: verses.count)
+            if newVerses != nil && !showTypewriter {
+                // Verse just loaded — start typewriter
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showTypewriter = true
+                    }
+                }
+            } else if newVerses != nil && showTypewriter && !showVerse {
+                // Typewriter already complete, animate verse in
+                animateVerseIn()
             }
         }
     }
     
-    // MARK: - Prompt Text
+    // MARK: - Typewriter Complete → Trigger Sequential Animations
+    
+    private func onTypewriterComplete() {
+        // Show "VERSE OF THE DAY" label
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showVerseOfDayLabel = true
+            }
+        }
+        
+        // If verse already loaded, animate it in
+        if state.relatedVerses != nil {
+            animateVerseIn()
+        }
+    }
+    
+    // MARK: - Prompt Text (typewriter content)
     
     private var promptText: String {
         let name = state.name.isEmpty ? "" : "\(state.name), "
         if state.isChinese {
-            return "\(name)這些經文可能對你說話..."
+            return "\(name)這段經文為你預備"
         } else if state.isSpanish {
-            return "\(name)estos versículos podrían hablarte..."
+            return "\(name)este versículo es para ti"
         } else {
-            return "\(name)these verses may speak to you..."
+            return "\(name)this verse is chosen for you"
         }
+    }
+    
+    // MARK: - Title Text
+    
+    private var titleText: String {
+        if state.isChinese {
+            return "今日經文"
+        } else if state.isSpanish {
+            return "Versículo del Día"
+        } else {
+            return "Verse of the Day"
+        }
+    }
+    
+    // MARK: - Verse of the Day Card
+    
+    private func verseOfTheDayCard(verse: OnboardingRecommendedVerse) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Verse text
+            Text(verse.text)
+                .font(.system(size: 19, weight: .medium, design: .serif))
+                .foregroundColor(AppTheme.primaryText)
+                .multilineTextAlignment(.leading)
+                .lineSpacing(7)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            // Reference
+            Text("— \(verse.reference)")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(AppTheme.accentColor)
+            
+            // Reason — why this verse was chosen
+            if showReason {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppTheme.accentColor.opacity(0.7))
+                        .padding(.top, 2)
+                    
+                    Text(verse.reason)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .multilineTextAlignment(.leading)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .transition(.opacity)
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: AppTheme.accentColor.opacity(0.15), radius: 20, x: 0, y: 8)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AppTheme.accentColor.opacity(0.12), lineWidth: 1)
+        )
+    }
+    
+    // MARK: - Save to Notes Button
+    
+    private func saveToNotesButton(verse: OnboardingRecommendedVerse) -> some View {
+        Button(action: {
+            saveVerseToNotes(verse: verse)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                    .font(.system(size: 15, weight: .medium))
+                
+                Text(saveButtonText)
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .foregroundColor(isSaved ? AppTheme.accentColor : AppTheme.secondaryText)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(isSaved ? AppTheme.accentColor.opacity(0.1) : Color.white.opacity(0.9))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isSaved ? AppTheme.accentColor.opacity(0.3) : AppTheme.accentColor.opacity(0.15), lineWidth: 1)
+            )
+        }
+        .disabled(isSaved)
+    }
+    
+    private var saveButtonText: String {
+        if isSaved {
+            if state.isChinese { return "已儲存" }
+            else if state.isSpanish { return "Guardado" }
+            else { return "Saved to Notes" }
+        } else {
+            if state.isChinese { return "儲存至筆記" }
+            else if state.isSpanish { return "Guardar en notas" }
+            else { return "Save to Notes" }
+        }
+    }
+    
+    private func saveVerseToNotes(verse: OnboardingRecommendedVerse) {
+        // Parse reference (e.g., "Psalm 46:10" or "Philippians 4:6-7")
+        let parsed = parseVerseReference(verse.reference)
+        
+        NoteStore.shared.saveVerse(
+            book: parsed.book,
+            chapter: parsed.chapter,
+            verse: parsed.verse,
+            content: verse.reason,
+            labels: ["Onboarding", "Verse of the Day"]
+        )
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            isSaved = true
+        }
+    }
+    
+    /// Parse a reference like "Psalm 46:10" or "1 John 3:16" into components
+    private func parseVerseReference(_ reference: String) -> (book: String, chapter: Int, verse: Int) {
+        // Split from the last space to handle multi-word book names like "1 John"
+        let trimmed = reference.trimmingCharacters(in: .whitespaces)
+        
+        // Find the last space before the chapter:verse part
+        if let lastSpaceIndex = trimmed.lastIndex(of: " ") {
+            let book = String(trimmed[trimmed.startIndex..<lastSpaceIndex])
+            let chapterVerse = String(trimmed[trimmed.index(after: lastSpaceIndex)...])
+            
+            // Split "46:10" or "4:6-7"
+            let parts = chapterVerse.split(separator: ":")
+            if parts.count == 2 {
+                let chapter = Int(parts[0]) ?? 1
+                // Handle verse ranges like "6-7" — take the first verse
+                let verseStr = String(parts[1]).split(separator: "-").first.map(String.init) ?? String(parts[1])
+                let verse = Int(verseStr) ?? 1
+                return (book, chapter, verse)
+            }
+        }
+        
+        // Fallback
+        return (reference, 1, 1)
     }
     
     // MARK: - Loading View
@@ -85,70 +293,12 @@ struct RelatedVersesView: View {
     
     private var loadingText: String {
         if state.isChinese {
-            return "正在為你尋找經文..."
+            return "正在為你挑選經文..."
         } else if state.isSpanish {
-            return "Buscando versículos para ti..."
+            return "Eligiendo un versículo para ti..."
         } else {
-            return "Finding verses for you..."
+            return "Choosing a verse for you..."
         }
-    }
-    
-    // MARK: - Verses List
-    
-    private func versesListView(verses: [OnboardingRecommendedVerse]) -> some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
-                ForEach(Array(verses.enumerated()), id: \.element.reference) { index, verse in
-                    if visibleVerseIndices.contains(index) {
-                        verseCard(verse: verse)
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                    }
-                }
-            }
-            .padding(.horizontal, 24)
-        }
-    }
-    
-    private func verseCard(verse: OnboardingRecommendedVerse) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Verse text
-            Text(verse.text)
-                .font(.system(size: 17, weight: .regular, design: .serif))
-                .foregroundColor(AppTheme.primaryText)
-                .multilineTextAlignment(.leading)
-                .lineSpacing(6)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            // Reference
-            Text("— \(verse.reference)")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(AppTheme.accentColor)
-            
-            // Reason - why this verse is recommended
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "lightbulb")
-                    .font(.system(size: 12))
-                    .foregroundColor(AppTheme.secondaryText.opacity(0.8))
-                    .padding(.top, 2)
-                
-                Text(verse.reason)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(AppTheme.secondaryText)
-                    .multilineTextAlignment(.leading)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.95))
-                .shadow(color: AppTheme.accentColor.opacity(0.1), radius: 16, x: 0, y: 6)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(AppTheme.accentColor.opacity(0.1), lineWidth: 1)
-        )
     }
     
     // MARK: - Error View
@@ -226,33 +376,40 @@ struct RelatedVersesView: View {
     // MARK: - Appear Logic
     
     private func handleAppear() {
-        // Show prompt first
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeOut(duration: 0.5)) {
-                showPrompt = true
+        // Only start typewriter if verse is already loaded (not generating)
+        // If still loading, onChange will trigger it when verse arrives
+        if !state.isGeneratingVerses && state.relatedVerses != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                showTypewriter = true
             }
-        }
-        
-        // If verses already loaded, animate them in
-        if let verses = state.relatedVerses {
-            animateVersesIn(count: verses.count)
         }
     }
     
-    private func animateVersesIn(count: Int) {
-        for i in 0..<count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8 + Double(i) * 0.4) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    _ = visibleVerseIndices.insert(i)
+    private func animateVerseIn() {
+        // Verse card fades in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                showVerse = true
+            }
+            
+            // Show reason after verse settles
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.5)) {
+                    showReason = true
                 }
-                
-                // Show continue after last verse
-                if i == count - 1 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(.easeOut(duration: 0.4)) {
-                            showContinue = true
-                        }
-                    }
+            }
+            
+            // Show save button
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeOut(duration: 0.5)) {
+                    showSaveButton = true
+                }
+            }
+            
+            // Show continue navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showContinue = true
                 }
             }
         }

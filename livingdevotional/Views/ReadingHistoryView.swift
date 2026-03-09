@@ -21,7 +21,7 @@ struct ReadingHistoryView: View {
             }
         }
         .navigationTitle(settingsStore.appLanguage.localizedString("ReadingHistory"))
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             updateGroupedHistory()
         }

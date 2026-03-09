@@ -14,6 +14,8 @@ struct HomeView: View {
     
     @State private var showVerseFullScreen = false
     @State private var showRecordsSheet = false
+    @State private var showPrayerFlow = false
+    @State private var selectedPlanForDetail: ReadingPlan?
     
     var body: some View {
         ZStack {
@@ -26,7 +28,7 @@ struct HomeView: View {
                     welcomeSection
                     
                     // Daily Check-in Calendar
-                    CheckInCard(checkInStore: checkInStore)
+                    CheckInCard(checkInStore: checkInStore, onPrayNow: { showPrayerFlow = true })
                     
                     // Verse of the day
                     verseOfTheDaySection
@@ -52,6 +54,12 @@ struct HomeView: View {
         .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "今日" :
+                     settingsStore.appLanguage == .chineseSimplified ? "今日" : "Today")
+                    .font(.system(size: 17, weight: .bold, design: .serif))
+                    .foregroundColor(AppTheme.accentColor)
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 12) {
                     // Records button
@@ -69,6 +77,20 @@ struct HomeView: View {
         .sheet(isPresented: $showRecordsSheet) {
             MyRecordsSheet()
                 .environmentObject(router)
+        }
+        .fullScreenCover(item: $selectedPlanForDetail) { plan in
+            ReadingPlanDetailSheet(plan: plan)
+                .environmentObject(router)
+        }
+        .fullScreenCover(isPresented: $showPrayerFlow) {
+            PrayerFlowView()
+                .environmentObject(router)
+        }
+        .fullScreenCover(isPresented: $showVerseFullScreen) {
+            if let verse = viewModel.verseOfTheDay {
+                VerseFullScreenView(verse: verse, settingsStore: settingsStore)
+                    .environmentObject(router)
+            }
         }
         .onAppear {
             viewModel.loadHomeData()
@@ -93,10 +115,6 @@ struct HomeView: View {
     
     private var welcomeSection: some View {
         VStack(alignment: .center, spacing: 12) {
-            Text("Living Path")
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(AppTheme.accentColor)
             Text(settingsStore.appLanguage.localizedString("WelcomeSubtitle"))
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
@@ -181,145 +199,140 @@ struct HomeView: View {
     
     
     private var verseOfTheDaySection: some View {
-        GeometryReader { geometry in
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(settingsStore.appLanguage.localizedString("VerseOfTheDay"))
-                        .font(.headline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    Spacer()
-                    
-                    if let verse = viewModel.verseOfTheDay {
-                        ShareLink(item: formatVerseForShare(verse)) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.subheadline)
-                                .foregroundColor(AppTheme.accentColor)
-                        }
-                    }
-                }
+        let imageHeight = UIScreen.main.bounds.height * 0.38
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(settingsStore.appLanguage.localizedString("VerseOfTheDay"))
+                    .font(.headline)
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Spacer()
                 
                 if let verse = viewModel.verseOfTheDay {
-                    Button(action: {
-                        showVerseFullScreen = true
-                    }) {
-                        ZStack(alignment: .bottomTrailing) {
-                            // Background image - use static default fallback to ensure consistency with immersive view
-                            SereneBackgroundImage(
-                                filename: verse.backgroundImage ?? "photo-1506744038136-46273834b3fb.avif",
-                                targetSize: CGSize(width: geometry.size.width, height: geometry.size.height * 0.85)
-                            )
-                            .frame(width: geometry.size.width, height: geometry.size.height * 0.85)
-                            .clipped()
-                            
-                            // Overlay gradient for readability
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.4),
-                                    Color.black.opacity(0.15),
-                                    Color.black.opacity(0.5)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            
-                            // Center Content - verse and reference only
-                            VStack(spacing: 12) {
-                                // Verse preview (centered)
-                                Text(verse.text(for: settingsStore.primaryLanguage))
-                                    .font(.system(size: 20, weight: .medium, design: .serif))
-                                    .foregroundColor(.white)
-                                    .lineSpacing(6)
-                                    .lineLimit(4)
-                                    .multilineTextAlignment(.center)
-                                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                                    .padding(.horizontal, 20)
-                                
-                                // Reference
-                                Text(localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber))
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding(20)
-                            
-                            // Tap to Read - bottom right corner, smaller
-                            HStack(spacing: 4) {
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "點擊閱讀" : "Tap to Read")
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 8))
-                                    .fontWeight(.semibold)
-                            }
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(8)
-                            .padding(12)
-                        }
-                        .frame(width: geometry.size.width, height: geometry.size.height * 0.85)
-                        .clipped()
-                        .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
-                    }
-                    .buttonStyle(ScaleButtonStyle())
-                    .fullScreenCover(isPresented: $showVerseFullScreen) {
-                        VerseFullScreenView(verse: verse, settingsStore: settingsStore)
-                    }
-                    
-                } else if viewModel.isLoading {
-                    ZStack {
-                        SereneBackgroundImage(
-                            filename: "photo-1506744038136-46273834b3fb.avif",
-                            targetSize: CGSize(width: geometry.size.width, height: geometry.size.height * 0.85)
-                        )
-                        .frame(width: geometry.size.width, height: geometry.size.height * 0.85)
-                        .clipped()
-                        .blur(radius: 3)
-                        
-                        Color.black.opacity(0.3)
-                        
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.2)
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height * 0.85)
-                    .clipped()
-                    .cornerRadius(16)
-                } else {
-                    VStack(spacing: 12) {
-                        Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
-                            .foregroundColor(AppTheme.secondaryText)
-                        
-                        Button(action: {
-                            viewModel.retryLoadVerse()
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.subheadline)
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "重試" : "Retry")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                            }
+                    ShareLink(item: formatVerseForShare(verse)) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.subheadline)
                             .foregroundColor(AppTheme.accentColor)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(AppTheme.accentColor.opacity(0.1))
-                            .cornerRadius(8)
-                        }
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(AppTheme.cardGradient)
-                    .cornerRadius(12)
                 }
             }
+            
+            if let verse = viewModel.verseOfTheDay {
+                Button(action: {
+                    showVerseFullScreen = true
+                }) {
+                    ZStack(alignment: .bottomTrailing) {
+                        // Overlay gradient for readability
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.4),
+                                Color.black.opacity(0.15),
+                                Color.black.opacity(0.5)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        // Center Content - verse and reference only
+                        VStack(spacing: 12) {
+                            // Verse preview (centered)
+                            Text(verse.text(for: settingsStore.primaryLanguage))
+                                .font(.system(size: 20, weight: .medium, design: .serif))
+                                .foregroundColor(.white)
+                                .lineSpacing(6)
+                                .lineLimit(6)
+                                .multilineTextAlignment(.center)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                .padding(.horizontal, 20)
+                            
+                            // Reference
+                            Text(localizedReference(verse: verse))
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(20)
+                        
+                        // Tap to Read - bottom right corner, smaller
+                        HStack(spacing: 4) {
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "點擊閱讀" : "Tap to Read")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 8))
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white.opacity(0.8))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(8)
+                        .padding(12)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: imageHeight)
+                    .background(
+                        SereneBackgroundImage(
+                            filename: verse.backgroundImage ?? "photo-1506744038136-46273834b3fb.avif",
+                            targetSize: CGSize(width: UIScreen.main.bounds.width - 32, height: imageHeight)
+                        )
+                    )
+                    .clipped()
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
+                }
+                .buttonStyle(ScaleButtonStyle())
+                
+            } else if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.3)
+                    
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.2)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: imageHeight)
+                .background(
+                    SereneBackgroundImage(
+                        filename: "photo-1506744038136-46273834b3fb.avif",
+                        targetSize: CGSize(width: UIScreen.main.bounds.width - 32, height: imageHeight)
+                    )
+                    .blur(radius: 3)
+                )
+                .clipped()
+                .cornerRadius(16)
+            } else {
+                VStack(spacing: 12) {
+                    Text(settingsStore.appLanguage.localizedString("UnableToLoadVerse"))
+                        .foregroundColor(AppTheme.secondaryText)
+                    
+                    Button(action: {
+                        viewModel.retryLoadVerse()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.subheadline)
+                            Text(settingsStore.appLanguage == .chineseTraditional ? "重試" : "Retry")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(AppTheme.accentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.accentColor.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(AppTheme.cardGradient)
+                .cornerRadius(12)
+            }
         }
-        .frame(height: UIScreen.main.bounds.height * 0.45)
     }
     
     // Helper to get icon based on source
@@ -334,10 +347,12 @@ struct HomeView: View {
     
     // MARK: - Helpers
     
-    private func localizedReference(book: String, chapter: Int, verse: Int) -> String {
-        // Use primaryLanguage for book/chapter references
-        let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
-        return "\(localizedBook) \(chapter):\(verse)"
+    private func localizedReference(verse: DailyVerse) -> String {
+        let localizedBook = BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)
+        if let end = verse.verseNumberEnd, end != verse.verseNumber {
+            return "\(localizedBook) \(verse.chapter):\(verse.verseNumber)-\(end)"
+        }
+        return "\(localizedBook) \(verse.chapter):\(verse.verseNumber)"
     }
     
     private func formatVerseForShare(_ verse: DailyVerse) -> String {
@@ -354,14 +369,7 @@ struct HomeView: View {
     
     private func continuePlanCard(plan: ReadingPlan, progress: ReadingPlanProgress) -> some View {
         Button(action: {
-            if let todayReading = readingPlanStore.getTodayReading(for: plan.id),
-               let book = BibleData.book(named: todayReading.book) {
-                router.navigateToReading(
-                    book: book,
-                    chapter: todayReading.chapter,
-                    verse: todayReading.verseStart
-                )
-            }
+            selectedPlanForDetail = plan
         }) {
             HStack(spacing: 16) {
                 // Icon
@@ -434,6 +442,7 @@ struct HomeView: View {
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .contentShape(Rectangle())
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .opacity(configuration.isPressed ? 0.9 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
@@ -492,7 +501,7 @@ struct VerseFullScreenView: View {
                         .offset(y: showVerse ? 0 : 30)
                     
                     // Reference - localized to primary language
-                    Text(localizedReference(book: verse.book, chapter: verse.chapter, verse: verse.verseNumber))
+                    Text(localizedReference(verse: verse))
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
@@ -647,9 +656,12 @@ struct VerseFullScreenView: View {
         }
     }
     
-    private func localizedReference(book: String, chapter: Int, verse: Int) -> String {
-        let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
-        return "\(localizedBook) \(chapter):\(verse)"
+    private func localizedReference(verse: DailyVerse) -> String {
+        let localizedBook = BibleData.localizedBookName(verse.book, language: settingsStore.primaryLanguage)
+        if let end = verse.verseNumberEnd, end != verse.verseNumber {
+            return "\(localizedBook) \(verse.chapter):\(verse.verseNumber)-\(end)"
+        }
+        return "\(localizedBook) \(verse.chapter):\(verse.verseNumber)"
     }
 }
 

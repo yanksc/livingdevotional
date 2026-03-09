@@ -1,5 +1,7 @@
-// OnboardingView - 9-step emotionally meaningful onboarding flow
+// OnboardingView - 13-step emotionally meaningful onboarding flow
 // Main orchestrator - individual steps are in Views/Onboarding/
+// Flow: Welcome → Name → Language → Journey → Reflection → ScriptureEcho →
+//       RelationshipGoal → DeepDive → RelatedVerses → FeaturePreview → Notifications → Supporter → Prayer
 
 import SwiftUI
 
@@ -9,12 +11,23 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            SereneGradientBackground()
-                .ignoresSafeArea()
+            Group {
+                if state.currentStep == 1 {
+                    Image("SplashBackground")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                        .clipped()
+                } else {
+                    SereneGradientBackground()
+                }
+            }
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Progress indicator (hidden on paywall and final step)
-                if state.currentStep < 8 {
+                // Progress indicator
+                // Hidden on: step 1 (welcome splash), step 12 (supporter), step 13 (prayer)
+                if state.currentStep > 1 && state.currentStep < 12 {
                     progressBar
                         .padding(.horizontal)
                         .padding(.top, 20)
@@ -23,19 +36,16 @@ struct OnboardingView: View {
                 // Step content - all views have built-in navigation now
                 stepContent
             }
-            
-            // Step 8: Partnership Invitation Overlay
-            if state.currentStep == 8 {
-                PartnershipInvitationView(state: state)
-                    .zIndex(100)
-            }
         }
     }
     
     // MARK: - Progress Bar
     
+    /// Progress spans steps 2-11 (the core journey), mapped to a 0...1 range
     private var progressBar: some View {
-        ProgressView(value: Double(state.currentStep), total: Double(OnboardingState.totalSteps))
+        let adjustedStep = Double(state.currentStep - 1) // steps 2-11 → values 1-10
+        let adjustedTotal = 10.0 // 10 core steps (2 through 11)
+        return ProgressView(value: adjustedStep, total: adjustedTotal)
             .progressViewStyle(LinearProgressViewStyle(tint: AppTheme.accentColor))
     }
     
@@ -45,25 +55,33 @@ struct OnboardingView: View {
     private var stepContent: some View {
         switch state.currentStep {
         case 1:
-            NameInputView(state: state)
+            WelcomeSplashView(state: state)
         case 2:
-            LanguageSelectionView(state: state)
+            NameInputView(state: state)
         case 3:
-            JourneySelectionView(state: state)
+            LanguageSelectionView(state: state)
         case 4:
-            ReflectionInputView(state: state)
+            JourneySelectionView(state: state)
         case 5:
+            ReflectionInputView(state: state)
+        case 6:
             ScriptureEchoView(state: state)
                 .onAppear { state.scriptureEchoViewDidAppear() }
-        case 6:
+        case 7:
+            RelationshipGoalView(state: state)
+        case 8:
             DeepDiveQuestionView(state: state)
                 .onAppear { state.deepDiveQuestionViewDidAppear() }
-        case 7:
+        case 9:
             RelatedVersesView(state: state)
                 .onAppear { state.relatedVersesViewDidAppear() }
-        case 8:
-            EmptyView() // Handled by overlay
-        case 9:
+        case 10:
+            FeaturePreviewView(state: state)
+        case 11:
+            NotificationSetupView(state: state)
+        case 12:
+            SupporterInvitationView(state: state)
+        case 13:
             PrayerAmenView(state: state) {
                 // Onboarding complete - handled by state.completeOnboarding()
             }

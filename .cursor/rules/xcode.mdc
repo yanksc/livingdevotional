@@ -11,6 +11,8 @@ while writing the python or need any dependent package always use venv.
 
 make sure the implementation, answers and plans are comply and up-to-date based on the xcode 16 above as the xcode has changed. 
 
-don't run the xcodebuild.
+## CRITICAL: Do Not Run xcodebuild
+
+**Never run `xcodebuild` or any Xcode build commands.** Do not invoke `xcodebuild` for verification, testing, or any other purpose. The user will build and verify in Xcode directly.
 
 ask for commit to github after the major feature update using the personal github account yanksc@gmail.com

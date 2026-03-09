@@ -61,7 +61,7 @@ struct PrayerResultView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         PrayerTypewriterText(
                             text: prayer,
-                            speed: 0.05,
+                            speed: 0.075,
                             font: .system(size: 18, weight: .regular, design: .serif),
                             onComplete: {
                                 withAnimation(.easeIn(duration: 1.0)) {
@@ -80,35 +80,18 @@ struct PrayerResultView: View {
                     .padding(.bottom, 40)
                     
                     // Amen Button - fades in when prayer completes
-                    AmenButton(onComplete: onDismiss)
-                        .opacity(showAmenButton ? 1.0 : 0.0)
-                        .padding(.horizontal, 32)
-                        .padding(.bottom, 40)
-                }
-            }
-            
-            // Custom back button overlay - rendered last to be on top
-            VStack {
-                HStack {
-                    Button(action: onDismiss) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.9))
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(Color.black.opacity(0.3))
-                            )
+                    VStack(spacing: 12) {
+                        AmenButton(onComplete: onDismiss)
+                        
+                        Text(settingsStore.appLanguage.localizedString("AmenHoldHint"))
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.leading, 20)
-                    .padding(.top, 8)
-                    Spacer()
+                    .opacity(showAmenButton ? 1.0 : 0.0)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 40)
                 }
-                Spacer()
             }
-            .allowsHitTesting(true)
-            .zIndex(1000)
         }
     }
 }
@@ -234,7 +217,7 @@ struct AmenButton: View {
                 .scaleEffect(isHolding ? 1.05 : 1.0)
             
             // Button text
-            Text(settingsStore.appLanguage == .chineseTraditional ? "阿們" : "Amen")
+            Text(settingsStore.appLanguage.localizedString("Amen"))
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.9))
                 .scaleEffect(isHolding ? 1.1 : 1.0)

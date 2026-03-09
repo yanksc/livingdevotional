@@ -72,6 +72,60 @@ class DailyVerseService: DailyVerseServiceProtocol {
         return try await generateAndSaveDailyVerse(for: targetDate)
     }
     
+    /// Seed a verse from onboarding as today's Verse of the Day.
+    /// This ensures the user's first home screen shows the verse chosen for them during onboarding.
+    /// Only seeds if no verse is already cached for today.
+    func seedVerseFromOnboarding(verse: OnboardingRecommendedVerse) {
+        // Don't overwrite an existing verse for today
+        if let storedDate = userDefaults.object(forKey: dailyVerseDateKey) as? Date {
+            let calendar = Calendar.current
+            if calendar.isDateInToday(storedDate),
+               userDefaults.data(forKey: dailyVerseKey) != nil {
+                return
+            }
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateString = formatter.string(from: Date())
+        
+        // Parse reference into book/chapter/verse (e.g. "Psalm 46:10" or "詩篇 46:10")
+        let parts = verse.reference.components(separatedBy: CharacterSet(charactersIn: " :"))
+        let book = parts.first ?? verse.reference
+        let chapter = parts.count > 1 ? Int(parts[parts.count - 2]) ?? 1 : 1
+        let verseNum = parts.count > 2 ? Int(parts.last ?? "1") ?? 1 : 1
+        
+        let backgroundImage = SereneBackgroundManager.shared.randomBackground()
+        
+        // Create a DailyVerse with the onboarding text in BSB (English) slot
+        // The AI-generated text from onboarding may not match a specific translation,
+        // so we put it in whichever translation slots make sense
+        let dailyVerse = DailyVerse(
+            book: book,
+            chapter: chapter,
+            verseNumber: verseNum,
+            textBsb: verse.text,
+            textCuv: verse.text,
+            textCu1: verse.text,
+            textKjv: verse.text,
+            textWeb: verse.text,
+            textSpa: verse.text,
+            textPor: verse.text,
+            reference: verse.reference,
+            selectedDate: dateString,
+            reason: verse.reason,
+            source: "Chosen for you during onboarding",
+            rationale: verse.reason,
+            backgroundImage: backgroundImage
+        )
+        
+        // Save to UserDefaults cache (same keys DailyVerseService reads)
+        if let encoded = try? JSONEncoder().encode(dailyVerse) {
+            userDefaults.set(encoded, forKey: dailyVerseKey)
+            userDefaults.set(Date(), forKey: dailyVerseDateKey)
+        }
+    }
+    
     /// Force refresh the verse of the day by clearing cache and regenerating
     func forceRefreshVerseOfTheDay() async throws -> DailyVerse {
         // Clear the cached verse
@@ -173,7 +227,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
         }
         
         
-        // Fetch verse text from all translations
+        // Fetch verse range text from all translations (up to 4 consecutive verses)
         var textBsb = ""
         var textCuv = ""
         var textCu1 = ""
@@ -181,47 +235,43 @@ class DailyVerseService: DailyVerseServiceProtocol {
         var textWeb = ""
         var textSpa = ""
         var textPor = ""
+        var endVerse = selection.verse
         
-        // Load BSB
-        if let bsbVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .bsb),
-           let verse = bsbVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textBsb = verse.textBsb
+        // Load BSB (also determines the canonical verse range end)
+        if let bsbVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .bsb) {
+            let result = collectVerseRange(from: bsbVerses, startVerse: selection.verse) { $0.textBsb }
+            textBsb = result.text
+            if !result.text.isEmpty { endVerse = result.endVerse }
         }
         
         // Load CUV
-        if let cuvVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .cuv),
-           let verse = cuvVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textCuv = verse.textCuv
+        if let cuvVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .cuv) {
+            textCuv = collectVerseRange(from: cuvVerses, startVerse: selection.verse) { $0.textCuv }.text
         }
         
         // Load CU1
-        if let cu1Verses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .cu1),
-           let verse = cu1Verses.first(where: { $0.verseNumber == selection.verse }) {
-            textCu1 = verse.textCu1
+        if let cu1Verses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .cu1) {
+            textCu1 = collectVerseRange(from: cu1Verses, startVerse: selection.verse) { $0.textCu1 }.text
         }
         
         // Load KJV
-        if let kjvVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .kjv),
-           let verse = kjvVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textKjv = verse.textKjv
+        if let kjvVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .kjv) {
+            textKjv = collectVerseRange(from: kjvVerses, startVerse: selection.verse) { $0.textKjv }.text
         }
         
         // Load WEB
-        if let webVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .web),
-           let verse = webVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textWeb = verse.textWeb
+        if let webVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .web) {
+            textWeb = collectVerseRange(from: webVerses, startVerse: selection.verse) { $0.textWeb }.text
         }
         
         // Load Spanish
-        if let spaVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .spa_r09),
-           let verse = spaVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textSpa = verse.textSpa
+        if let spaVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .spa_r09) {
+            textSpa = collectVerseRange(from: spaVerses, startVerse: selection.verse) { $0.textSpa }.text
         }
         
         // Load Portuguese
-        if let porVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .por_blj),
-           let verse = porVerses.first(where: { $0.verseNumber == selection.verse }) {
-            textPor = verse.textPor
+        if let porVerses = try? await bibleService.loadVerses(book: selection.book, chapter: selection.chapter, translation: .por_blj) {
+            textPor = collectVerseRange(from: porVerses, startVerse: selection.verse) { $0.textPor }.text
         }
         
         // If no verse found in any translation, try fallback to popular verses
@@ -234,61 +284,60 @@ class DailyVerseService: DailyVerseServiceProtocol {
                 let index = (dayOfYear + offset) % popularVerses.count
                 let fallbackSelection = popularVerses[index]
                 
-                // Try to load this fallback verse
+                // Try to load this fallback verse range
                 var fallbackLoaded = false
+                var fallbackEndVerse = fallbackSelection.verse
                 
-                // Load BSB for fallback
-                if let bsbVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .bsb),
-                   let verse = bsbVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textBsb = verse.textBsb
-                    fallbackLoaded = true
+                // Load BSB for fallback (also determines the canonical verse range end)
+                if let bsbVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .bsb) {
+                    let result = collectVerseRange(from: bsbVerses, startVerse: fallbackSelection.verse) { $0.textBsb }
+                    if !result.text.isEmpty {
+                        textBsb = result.text
+                        fallbackEndVerse = result.endVerse
+                        fallbackLoaded = true
+                    }
                 }
                 
                 // Load CUV for fallback
-                if let cuvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cuv),
-                   let verse = cuvVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textCuv = verse.textCuv
-                    fallbackLoaded = true
+                if let cuvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cuv) {
+                    let result = collectVerseRange(from: cuvVerses, startVerse: fallbackSelection.verse) { $0.textCuv }
+                    if !result.text.isEmpty { textCuv = result.text; fallbackLoaded = true }
                 }
                 
                 // Load CU1 for fallback
-                if let cu1Verses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cu1),
-                   let verse = cu1Verses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textCu1 = verse.textCu1
-                    fallbackLoaded = true
+                if let cu1Verses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .cu1) {
+                    let result = collectVerseRange(from: cu1Verses, startVerse: fallbackSelection.verse) { $0.textCu1 }
+                    if !result.text.isEmpty { textCu1 = result.text; fallbackLoaded = true }
                 }
                 
                 // Load KJV for fallback
-                if let kjvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .kjv),
-                   let verse = kjvVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textKjv = verse.textKjv
-                    fallbackLoaded = true
+                if let kjvVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .kjv) {
+                    let result = collectVerseRange(from: kjvVerses, startVerse: fallbackSelection.verse) { $0.textKjv }
+                    if !result.text.isEmpty { textKjv = result.text; fallbackLoaded = true }
                 }
                 
                 // Load WEB for fallback
-                if let webVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .web),
-                   let verse = webVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textWeb = verse.textWeb
-                    fallbackLoaded = true
+                if let webVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .web) {
+                    let result = collectVerseRange(from: webVerses, startVerse: fallbackSelection.verse) { $0.textWeb }
+                    if !result.text.isEmpty { textWeb = result.text; fallbackLoaded = true }
                 }
                 
                 // Load Spanish for fallback
-                if let spaVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .spa_r09),
-                   let verse = spaVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textSpa = verse.textSpa
-                    fallbackLoaded = true
+                if let spaVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .spa_r09) {
+                    let result = collectVerseRange(from: spaVerses, startVerse: fallbackSelection.verse) { $0.textSpa }
+                    if !result.text.isEmpty { textSpa = result.text; fallbackLoaded = true }
                 }
                 
                 // Load Portuguese for fallback
-                if let porVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .por_blj),
-                   let verse = porVerses.first(where: { $0.verseNumber == fallbackSelection.verse }) {
-                    textPor = verse.textPor
-                    fallbackLoaded = true
+                if let porVerses = try? await bibleService.loadVerses(book: fallbackSelection.book, chapter: fallbackSelection.chapter, translation: .por_blj) {
+                    let result = collectVerseRange(from: porVerses, startVerse: fallbackSelection.verse) { $0.textPor }
+                    if !result.text.isEmpty { textPor = result.text; fallbackLoaded = true }
                 }
                 
                 if fallbackLoaded {
-                    // Successfully loaded fallback verse - update selection
+                    // Successfully loaded fallback verse range - update selection and end verse
                     selection = fallbackSelection
+                    endVerse = fallbackEndVerse
                     reason = "Daily inspiration"
                     source = nil
                     break
@@ -320,7 +369,9 @@ class DailyVerseService: DailyVerseServiceProtocol {
         // Generate rationale using AI if available and source exists
         var rationale: String? = nil
         if let aiService = aiService, let source = source, !verseText.isEmpty {
-            let verseReference = "\(selection.book) \(selection.chapter):\(selection.verse)"
+            let verseReference = endVerse > selection.verse
+                ? "\(selection.book) \(selection.chapter):\(selection.verse)-\(endVerse)"
+                : "\(selection.book) \(selection.chapter):\(selection.verse)"
             rationale = try? await aiService.generateVerseRationale(
                 verseReference: verseReference,
                 verseText: verseText,
@@ -337,10 +388,18 @@ class DailyVerseService: DailyVerseServiceProtocol {
         formatter.dateFormat = "yyyy-MM-dd"
         let dateString = formatter.string(from: date)
         
+        let referenceString: String
+        if endVerse > selection.verse {
+            referenceString = "\(selection.book) \(selection.chapter):\(selection.verse)-\(endVerse)"
+        } else {
+            referenceString = "\(selection.book) \(selection.chapter):\(selection.verse)"
+        }
+        
         let dailyVerse = DailyVerse(
             book: selection.book,
             chapter: selection.chapter,
             verseNumber: selection.verse,
+            verseNumberEnd: endVerse > selection.verse ? endVerse : nil,
             textBsb: textBsb,
             textCuv: textCuv,
             textCu1: textCu1,
@@ -348,7 +407,7 @@ class DailyVerseService: DailyVerseServiceProtocol {
             textWeb: textWeb,
             textSpa: textSpa,
             textPor: textPor,
-            reference: "\(selection.book) \(selection.chapter):\(selection.verse)",
+            reference: referenceString,
             selectedDate: dateString,
             reason: reason,
             source: source,
@@ -368,5 +427,27 @@ class DailyVerseService: DailyVerseServiceProtocol {
         }
         
         return dailyVerse
+    }
+    
+    /// Collect up to `maxVerses` consecutive verses starting at `startVerse` from a pre-loaded array.
+    /// Returns the joined text and the actual last verse number that was found.
+    private func collectVerseRange(
+        from verses: [BibleVerse],
+        startVerse: Int,
+        maxVerses: Int = 4,
+        getText: (BibleVerse) -> String
+    ) -> (text: String, endVerse: Int) {
+        let endLimit = startVerse + maxVerses - 1
+        let rangeVerses = verses
+            .filter { $0.verseNumber >= startVerse && $0.verseNumber <= endLimit }
+            .sorted { $0.verseNumber < $1.verseNumber }
+        
+        guard !rangeVerses.isEmpty else {
+            return ("", startVerse)
+        }
+        
+        let text = rangeVerses.map { getText($0) }.filter { !$0.isEmpty }.joined(separator: " ")
+        let endVerse = rangeVerses.last?.verseNumber ?? startVerse
+        return (text, endVerse)
     }
 }

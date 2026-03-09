@@ -460,6 +460,69 @@ enum ExplanationDepth: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Relationship Desire (what user is looking for with God & the Bible)
+
+enum RelationshipDesire: String, Codable, CaseIterable, Identifiable {
+    case closerWalk = "closerWalk"
+    case understandScripture = "understandScripture"
+    case peaceInUncertainty = "peaceInUncertainty"
+    case directionForLife = "directionForLife"
+    case healingRestoration = "healingRestoration"
+    case consistentHabit = "consistentHabit"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .closerWalk: return "A closer walk with God"
+        case .understandScripture: return "Understanding Scripture deeper"
+        case .peaceInUncertainty: return "Peace in uncertain times"
+        case .directionForLife: return "Direction for life decisions"
+        case .healingRestoration: return "Healing and restoration"
+        case .consistentHabit: return "Building a consistent habit"
+        }
+    }
+    
+    var displayNameChinese: String {
+        switch self {
+        case .closerWalk: return "更親近神"
+        case .understandScripture: return "更深理解聖經"
+        case .peaceInUncertainty: return "在不確定中找到平安"
+        case .directionForLife: return "人生方向的引導"
+        case .healingRestoration: return "醫治與恢復"
+        case .consistentHabit: return "建立穩定的靈修習慣"
+        }
+    }
+    
+    func localizedDisplayName(for language: AppLanguage) -> String {
+        let languageCode = language.resolvedLanguageCode()
+        switch languageCode {
+        case "zh-Hans":
+            switch self {
+            case .closerWalk: return "更亲近神"
+            case .understandScripture: return "更深理解圣经"
+            case .peaceInUncertainty: return "在不确定中找到平安"
+            case .directionForLife: return "人生方向的引导"
+            case .healingRestoration: return "医治与恢复"
+            case .consistentHabit: return "建立稳定的灵修习惯"
+            }
+        case "zh-Hant":
+            return displayNameChinese
+        case "es":
+            switch self {
+            case .closerWalk: return "Caminar más cerca de Dios"
+            case .understandScripture: return "Entender las Escrituras más profundamente"
+            case .peaceInUncertainty: return "Paz en tiempos de incertidumbre"
+            case .directionForLife: return "Dirección para decisiones de vida"
+            case .healingRestoration: return "Sanación y restauración"
+            case .consistentHabit: return "Construir un hábito constante"
+            }
+        default:
+            return displayName
+        }
+    }
+}
+
 // MARK: - Onboarding Saved Verse (lightweight struct for onboarding flow)
 
 struct OnboardingSavedVerse: Codable, Equatable {
@@ -533,6 +596,7 @@ struct UserProfile: Codable {
     
     // New onboarding fields
     var personalReflection: String?
+    var relationshipDesire: RelationshipDesire?
     var savedOnboardingVerse: OnboardingSavedVerse?
     var recommendedBooks: [RecommendedBook]?
     var recommendedVerses: [OnboardingRecommendedVerse]?
@@ -547,6 +611,7 @@ struct UserProfile: Codable {
         dailyTimeCommitment: DailyTimeCommitment = .tenMinutes,
         explanationDepth: ExplanationDepth = .someBackground,
         personalReflection: String? = nil,
+        relationshipDesire: RelationshipDesire? = nil,
         savedOnboardingVerse: OnboardingSavedVerse? = nil,
         recommendedBooks: [RecommendedBook]? = nil,
         recommendedVerses: [OnboardingRecommendedVerse]? = nil
@@ -560,6 +625,7 @@ struct UserProfile: Codable {
         self.dailyTimeCommitment = dailyTimeCommitment
         self.explanationDepth = explanationDepth
         self.personalReflection = personalReflection
+        self.relationshipDesire = relationshipDesire
         self.savedOnboardingVerse = savedOnboardingVerse
         self.recommendedBooks = recommendedBooks
         self.recommendedVerses = recommendedVerses

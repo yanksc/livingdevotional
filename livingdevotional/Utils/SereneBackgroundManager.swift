@@ -196,9 +196,9 @@ class SereneBackgroundManager: ObservableObject {
     
     // All available serene background filenames from bg_serene folder
     private let allBackgrounds: [String] = [
+        // Original avif set
         "photo-1435224654926-ecc9f7fa028c.avif",
         "photo-1444791252404-500e5b11f71b.avif",
-        "photo-1463134836706-8bcc60f7d78b.avif",
         "photo-1465173121987-373740a169b3.avif",
         "photo-1472396961693-142e6e269027.avif",
         "photo-1474540412665-1cdae210ae6b.avif",
@@ -232,12 +232,22 @@ class SereneBackgroundManager: ObservableObject {
         "photo-1592677298363-c2586b8cafde.avif",
         "photo-1603729287771-e03b8ac6ebf5.avif",
         "photo-1615729947596-a598e5de0ab3.avif",
-        "premium_photo-1667113144491-eaccf04e894b.avif",
-        "premium_photo-1667134262333-f33be0381905.avif",
-        "premium_photo-1670148434570-8130d3bc05c9.avif",
-        "premium_photo-1675198764382-94d5c093df30.avif",
-        "premium_photo-1675355674737-ebcd16825f68.avif",
-        "istockphoto-1322277517-612x612.jpg"
+        // New Unsplash additions
+        "aaron-burden-09AhDCedXF8-unsplash.jpg",
+        "alexander-grey-SavQfLRm4Do-unsplash.jpg",
+        "ann-savchenko-yOQntxCp0r0-unsplash.jpg",
+        "colin-lloyd-V72xxgvew-A-unsplash.jpg",
+        "daniel-angele-Joo3UBw789Q-unsplash.jpg",
+        "heriberto-garcia-YdjrYLvLO5Y-unsplash.jpg",
+        "jakub-kriz-4r_tHA3gsUY-unsplash.jpg",
+        "kalen-emsley-Bkci_8qcdvQ-unsplash.jpg",
+        "katie-moum-5FHv5nS7yGg-unsplash.jpg",
+        "lukasz-szmigiel-jFCViYFYcus-unsplash.jpg",
+        "luke-richardson-dI7vfR1Bqcg-unsplash.jpg",
+        "mark-basarab-z8ct_Q3oCqM-unsplash.jpg",
+        "nic-y-c-WzazSaQF1F8-unsplash.jpg",
+        "vinicius-henrique-photography-oQ-Dw_2SMUM-unsplash.jpg",
+        "yoal-desurmont-9CjgeMAM2SI-unsplash.jpg"
     ]
     
     // Shuffled backgrounds for the current session (for category cards)

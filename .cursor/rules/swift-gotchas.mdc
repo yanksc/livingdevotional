@@ -67,3 +67,119 @@ allBooks.first(where: { $0.name == bookName })
 ```
 
 **Always verify properties exist before using them. When in doubt, read the ViewModel file.**
+
+---
+
+# Typewriter Text Must Use Fixed Vertical Layout
+
+When using a typewriter (character-by-character reveal) effect, the layout **must not shift vertically** as new characters or lines appear. Use a `ZStack` with the full text rendered invisibly (`.hidden()`) to reserve the exact space needed upfront.
+
+```swift
+// ❌ BAD - Layout shifts as text grows, pushing content below it
+Text(displayedText)
+    .font(.system(size: 17, design: .serif))
+    .lineSpacing(10)
+    .frame(minHeight: 60)
+
+// ✅ GOOD - Full text reserves space; visible text fills in without shifting
+ZStack(alignment: .center) {
+    // Invisible full text reserves the exact vertical space
+    Text(fullText)
+        .font(.system(size: 17, design: .serif))
+        .lineSpacing(10)
+        .padding(.horizontal, 36)
+        .hidden()
+
+    // Visible typewriter text
+    Text(displayedText)
+        .font(.system(size: 17, design: .serif))
+        .lineSpacing(10)
+        .padding(.horizontal, 36)
+}
+```
+
+**Key rules:**
+- The hidden `Text` and visible `Text` must use **identical** font, lineSpacing, and padding so their measurements match exactly.
+- Never rely on `minHeight` or hardcoded frame heights for typewriter text; they break across locales and font sizes.
+- This applies to both custom typewriter implementations and the shared `TypewriterText` component.
+
+---
+
+# Never Use Bare Array Subscript on Dynamic Indices
+
+**CRITICAL**: Never access an array element with `array[index]` when the index comes from stored state, user data, or computed values. Always bounds-check first or use safe alternatives.
+
+This caused a production crash: `completeDay()` advanced `currentDay` past the end of `plan.days`, then `getTodayReading()` did `plan.days[currentDay]` without checking bounds.
+
+```swift
+// ❌ BAD - Crashes if index is out of range
+let day = plan.days[progress.currentDay]
+
+// ✅ GOOD - Guard bounds before subscripting
+guard progress.currentDay >= 0, progress.currentDay < plan.days.count else {
+    return plan.days.last
+}
+let day = plan.days[progress.currentDay]
+
+// ✅ GOOD - Use .first / .last for edge access
+return plan.days.first
+
+// ✅ GOOD - Use safe subscript or indices.contains
+guard plan.days.indices.contains(index) else { return nil }
+
+// ✅ GOOD - Clamp when writing the index
+progress.currentDay = min(newValue, plan.days.count - 1)
+```
+
+**Rules:**
+- When writing an index to storage (UserDefaults, state), clamp it within valid range.
+- When reading from storage to subscript an array, always guard `index < array.count`.
+- In `#Preview` blocks, use `.first` instead of `[0]`.
+- `ForEach(array)` and `.prefix()` are safe; raw subscript with a variable index is not.
+
+---
+
+# Bible JSON Verse Content May Contain Mixed Types (Not Just Strings)
+
+The `por_blj` (Portuguese) Bible data from `bible.helloao.org` includes footnote reference objects inline in verse content arrays alongside plain strings:
+
+```json
+"content": ["Ai da suja", {"noteId": 4}, "e contaminada"]
+```
+
+**Never decode `APIVerseContent.content` as `[String]`** — this crashes for any chapter containing footnotes.
+
+```swift
+// ❌ BAD - Fails to decode chapters with footnotes (e.g. Zephaniah 3, many others)
+struct APIVerseContent: Codable {
+    let content: [String]
+}
+
+// ✅ GOOD - Use a mixed-type enum that skips non-string elements
+private enum VerseContentElement: Codable {
+    case text(String)
+    case footnote
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let str = try? container.decode(String.self) { self = .text(str) }
+        else { self = .footnote }
+    }
+    var textValue: String? { if case .text(let s) = self { return s } else { return nil } }
+}
+
+struct APIVerseContent: Codable {
+    let content: [VerseContentElement]
+}
+
+// Then join only the text parts:
+let verseText = verseContent.content.compactMap(\.textValue).joined(separator: " ")
+```
+
+This applies to all translations using the API format (`spa_r09`, `por_blj`). Spanish currently has no footnotes but the same decoder is shared.
+
+---
+
+# Do Not Run xcodebuild
+
+**CRITICAL**: Never run `xcodebuild` or any Xcode build commands. Do not invoke builds for verification or testing. The user builds and verifies in Xcode directly.

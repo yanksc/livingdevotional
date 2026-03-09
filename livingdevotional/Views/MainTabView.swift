@@ -21,13 +21,16 @@ struct MainTabView: View {
             
             // Bible Tab (1)
             BibleTabView(viewModel: bibleViewModel)
+                .environmentObject(router)
                 .tabItem {
                     Label("Bible", systemImage: "book.fill")
                 }
                 .tag(1)
             
             // Today Tab (2)
-            HomeView()
+            NavigationStack {
+                HomeView()
+            }
                 .environmentObject(router)
                 .environmentObject(bibleViewModel)
                 .tabItem {
@@ -37,17 +40,11 @@ struct MainTabView: View {
             
             // Path Tab (3)
             JourneyView()
+                .environmentObject(router)
                 .tabItem {
                     Label("Path", systemImage: "road.lanes")
                 }
                 .tag(3)
-            
-            // Settings Tab (4)
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(4)
         }
         .tint(AppTheme.accentColor)
         .toolbarBackground(AppTheme.backgroundGradient, for: .tabBar)
@@ -59,6 +56,26 @@ struct MainTabView: View {
                 router.selectedTab = 1 // Switch to Bible tab
             }
         }
+        .sheet(isPresented: $router.showSettings) {
+            SettingsView()
+                .environmentObject(router)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $router.showUsageLimitPaywall) {
+            ZStack {
+                SereneGradientBackground()
+                    .ignoresSafeArea()
+                
+                SupporterFullPaywallView(
+                    contextualHeader: router.usageLimitPaywallContext.isEmpty ? nil : router.usageLimitPaywallContext,
+                    onDismiss: {
+                        router.showUsageLimitPaywall = false
+                        router.usageLimitPaywallContext = ""
+                    }
+                )
+            }
+        }
     }
     
     private var currentTab: Int {
@@ -67,7 +84,6 @@ struct MainTabView: View {
         case .bible, .reading: return 1
         case .home: return 2
         case .journey: return 3
-        case .settings, .profile: return 4
         default: return 2
         }
     }
@@ -78,7 +94,6 @@ struct MainTabView: View {
         case 1: return .bible
         case 2: return .home
         case 3: return .journey
-        case 4: return .settings
         default: return .home
         }
     }
@@ -87,7 +102,9 @@ struct MainTabView: View {
 struct BibleTabView: View {
     @ObservedObject var viewModel: BibleViewModel
     @ObservedObject var profileStore = UserProfileStore.shared
+    @ObservedObject var planStore = ReadingPlanStore.shared
     @ObservedObject var settingsStore = SettingsStore.shared
+    @EnvironmentObject var router: AppRouter
     @State private var showBookSelector = false
     
     var body: some View {
@@ -99,8 +116,9 @@ struct BibleTabView: View {
                 // Show ReadingView if book and chapter are selected
                 if let book = viewModel.selectedBook, let chapter = viewModel.selectedChapter {
                     ReadingView(book: book, chapter: chapter, bibleViewModel: viewModel)
-                } else if let recommendedBooks = profileStore.profile.recommendedBooks, !recommendedBooks.isEmpty {
-                    // Show recommended books when no selection
+                } else if let recommendedBooks = profileStore.profile.recommendedBooks, !recommendedBooks.isEmpty,
+                          planStore.progress.isEmpty {
+                    // Show recommended books only when no selection and no previous reading plan
                     RecommendedBooksStartView(
                         books: recommendedBooks,
                         viewModel: viewModel,
@@ -131,6 +149,14 @@ struct BibleTabView: View {
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                // Only show avatar when not in ReadingView (ReadingView has its own dense toolbar)
+                if viewModel.selectedBook == nil || viewModel.selectedChapter == nil {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ProfileAvatarButton { router.showSettings = true }
+                    }
+                }
+            }
             .sheet(isPresented: $showBookSelector) {
                 BookSelectionSheet(viewModel: viewModel, isPresented: $showBookSelector)
             }
@@ -205,20 +231,13 @@ struct RecommendedBooksStartView: View {
     }
     
     private var headerText: String {
-        let name = profileStore.profile.name
-        let displayName = name.isEmpty ? "" : "\(name), "
         let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
-        
-        if isChinese {
-            return "\(displayName)可以從這裡開始"
-        } else {
-            return "\(displayName)begin your journey here"
-        }
+        return isChinese ? "可以從這裡開始" : "Begin your journey here"
     }
     
     private var subtitleText: String {
         let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
-        return isChinese ? "根據你分享的內容，這些書卷特別適合你" : "Based on what you shared, these books are perfect for you"
+        return isChinese ? "根據你分享的內容，這些書卷或許能陪伴你的旅程" : "Based on what you shared, these books may resonate with your journey"
     }
     
     private var browseAllText: String {
@@ -256,6 +275,7 @@ struct RecommendedBookCard: View {
     let book: RecommendedBook
     let onTap: () -> Void
     @ObservedObject var settingsStore = SettingsStore.shared
+    @ObservedObject var profileStore = UserProfileStore.shared
     
     var body: some View {
         Button(action: onTap) {
@@ -264,15 +284,9 @@ struct RecommendedBookCard: View {
                     Text(localizedBookName)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(AppTheme.primaryText)
-                    
-                    Spacer()
-                    
-                    Image(systemName: bookIcon)
-                        .font(.system(size: 16))
-                        .foregroundColor(AppTheme.accentColor.opacity(0.7))
                 }
                 
-                Text(book.personalizedIntro)
+                Text(displayIntro)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(AppTheme.secondaryText)
                     .multilineTextAlignment(.leading)
@@ -303,6 +317,19 @@ struct RecommendedBookCard: View {
         .buttonStyle(PlainButtonStyle())
     }
     
+    /// Sanitized intro for display: no emojis, no [name], no leading "Name, "
+    private var displayIntro: String {
+        var result = book.personalizedIntro
+        result = result.replacingOccurrences(of: "[name]", with: "", options: .caseInsensitive)
+        let name = profileStore.profile.name
+        if !name.isEmpty, result.hasPrefix("\(name), ") {
+            result = String(result.dropFirst("\(name), ".count))
+        }
+        result = String(result.unicodeScalars.filter { !$0.properties.isEmoji })
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "  ", with: " ")
+    }
+    
     private var localizedBookName: String {
         let isChinese = settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
         let chineseNames: [String: String] = [
@@ -318,18 +345,6 @@ struct RecommendedBookCard: View {
             return chinese
         }
         return book.bookName
-    }
-    
-    private var bookIcon: String {
-        switch book.bookName {
-        case "Psalms": return "music.note"
-        case "Matthew": return "book.closed"
-        case "Philippians": return "heart"
-        case "John": return "sun.max"
-        case "Romans": return "lightbulb"
-        case "Proverbs": return "brain"
-        default: return "book"
-        }
     }
     
     private var startReadingText: String {

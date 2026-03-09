@@ -1,0 +1,6 @@
+// Release.xcconfig - Used for Archive/App Store builds
+// MUST use Production (Apple) API key - get from RevenueCat dashboard:
+// Project → API Keys → Apple Public Key (NOT Test Store)
+// Copy LocalSecrets.xcconfig.template to LocalSecrets.xcconfig and add your Production key
+
+#include "LocalSecrets.xcconfig"

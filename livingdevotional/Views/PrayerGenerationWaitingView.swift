@@ -5,8 +5,8 @@ import SwiftUI
 
 struct PrayerGenerationWaitingView: View {
     let verse: DailyVerse?
-    let focus: PrayerFocus?
-    let emotionalNeed: EmotionalNeed?
+    let topic: PrayerTopic?
+    let customTopicText: String
     var prayerIntent: PrayerIntent? = nil
     
     @ObservedObject private var settingsStore = SettingsStore.shared
@@ -70,9 +70,9 @@ struct PrayerGenerationWaitingView: View {
             }
         }
         
-        // Determine words based on focus or emotional need
-        if let need = emotionalNeed {
-            switch need {
+        // Determine words based on topic
+        if let t = topic {
+            switch t {
             case .peace:
                 if isSimplified {
                     return [
@@ -96,7 +96,7 @@ struct PrayerGenerationWaitingView: View {
                         "Rest in His presence..."
                     ]
                 }
-            case .wisdom:
+            case .wisdom, .guidance:
                 if isSimplified {
                     return [
                         "寻求祂的智慧...",
@@ -119,7 +119,7 @@ struct PrayerGenerationWaitingView: View {
                         "Wait quietly..."
                     ]
                 }
-            case .strength:
+            case .strength, .courage:
                 if isSimplified {
                     return [
                         "祂是你的力量...",
@@ -188,32 +188,6 @@ struct PrayerGenerationWaitingView: View {
                         "Rest in His grace..."
                     ]
                 }
-            case .other:
-                if isSimplified {
-                    return [
-                        "亲近神...",
-                        "祂必亲近你...",
-                        "安静等候...",
-                        "在祂里面有平安..."
-                    ]
-                } else if isChinese {
-                    return [
-                        "親近神...",
-                        "祂必親近你...",
-                        "安靜等候...",
-                        "在祂裡面有平安..."
-                    ]
-                } else {
-                    return [
-                        "Draw near to God...",
-                        "He will draw near to you...",
-                        "Wait quietly...",
-                        "Peace is in Him..."
-                    ]
-                }
-            }
-        } else if let focus = focus {
-            switch focus {
             case .worry:
                 if isSimplified {
                     return [
@@ -260,98 +234,30 @@ struct PrayerGenerationWaitingView: View {
                         "Rest in gratitude..."
                     ]
                 }
-            case .guidance:
-                if isSimplified {
-                    return [
-                        "寻求祂的引导...",
-                        "祂必指示你的路...",
-                        "将你的道路交托祂...",
-                        "安静等候..."
-                    ]
-                } else if isChinese {
-                    return [
-                        "尋求祂的引導...",
-                        "祂必指示你的路...",
-                        "將你的道路交託祂...",
-                        "安靜等候..."
-                    ]
-                } else {
-                    return [
-                        "Seek His guidance...",
-                        "He will direct your path...",
-                        "Commit your way to Him...",
-                        "Wait for His leading..."
-                    ]
-                }
-            case .strength:
-                if isSimplified {
-                    return [
-                        "祂是你的力量...",
-                        "靠主得刚强...",
-                        "祂必加添力量...",
-                        "安静等候..."
-                    ]
-                } else if isChinese {
-                    return [
-                        "祂是你的力量...",
-                        "靠主得剛強...",
-                        "祂必加添力量...",
-                        "安靜等候..."
-                    ]
-                } else {
-                    return [
-                        "He is your strength...",
-                        "Be strong in the Lord...",
-                        "He will renew you...",
-                        "Wait in strength..."
-                    ]
-                }
-            case .recentFocus:
-                if isSimplified {
-                    return [
-                        "回顾最近的关注...",
-                        "将一切交托给神...",
-                        "安静等候...",
-                        "在祂里面有平安..."
-                    ]
-                } else if isChinese {
-                    return [
-                        "回顧最近的關注...",
-                        "將一切交託給神...",
-                        "安靜等候...",
-                        "在祂裡面有平安..."
-                    ]
-                } else {
-                    return [
-                        "Reflect on recent focus...",
-                        "Commit all to God...",
-                        "Wait quietly...",
-                        "Peace is in Him..."
-                    ]
-                }
-            case .custom:
-                if isSimplified {
-                    return [
-                        "将你的心愿告诉神...",
-                        "祂必垂听你的祷告...",
-                        "安静等候...",
-                        "在祂里面有平安..."
-                    ]
-                } else if isChinese {
-                    return [
-                        "將你的心願告訴神...",
-                        "祂必垂聽你的禱告...",
-                        "安靜等候...",
-                        "在祂裡面有平安..."
-                    ]
-                } else {
-                    return [
-                        "Tell God your heart's desire...",
-                        "He will hear your prayer...",
-                        "Wait quietly...",
-                        "Peace is in Him..."
-                    ]
-                }
+            }
+        } else if !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Custom topic text - use generic calming words
+            if isSimplified {
+                return [
+                    "将你的心愿告诉神...",
+                    "祂必垂听你的祷告...",
+                    "安静等候...",
+                    "在祂里面有平安..."
+                ]
+            } else if isChinese {
+                return [
+                    "將你的心願告訴神...",
+                    "祂必垂聽你的禱告...",
+                    "安靜等候...",
+                    "在祂裡面有平安..."
+                ]
+            } else {
+                return [
+                    "Tell God your heart's desire...",
+                    "He will hear your prayer...",
+                    "Wait quietly...",
+                    "Peace is in Him..."
+                ]
             }
         } else {
             // Default calming words
@@ -387,7 +293,7 @@ struct PrayerGenerationWaitingView: View {
                     .frame(height: geometry.size.height * 0.35)
                 
                 VStack(spacing: 40) {
-                        // Verse display with fade-in animation
+                        // Verse display in rounded box with fade-in animation
                         if let verse = verse {
                             VStack(spacing: 16) {
                                 Text(verse.text(for: settingsStore.primaryLanguage))
@@ -395,7 +301,8 @@ struct PrayerGenerationWaitingView: View {
                                     .foregroundColor(.white.opacity(0.95))
                                     .multilineTextAlignment(.center)
                                     .lineSpacing(8)
-                                    .padding(.horizontal, 32)
+                                    .lineLimit(nil)
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
                                 
                                 if settingsStore.showSecondaryLanguage && settingsStore.secondaryLanguage != .none {
@@ -404,7 +311,8 @@ struct PrayerGenerationWaitingView: View {
                                         .foregroundColor(.white.opacity(0.85))
                                         .multilineTextAlignment(.center)
                                         .lineSpacing(6)
-                                        .padding(.horizontal, 32)
+                                        .lineLimit(nil)
+                                        .fixedSize(horizontal: false, vertical: true)
                                         .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
                                 }
                                 
@@ -414,6 +322,19 @@ struct PrayerGenerationWaitingView: View {
                                     .foregroundColor(.white.opacity(0.8))
                                     .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 1)
                             }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.ultraThinMaterial.opacity(0.35))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 1.5)
+                                    )
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                            .padding(.horizontal, 24)
                             .opacity(verseOpacity)
                             .transition(.opacity)
                         }

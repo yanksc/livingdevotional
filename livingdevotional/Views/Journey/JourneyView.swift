@@ -15,6 +15,7 @@ struct JourneyView: View {
     @ObservedObject private var settingsStore = SettingsStore.shared
     @EnvironmentObject var router: AppRouter
     @State private var showRecordsSheet = false
+    @State private var showAnalysisFullScreen = false
     
     var body: some View {
         NavigationStack {
@@ -29,7 +30,9 @@ struct JourneyView: View {
                             AILoadingView()
                         } else if let analysis = viewModel.aiAnalysis {
                             // Path Status Card (merged with encouragement and summary)
-                            PathStatusCardView(pathStatus: analysis.pathStatus)
+                            PathStatusCardView(pathStatus: analysis.pathStatus) {
+                                showAnalysisFullScreen = true
+                            }
                             
                             // Path Highlights
                             if !analysis.pathHighlights.isEmpty {
@@ -96,6 +99,11 @@ struct JourneyView: View {
             .sheet(isPresented: $showRecordsSheet) {
                 MyRecordsSheet()
                     .environmentObject(router)
+            }
+            .fullScreenCover(isPresented: $showAnalysisFullScreen) {
+                if let analysis = viewModel.aiAnalysis {
+                    AnalysisFullScreenView(pathStatus: analysis.pathStatus)
+                }
             }
             .onAppear {
                 viewModel.loadPersistedAnalysisIfNeeded(appLanguage: settingsStore.appLanguage)

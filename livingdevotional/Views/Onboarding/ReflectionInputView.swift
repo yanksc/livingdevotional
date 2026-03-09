@@ -1,4 +1,4 @@
-// ReflectionInputView - Step 4: Open reflection
+// ReflectionInputView - Step 5: Open reflection
 
 import SwiftUI
 
@@ -16,7 +16,7 @@ struct ReflectionInputView: View {
             // Prompt with typewriter effect
             TypewriterText(
                 text: promptText,
-                fontSize: 22,
+                fontSize: OnboardingDesign.promptFontSize,
                 isChinese: state.isChinese
             ) {
                 // After prompt completes, show text field
@@ -104,17 +104,27 @@ struct ReflectionInputView: View {
     
     // MARK: - Text Input Area
     
+    private var hintText: String {
+        if state.isChinese {
+            return "分享越多細節，我們越能為你量身打造體驗"
+        } else if state.isSpanish {
+            return "Cuanto más compartas, mejor podremos personalizar tu experiencia"
+        } else {
+            return "The more you share, the more personalized your experience will be"
+        }
+    }
+    
     private var textInputArea: some View {
         VStack(spacing: 8) {
             ZStack(alignment: .topLeading) {
-                // Placeholder
-                if state.reflection.isEmpty {
-                    Text(placeholderText)
-                        .font(.system(size: 17))
-                        .foregroundColor(AppTheme.secondaryText.opacity(0.5))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                }
+                // Placeholder - always in hierarchy, opacity-based to avoid layout thrash on first keystroke
+                Text(placeholderText)
+                    .font(.system(size: 17))
+                    .foregroundColor(AppTheme.secondaryText.opacity(0.5))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .opacity(state.reflection.isEmpty ? 1 : 0)
+                    .allowsHitTesting(false)
                 
                 // TextEditor
                 TextEditor(text: $state.reflection)
@@ -122,6 +132,7 @@ struct ReflectionInputView: View {
                     .font(.system(size: 17))
                     .foregroundColor(AppTheme.primaryText)
                     .scrollContentBackground(.hidden)
+                    .autocorrectionDisabled()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
             }
@@ -138,6 +149,12 @@ struct ReflectionInputView: View {
                         lineWidth: isTextFieldFocused ? 2 : 1
                     )
             )
+            
+            // Hint text below the text field
+            Text(hintText)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(AppTheme.secondaryText.opacity(0.6))
+                .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 24)
     }

@@ -33,7 +33,6 @@ class AppRouter: ObservableObject {
                 }
             case 2: currentRoute = .home
             case 3: currentRoute = .journey
-            case 4: currentRoute = .settings
             default: currentRoute = .home
             }
         }
@@ -42,7 +41,29 @@ class AppRouter: ObservableObject {
     // For showing verse of the day full screen from widget
     @Published var showVerseOfTheDayFullScreen = false
     
+    // For showing settings full-screen from profile avatar button
+    @Published var showSettings = false
+    
+    // For showing usage limit paywall when free user hits AI/prayer/plan limits
+    @Published var showUsageLimitPaywall = false
+    @Published var usageLimitPaywallContext: String = ""
+    
+    /// Present the supporter pricing paywall with optional contextual header (e.g. "You've reached today's limit")
+    func presentUsageLimitPaywall(context: String = "") {
+        usageLimitPaywallContext = context
+        showUsageLimitPaywall = true
+    }
+    
     func navigate(to route: AppRoute) {
+        // Settings and profile routes open the settings overlay instead of a tab
+        if case .settings = route {
+            showSettings = true
+            return
+        }
+        if case .profile = route {
+            showSettings = true
+            return
+        }
         currentRoute = route
     }
     

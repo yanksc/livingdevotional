@@ -440,9 +440,52 @@ struct BibleData {
     
     // MARK: - Helper Methods
     
-    /// Get book by name
+    /// Get book by name with fuzzy matching
+    /// Supports exact match, case-insensitive match, and common aliases
     static func book(named name: String) -> BibleBook? {
-        books.first { $0.name == name }
+        // First try exact match
+        if let exact = books.first(where: { $0.name == name }) {
+            return exact
+        }
+        
+        // Try normalized fuzzy match (case-insensitive, trimmed)
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let fuzzy = books.first(where: { 
+            $0.name.caseInsensitiveCompare(normalized) == .orderedSame 
+        }) {
+            return fuzzy
+        }
+        
+        // Try common aliases
+        let aliases: [String: String] = [
+            "Psalm": "Psalms",
+            "Song of Songs": "Song of Solomon",
+            "Songs": "Song of Solomon",
+            "1John": "1 John",
+            "2John": "2 John",
+            "3John": "3 John",
+            "1Peter": "1 Peter",
+            "2Peter": "2 Peter",
+            "1Samuel": "1 Samuel",
+            "2Samuel": "2 Samuel",
+            "1Kings": "1 Kings",
+            "2Kings": "2 Kings",
+            "1Chronicles": "1 Chronicles",
+            "2Chronicles": "2 Chronicles",
+            "1Corinthians": "1 Corinthians",
+            "2Corinthians": "2 Corinthians",
+            "1Thessalonians": "1 Thessalonians",
+            "2Thessalonians": "2 Thessalonians",
+            "1Timothy": "1 Timothy",
+            "2Timothy": "2 Timothy"
+        ]
+        
+        if let aliasedName = aliases[normalized] {
+            return books.first { $0.name == aliasedName }
+        }
+        
+        // No match found
+        return nil
     }
     
     /// Get book ID for API calls

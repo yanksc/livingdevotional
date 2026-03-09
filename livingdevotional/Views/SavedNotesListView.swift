@@ -2,15 +2,44 @@
 
 import SwiftUI
 
+// MARK: - SavedNotesTab Enum
+
+enum SavedNotesTab: String, CaseIterable {
+    case all = "All"
+    case highlights = "Highlights"
+    case notes = "Notes"
+    
+    func localizedTitle(_ language: String) -> String {
+        switch self {
+        case .all:
+            return language == "zh-Hant" ? "全部" : "All"
+        case .highlights:
+            return language == "zh-Hant" ? "高亮" : "Highlights"
+        case .notes:
+            return language == "zh-Hant" ? "筆記" : "Notes"
+        }
+    }
+}
+
 struct SavedNotesListView: View {
     @ObservedObject var noteStore: NoteStore
     @ObservedObject var settingsStore: SettingsStore
     @EnvironmentObject var router: AppRouter
     @State private var selectedLabel: String?
+    @State private var selectedTab: SavedNotesTab = .all
     @State private var navigationPath = NavigationPath()
     
     var filteredVerses: [SavedVerse] {
-        noteStore.getVersesFilteredByLabel(selectedLabel)
+        let byLabel = noteStore.getVersesFilteredByLabel(selectedLabel)
+        
+        switch selectedTab {
+        case .all:
+            return byLabel
+        case .highlights:
+            return byLabel.filter { $0.color != nil }
+        case .notes:
+            return byLabel.filter { !$0.content.trimmingCharacters(in: .whitespaces).isEmpty }
+        }
     }
     
     var body: some View {
@@ -19,6 +48,9 @@ struct SavedNotesListView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
+                // Tab picker
+                tabPicker
+                
                 // Filter bar
                 if !noteStore.getAllLabels().isEmpty {
                     filterBar
@@ -33,10 +65,35 @@ struct SavedNotesListView: View {
             }
         }
         .navigationTitle(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "我的筆記" : "My Notes")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
     }
     
     // MARK: - View Components
+    
+    private var tabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(SavedNotesTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    VStack(spacing: 8) {
+                        Text(tab.localizedTitle(settingsStore.appLanguage.resolvedLanguageCode()))
+                            .font(.system(size: 16, weight: selectedTab == tab ? .semibold : .regular, design: .serif))
+                            .foregroundColor(selectedTab == tab ? AppTheme.accentColor : AppTheme.secondaryText)
+                        
+                        Rectangle()
+                            .fill(selectedTab == tab ? AppTheme.accentColor : Color.clear)
+                            .frame(height: 3)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.top, 8)
+        .background(AppTheme.cardGradient)
+    }
     
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -67,21 +124,51 @@ struct SavedNotesListView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "bookmark")
+            Image(systemName: selectedTab == .highlights ? "highlighter" : "bookmark")
                 .font(.system(size: 50))
                 .foregroundColor(AppTheme.secondaryText)
             
-            Text(selectedLabel == nil ? (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有保存的經文" : "No saved verses") : (settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "沒有此標籤的經文" : "No verses with this label"))
+            Text(emptyStateTitle)
                 .font(.system(size: 18, weight: .semibold, design: .serif))
                 .foregroundColor(AppTheme.secondaryText)
             
-            Text(settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant" ? "閱讀時保存經文即可在此查看" : "Save verses while reading to see them here")
+            Text(emptyStateMessage)
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+    
+    private var emptyStateTitle: String {
+        let isChinese = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant"
+        
+        if selectedLabel != nil {
+            return isChinese ? "沒有此標籤的經文" : "No verses with this label"
+        }
+        
+        switch selectedTab {
+        case .all:
+            return isChinese ? "沒有保存的經文" : "No saved verses"
+        case .highlights:
+            return isChinese ? "沒有高亮的經文" : "No highlighted verses"
+        case .notes:
+            return isChinese ? "沒有筆記" : "No notes"
+        }
+    }
+    
+    private var emptyStateMessage: String {
+        let isChinese = settingsStore.appLanguage.resolvedLanguageCode() == "zh-Hant"
+        
+        switch selectedTab {
+        case .all:
+            return isChinese ? "閱讀時保存經文即可在此查看" : "Save verses while reading to see them here"
+        case .highlights:
+            return isChinese ? "長按經文以高亮顯示" : "Long press verses to highlight them"
+        case .notes:
+            return isChinese ? "保存帶有筆記的經文即可在此查看" : "Save verses with notes to see them here"
+        }
     }
     
     private var notesList: some View {

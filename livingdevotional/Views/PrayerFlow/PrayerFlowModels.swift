@@ -24,7 +24,36 @@ struct VerseOption: Identifiable {
     }
 }
 
-// MARK: - Prayer Focus
+// MARK: - Prayer Topic (9 options for first screen 3x3 grid)
+
+enum PrayerTopic: String, CaseIterable {
+    case worry
+    case gratitude
+    case guidance
+    case hope
+    case peace
+    case strength
+    case forgiveness
+    case wisdom
+    case courage
+    
+    var displayName: String {
+        let isChinese = SettingsStore.shared.appLanguage == .chineseTraditional
+        switch self {
+        case .worry: return isChinese ? "擔憂" : "Worry"
+        case .gratitude: return isChinese ? "感恩" : "Gratitude"
+        case .guidance: return isChinese ? "指引" : "Guidance"
+        case .hope: return isChinese ? "希望" : "Hope"
+        case .peace: return isChinese ? "平安" : "Peace"
+        case .strength: return isChinese ? "力量" : "Strength"
+        case .forgiveness: return isChinese ? "寬恕" : "Forgiveness"
+        case .wisdom: return isChinese ? "智慧" : "Wisdom"
+        case .courage: return isChinese ? "勇氣" : "Courage"
+        }
+    }
+}
+
+// MARK: - Prayer Focus (deprecated - kept for PrayerGenerationWaitingView fallback)
 
 enum PrayerFocus: String, CaseIterable {
     case recentFocus = "recent_focus"
@@ -38,10 +67,10 @@ enum PrayerFocus: String, CaseIterable {
         let isChinese = SettingsStore.shared.appLanguage == .chineseTraditional
         switch self {
         case .recentFocus: return isChinese ? "最近的關注" : "Recent focus"
-        case .worry: return isChinese ? "擔憂焦慮" : "Worry/anxiety"
-        case .gratitude: return isChinese ? "感恩感謝" : "Gratitude/thanksgiving"
-        case .guidance: return isChinese ? "指引決定" : "Guidance/decision"
-        case .strength: return isChinese ? "力量鼓勵" : "Strength/encouragement"
+        case .worry: return isChinese ? "擔憂焦慮" : "Worry and anxiety"
+        case .gratitude: return isChinese ? "感恩感謝" : "Gratitude"
+        case .guidance: return isChinese ? "指引決定" : "Guidance"
+        case .strength: return isChinese ? "力量鼓勵" : "Strength"
         case .custom: return isChinese ? "自訂主題" : "Custom topic"
         }
     }
@@ -60,12 +89,12 @@ enum PrayerIntent: String, CaseIterable {
         if isSimplified {
             switch self {
             case .prayForMe: return "为我祷告"
-            case .helpMePray: return "帮我祷告"
+            case .helpMePray: return "帮助我祷告"
             }
         } else if isChinese {
             switch self {
             case .prayForMe: return "為我禱告"
-            case .helpMePray: return "幫我禱告"
+            case .helpMePray: return "幫助我禱告"
             }
         } else {
             switch self {
@@ -89,11 +118,11 @@ enum EmotionalNeed: String, CaseIterable {
     var displayName: String {
         let isChinese = SettingsStore.shared.appLanguage == .chineseTraditional
         switch self {
-        case .peace: return isChinese ? "平安安慰" : "Peace/comfort"
-        case .wisdom: return isChinese ? "智慧指引" : "Wisdom/guidance"
-        case .strength: return isChinese ? "力量勇氣" : "Strength/courage"
-        case .hope: return isChinese ? "希望鼓勵" : "Hope/encouragement"
-        case .forgiveness: return isChinese ? "寬恕醫治" : "Forgiveness/healing"
+        case .peace: return isChinese ? "平安安慰" : "Peace and comfort"
+        case .wisdom: return isChinese ? "智慧指引" : "Wisdom"
+        case .strength: return isChinese ? "力量勇氣" : "Strength and courage"
+        case .hope: return isChinese ? "希望鼓勵" : "Hope"
+        case .forgiveness: return isChinese ? "寬恕醫治" : "Forgiveness and healing"
         case .other: return isChinese ? "其他" : "Other"
         }
     }
@@ -102,8 +131,7 @@ enum EmotionalNeed: String, CaseIterable {
 // MARK: - Question Type
 
 enum PrayerQuestionType {
-    case prayerIntent
-    case heartFocus
+    case prayerIntro   // Intro screen with black-to-serene transition
+    case firstScreen
     case chooseVerse
-    case emotionalNeed
 }

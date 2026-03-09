@@ -83,10 +83,10 @@ struct DailyTasksCard: View {
                     icon: "hands.sparkles.fill",
                     isCompleted: checkInStore.hasPrayedToday,
                     action: {
-                        if checkInStore.hasPrayedToday {
-                            // Already prayed
-                        } else {
-                            checkInStore.recordPrayer()
+                        if !checkInStore.hasPrayedToday {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                checkInStore.recordPrayer()
+                            }
                         }
                     },
                     settingsStore: settingsStore
@@ -170,10 +170,11 @@ struct TaskRow: View {
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(isCompleted ? AppTheme.accentColor.opacity(0.05) : Color.clear)
+            .background(isCompleted ? AppTheme.accentColor.opacity(0.05) : AppTheme.secondaryText.opacity(0.03))
             .cornerRadius(10)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 

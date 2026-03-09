@@ -1,4 +1,4 @@
-// OnboardingState - State management for 9-step onboarding flow
+// OnboardingState - State management for 13-step onboarding flow
 
 import Foundation
 import SwiftUI
@@ -8,19 +8,20 @@ import Combine
 class OnboardingState: ObservableObject {
     // MARK: - Step Navigation
     @Published var currentStep: Int = 1
-    static let totalSteps = 9
+    static let totalSteps = 13
     
-    // MARK: - User Input (Steps 1-4)
+    // MARK: - User Input (Steps 2-5, 7)
     @Published var name: String = ""
     @Published var selectedLanguage: AppLanguage? = nil  // No pre-selection
     @Published var journeyStage: SpiritualMaturity? = nil  // No pre-selection
     @Published var reflection: String = ""
+    @Published var relationshipDesire: RelationshipDesire? = nil  // Step 7: relationship with God
     
     // MARK: - AI-Generated Content (cached between steps)
     @Published var scriptureEcho: ScriptureEchoResponse?
     @Published var deepDiveQuestion: DeepDiveQuestion?
     @Published var deepDiveSelection: DeepDiveSelection?
-    @Published var relatedVerses: [OnboardingRecommendedVerse]?  // For onboarding Step 7
+    @Published var relatedVerses: [OnboardingRecommendedVerse]?  // For onboarding Step 9
     @Published var personalizedPrayer: String?
     
     // Track what reflection was used to generate content
@@ -41,7 +42,7 @@ class OnboardingState: ObservableObject {
     
     // MARK: - User Actions
     @Published var didSaveVerse: Bool = false
-    @Published var didPartner: Bool = false
+    @Published var didSupport: Bool = false
     
     // MARK: - Services
     private let aiService = AIService()
@@ -50,15 +51,19 @@ class OnboardingState: ObservableObject {
     
     var canProceed: Bool {
         switch currentStep {
-        case 1: return !name.trimmingCharacters(in: .whitespaces).isEmpty
-        case 2: return selectedLanguage != nil // Must select a language
-        case 3: return journeyStage != nil // Must select a journey stage
-        case 4: return !reflection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty // Reflection is required
-        case 5: return scriptureEcho != nil && !isGeneratingEcho // Echo must be loaded
-        case 6: return deepDiveQuestion != nil && deepDiveSelection != nil // Deep dive must be answered
-        case 7: return relatedVerses != nil && !isGeneratingVerses // Related verses must be loaded
-        case 8: return true // Partnership is skippable
-        case 9: return personalizedPrayer != nil && !isGeneratingPrayer // Prayer must be loaded
+        case 1: return true // Welcome splash - always proceed
+        case 2: return !name.trimmingCharacters(in: .whitespaces).isEmpty
+        case 3: return selectedLanguage != nil // Must select a language
+        case 4: return journeyStage != nil // Must select a journey stage
+        case 5: return !reflection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty // Reflection is required
+        case 6: return scriptureEcho != nil && !isGeneratingEcho // Echo must be loaded
+        case 7: return relationshipDesire != nil // Must select a relationship goal
+        case 8: return deepDiveQuestion != nil && deepDiveSelection != nil // Deep dive must be answered
+        case 9: return relatedVerses != nil && !isGeneratingVerses // Related verses must be loaded
+        case 10: return true // Feature preview - always proceed
+        case 11: return true // Notification setup - skippable
+        case 12: return true // Support is skippable
+        case 13: return personalizedPrayer != nil && !isGeneratingPrayer // Prayer must be loaded
         default: return true
         }
     }
@@ -91,7 +96,7 @@ class OnboardingState: ObservableObject {
         saveProgress()
         
         // If moving from reflection to echo, check if we need to regenerate
-        if currentStep == 4 {
+        if currentStep == 5 {
             if reflectionWhenEchoGenerated != reflection.trimmingCharacters(in: .whitespacesAndNewlines) {
                 // Reflection changed, invalidate cached content
                 scriptureEcho = nil
@@ -103,7 +108,7 @@ class OnboardingState: ObservableObject {
         }
         
         // If moving from deep dive to verses, check if selection changed
-        if currentStep == 6 {
+        if currentStep == 8 {
             let currentSelection = deepDiveSelection?.displayText ?? ""
             if deepDiveSelectionWhenVersesGenerated != currentSelection {
                 // Deep dive selection changed, invalidate related verses
@@ -119,23 +124,23 @@ class OnboardingState: ObservableObject {
     
     private func triggerAIGenerationIfNeeded() {
         switch currentStep {
-        case 5:
-            // Generate Scripture Echo when entering Step 5
+        case 6:
+            // Generate Scripture Echo when entering Step 6
             if scriptureEcho == nil {
                 generateScriptureEcho()
             }
-        case 6:
-            // Generate Deep Dive Question when entering Step 6
+        case 8:
+            // Generate Deep Dive Question when entering Step 8
             if deepDiveQuestion == nil {
                 generateDeepDiveQuestion()
             }
-        case 7:
-            // Generate Related Verses when entering Step 7
+        case 9:
+            // Generate Related Verses when entering Step 9
             if relatedVerses == nil {
                 generateRelatedVerses()
             }
-        case 9:
-            // Generate Prayer when entering Step 9
+        case 13:
+            // Generate Prayer when entering Step 13
             if personalizedPrayer == nil {
                 generatePrayer()
             }
@@ -293,29 +298,35 @@ class OnboardingState: ObservableObject {
         
         switch currentStep {
         case 1:
+            // Welcome splash - nothing to save
+            break
+        case 2:
             // Save name
             profileStore.profile.name = name.trimmingCharacters(in: .whitespaces)
-        case 2:
+        case 3:
             // Apply smart defaults based on language
             if let lang = selectedLanguage {
                 settingsStore.applySmartDefaults(for: lang, journeyStage: journeyStage ?? .growing)
             }
-        case 3:
+        case 4:
             // Save journey stage and apply explanation depth default
             if let stage = journeyStage {
                 profileStore.profile.spiritualMaturity = stage
                 profileStore.profile.explanationDepth = SettingsStore.defaultExplanationDepth(for: stage)
             }
-        case 4:
+        case 5:
             // Save reflection
             profileStore.profile.personalReflection = reflection.trimmingCharacters(in: .whitespacesAndNewlines)
-        case 5:
+        case 6:
             // Verse can be saved via saveVerse() action if user chose to save
             break
-        case 6:
+        case 7:
+            // Save relationship desire
+            profileStore.profile.relationshipDesire = relationshipDesire
+        case 8:
             // Deep dive selection is saved in state, used for book generation
             break
-        case 7:
+        case 9:
             // Save related verses
             profileStore.profile.recommendedVerses = relatedVerses
         default:
@@ -366,7 +377,13 @@ class OnboardingState: ObservableObject {
             profileStore.profile.explanationDepth = SettingsStore.defaultExplanationDepth(for: stage)
         }
         profileStore.profile.personalReflection = reflection.trimmingCharacters(in: .whitespacesAndNewlines)
+        profileStore.profile.relationshipDesire = relationshipDesire
         profileStore.profile.recommendedVerses = relatedVerses
+        
+        // Seed the onboarding verse as today's Verse of the Day
+        if let firstVerse = relatedVerses?.first {
+            DailyVerseService.shared.seedVerseFromOnboarding(verse: firstVerse)
+        }
         
         // Generate book recommendations in background for Bible view
         generateBookRecommendationsForBibleView()

@@ -210,8 +210,10 @@ struct AskCategoryDetailView: View {
 }
 
 #Preview {
-    NavigationStack {
-        AskCategoryDetailView(category: AskCategoryStore.shared.categories[0])
-            .environmentObject(AppRouter())
+    if let category = AskCategoryStore.shared.categories.first {
+        NavigationStack {
+            AskCategoryDetailView(category: category)
+                .environmentObject(AppRouter())
+        }
     }
 }

@@ -1,4 +1,4 @@
-// ScriptureEchoView - Step 5: AI-powered empathetic response and Bible verse
+// ScriptureEchoView - Step 6: AI-powered empathetic response and Bible verse
 
 import SwiftUI
 
@@ -20,21 +20,21 @@ struct ScriptureEchoView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         // Top padding
                         Spacer()
-                            .frame(height: 40)
+                            .frame(height: 28)
                         
                         // Echo text area - flexible height
                         echoTextArea
                         
                         // Spacing between echo and verse
                         Spacer()
-                            .frame(height: 48)
+                            .frame(height: 32)
                         
                         // Verse card area
                         verseCardArea
                         
                         // Bottom padding for scroll
                         Spacer()
-                            .frame(height: 40)
+                            .frame(height: 24)
                     }
                     .padding(.horizontal, 24)
                 }
@@ -78,10 +78,10 @@ struct ScriptureEchoView: View {
         Group {
             if showEcho {
                 Text(echoTextWithName)
-                    .font(.system(size: 18, weight: .regular, design: .serif))
+                    .font(.system(size: 17, weight: .regular, design: .serif))
                     .foregroundColor(AppTheme.primaryText)
                     .multilineTextAlignment(.leading)
-                    .lineSpacing(6)
+                    .lineSpacing(5)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
@@ -178,12 +178,12 @@ struct ScriptureEchoView: View {
     }
     
     private var loadingText: String {
-        if state.isChinese {
-            return "為你預備回應..."
-        } else if state.isSpanish {
-            return "Preparando una respuesta para ti..."
-        } else {
-            return "Preparing a word just for you..."
+        switch state.resolvedLanguage {
+        case .chineseTraditional: return "讓聖經的話語回應你的分享..."
+        case .chineseSimplified: return "让圣经的话语回应你的分享..."
+        case .spanish: return "Tomando un momento para reflexionar sobre tus palabras..."
+        case .portuguese: return "Tomando um momento para refletir sobre suas palavras..."
+        default: return "Taking a moment to reflect on your words..."
         }
     }
     
@@ -197,19 +197,19 @@ struct ScriptureEchoView: View {
     // MARK: - Verse Card
     
     private func verseCard(echo: ScriptureEchoResponse) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(echo.verseText)
-                .font(.system(size: 20, weight: .medium, design: .serif))
+                .font(.system(size: 18, weight: .medium, design: .serif))
                 .foregroundColor(AppTheme.primaryText)
                 .multilineTextAlignment(.leading)
-                .lineSpacing(8)
+                .lineSpacing(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             Text("— \(echo.verseReference)")
-                .font(.system(size: 14, weight: .regular))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundColor(AppTheme.secondaryText)
         }
-        .padding(24)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.white.opacity(0.95))

@@ -52,6 +52,7 @@ struct ReadingView: View {
     @State private var showChapterContextSheet = false
     @State private var showChapterSummarySheet = false
     @State private var showVerseSearch = false
+    @State private var showReadingHistory = false
     
     // Verse selection state
     @State private var selectedVerseId: String? = nil
@@ -113,13 +114,6 @@ struct ReadingView: View {
         guard let chapter = chapter else { return "" }
         let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
         return chapterPrefix == "第" ? "\(chapterPrefix)\(chapter)章" : "\(chapterPrefix) \(chapter)"
-    }
-    
-    private var navigationTitleText: String {
-        if let book = book, let chapter = chapter {
-            return "\(book.localizedName(for: settingsStore.primaryLanguage)) \(chapter)"
-        }
-        return settingsStore.appLanguage.localizedString("Bible")
     }
     
     private var shouldUseEagerLoading: Bool {
@@ -325,6 +319,10 @@ struct ReadingView: View {
                             shareVerse(verse)
                         },
                         onAIInsight: {
+                            if !UsageLimitStore.shared.canUseAIQuestion() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                return
+                            }
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 if showAIPanel == verse.id && aiPanelMode == .insight {
                                     showAIPanel = nil
@@ -335,6 +333,10 @@ struct ReadingView: View {
                             }
                         },
                         onAIReflect: {
+                            if !UsageLimitStore.shared.canUseAIQuestion() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                return
+                            }
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 if showAIPanel == verse.id && aiPanelMode == .reflect {
                                     showAIPanel = nil
@@ -349,6 +351,10 @@ struct ReadingView: View {
                             showPrayerFlow = true
                         },
                         onAIAsk: {
+                            if !UsageLimitStore.shared.canUseAIQuestion() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                return
+                            }
                             chatVerse = verse
                             showChatSheet = true
                         },
@@ -795,17 +801,28 @@ struct ReadingView: View {
     
     // MARK: - View Builders - Toolbar
     
-    /// Toolbar leading button (previous chapter)
+    /// Toolbar leading buttons (previous chapter + search)
     @ViewBuilder
     private var toolbarLeadingButton: some View {
-        Button {
-            navigateToPreviousChapter()
-        } label: {
-            Image(systemName: "chevron.left")
-                .foregroundColor(AppTheme.accentColor)
-                .font(.system(size: 16, weight: .semibold))
+        HStack(spacing: 8) {
+            Button {
+                navigateToPreviousChapter()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .foregroundColor(AppTheme.accentColor)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .disabled((chapter ?? 1) == 1 && currentBookIndex == 0)
+            
+            Button {
+                showVerseSearch = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            .buttonStyle(.plain)
         }
-        .disabled((chapter ?? 1) == 1 && currentBookIndex == 0)
     }
     
     /// Toolbar principal button
@@ -817,40 +834,48 @@ struct ReadingView: View {
             HStack(spacing: 6) {
                 if let book = book, let chapter = chapter {
                     Text("\(book.localizedName(for: settingsStore.primaryLanguage)) \(chapter)")
-                        .foregroundColor(.primary)
+                        .font(.system(size: 17, weight: .bold, design: .serif))
+                        .foregroundColor(AppTheme.accentColor)
                 }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(AppTheme.secondaryText)
             }
         }
+        .buttonStyle(.plain)
     }
     
-    /// Toolbar trailing buttons
+    /// Toolbar trailing buttons: Aa (font), bookmark, next chapter
     @ViewBuilder
     private var toolbarTrailingButtons: some View {
-        Button {
-            showVerseSearch = true
-        } label: {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(AppTheme.accentColor)
+        HStack(spacing: 8) {
+            Button {
+                showViewSettings = true
+            } label: {
+                Text("Aa")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                showReadingHistory = true
+            } label: {
+                Image(systemName: "bookmark.fill")
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                navigateToNextChapter()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(AppTheme.accentColor)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .disabled((chapter ?? 0) == (book?.chapters ?? 0) && currentBookIndex == BibleData.books.count - 1)
         }
-        
-        Button {
-            showViewSettings = true
-        } label: {
-            Image(systemName: "slider.horizontal.3")
-                .foregroundColor(AppTheme.accentColor)
-        }
-        
-        Button {
-            navigateToNextChapter()
-        } label: {
-            Image(systemName: "chevron.right")
-                .foregroundColor(AppTheme.accentColor)
-                .font(.system(size: 16, weight: .semibold))
-        }
-        .disabled((chapter ?? 0) == (book?.chapters ?? 0) && currentBookIndex == BibleData.books.count - 1)
     }
     
     /// Core body content without modifiers
@@ -877,7 +902,10 @@ struct ReadingView: View {
                     verse: verse.verseNumber,
                     verseText: verse.text(for: settingsStore.primaryLanguage),
                     appLanguage: settingsStore.appLanguage,
-                    sessionId: pendingChatSessionId
+                    sessionId: pendingChatSessionId,
+                    onLimitReached: {
+                        router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                    }
                 ),
                 settingsStore: settingsStore,
                 onClose: {
@@ -894,12 +922,15 @@ struct ReadingView: View {
     /// Prayer flow sheet content
     @ViewBuilder
     private var prayerFlowContent: some View {
-        if let selectedId = selectedVerseId,
-           let verse = viewModel.verses.first(where: { $0.id == selectedId }) {
-            PrayerFlowView(initialVerse: verse)
-        } else {
-            PrayerFlowView()
+        Group {
+            if let selectedId = selectedVerseId,
+               let verse = viewModel.verses.first(where: { $0.id == selectedId }) {
+                PrayerFlowView(initialVerse: verse)
+            } else {
+                PrayerFlowView()
+            }
         }
+        .environmentObject(router)
     }
     
     /// Save sheet content
@@ -1042,17 +1073,24 @@ struct ReadingView: View {
     
     var body: some View {
         coreBodyContent
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(isToolbarVisible ? .visible : .hidden, for: .navigationBar)
             .toolbar(tabBarVisibility, for: .tabBar)
             .preferredColorScheme(.light)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { toolbarLeadingButton }
-                ToolbarItem(placement: .principal) { toolbarPrincipalButton }
-                ToolbarItemGroup(placement: .navigationBarTrailing) { toolbarTrailingButtons }
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .navigationBarLeading) { toolbarLeadingButton }
+                        .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .principal) { toolbarPrincipalButton }
+                    ToolbarItem(placement: .navigationBarTrailing) { toolbarTrailingButtons }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .navigationBarLeading) { toolbarLeadingButton }
+                    ToolbarItem(placement: .principal) { toolbarPrincipalButton }
+                    ToolbarItem(placement: .navigationBarTrailing) { toolbarTrailingButtons }
+                }
             }
-            .navigationTitle(navigationTitleText)
             .sheet(isPresented: $showBookSelector) {
                 if let viewModel = bibleViewModel {
                     BookSelectionSheet(viewModel: viewModel, isPresented: $showBookSelector)
@@ -1060,9 +1098,16 @@ struct ReadingView: View {
             }
             .sheet(isPresented: $showChatSheet) { chatSheetContent }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenChatSession")), perform: handleOpenChatSession)
-            .sheet(isPresented: $showViewSettings) { ReadingSettingsView(isPresented: $showViewSettings) }
+            .sheet(isPresented: $showViewSettings) {
+                ReadingSettingsView(isPresented: $showViewSettings)
+                    .environmentObject(router)
+            }
             .sheet(isPresented: $showVerseSearch) {
                 VerseSearchView(settingsStore: settingsStore)
+                    .environmentObject(router)
+            }
+            .sheet(isPresented: $showReadingHistory) {
+                MyRecordsSheet()
                     .environmentObject(router)
             }
             .fullScreenCover(isPresented: $showPrayerFlow) { prayerFlowContent }

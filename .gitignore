@@ -123,3 +123,6 @@ bible_api/*
 download.log
 
 .env
+
+# Local secrets (API keys)
+LocalSecrets.xcconfig

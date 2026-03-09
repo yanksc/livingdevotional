@@ -11,6 +11,7 @@ struct ReadingPlanDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var progress: ReadingPlanProgress?
+    @State private var showBookNotFoundAlert = false
     
     var planProgress: ReadingPlanProgress? {
         planStore.getProgress(for: plan.id)
@@ -205,6 +206,11 @@ struct ReadingPlanDetailSheet: View {
         .onAppear {
             progress = planProgress
         }
+        .alert("Unable to Open Chapter", isPresented: $showBookNotFoundAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("The book '\(currentDayReading?.book ?? "")' could not be found. This may be an issue with the reading plan.")
+        }
     }
     
     private func handleCTAAction() {
@@ -213,8 +219,12 @@ struct ReadingPlanDetailSheet: View {
         }
         
         // Navigate to today's reading
-        if let todayReading = currentDayReading,
-           let book = BibleData.book(named: todayReading.book) {
+        if let todayReading = currentDayReading {
+            guard let book = BibleData.book(named: todayReading.book) else {
+                showBookNotFoundAlert = true
+                return
+            }
+            
             router.navigateToReading(
                 book: book,
                 chapter: todayReading.chapter,
@@ -231,6 +241,8 @@ struct DayByDaySection: View {
     let plan: ReadingPlan
     let planProgress: ReadingPlanProgress?
     @ObservedObject var settingsStore: SettingsStore
+    @EnvironmentObject var router: AppRouter
+    @Environment(\.dismiss) private var dismiss
     
     // Track which days are expanded - start with current day expanded
     @State private var expandedDays: Set<Int> = []
@@ -268,7 +280,8 @@ struct DayByDaySection: View {
                         isCurrentDay: planProgress?.currentDay == day.dayNumber - 1,
                         isExpanded: expandedDays.contains(day.dayNumber),
                         settingsStore: settingsStore,
-                        onToggle: { toggleDay(day.dayNumber) }
+                        onToggle: { toggleDay(day.dayNumber) },
+                        onNavigate: { navigateToDay(day) }
                     )
                 }
             }
@@ -303,6 +316,20 @@ struct DayByDaySection: View {
             }
         }
     }
+    
+    private func navigateToDay(_ day: ReadingPlanDay) {
+        guard let book = BibleData.book(named: day.book) else {
+            // Error already shown by ExpandableDayRow
+            return
+        }
+        
+        router.navigateToReading(
+            book: book,
+            chapter: day.chapter,
+            verse: day.verseStart
+        )
+        dismiss()
+    }
 }
 
 // MARK: - Expandable Day Row Component
@@ -314,35 +341,38 @@ struct ExpandableDayRow: View {
     let isExpanded: Bool
     @ObservedObject var settingsStore: SettingsStore
     let onToggle: () -> Void
+    let onNavigate: () -> Void
+    
+    @State private var showBookNotFoundAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Main row - always visible
-            Button(action: onToggle) {
-                HStack(spacing: 12) {
-                    // Day number with checkmark
-                    ZStack {
-                        Circle()
-                            .fill(isCompleted ? AppTheme.accentColor : (isCurrentDay ? AppTheme.accentColor.opacity(0.2) : Color.clear))
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(isCurrentDay ? AppTheme.accentColor : AppTheme.secondaryText.opacity(0.3), lineWidth: 2)
-                            )
-                        
-                        if isCompleted {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.white)
-                        } else {
-                            Text("\(day.dayNumber)")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(isCurrentDay ? AppTheme.accentColor : AppTheme.secondaryText)
-                        }
-                    }
+            HStack(spacing: 12) {
+                // Day number with checkmark
+                ZStack {
+                    Circle()
+                        .fill(isCompleted ? AppTheme.accentColor : (isCurrentDay ? AppTheme.accentColor.opacity(0.2) : Color.clear))
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Circle()
+                                .stroke(isCurrentDay ? AppTheme.accentColor : AppTheme.secondaryText.opacity(0.3), lineWidth: 2)
+                        )
                     
-                    // Reading info - compact version
+                    if isCompleted {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    } else {
+                        Text("\(day.dayNumber)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(isCurrentDay ? AppTheme.accentColor : AppTheme.secondaryText)
+                    }
+                }
+                
+                // Reading info - tappable for expand
+                Button(action: onToggle) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(localizedReference)
                             .font(.system(size: 16, weight: .semibold, design: .serif))
@@ -355,27 +385,33 @@ struct ExpandableDayRow: View {
                                 .lineLimit(isExpanded ? nil : 1)
                         }
                     }
-                    
-                    Spacer()
-                    
-                    // Expand/collapse indicator or current day indicator
-                    if day.chapterDescription != nil {
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Spacer()
+                
+                // Expand/collapse indicator
+                if day.chapterDescription != nil {
+                    Button(action: onToggle) {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption)
                             .foregroundColor(AppTheme.secondaryText)
                             .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                            .padding(8)
                     }
-                    
-                    if isCurrentDay && !isCompleted {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .foregroundColor(AppTheme.accentColor)
-                            .font(.title3)
-                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(12)
-                .contentShape(Rectangle())
+                
+                // Navigation button - separate from expand
+                Button(action: handleNavigation) {
+                    Image(systemName: "arrow.right.circle")
+                        .font(.title3)
+                        .foregroundColor(AppTheme.accentColor)
+                        .padding(8)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(12)
             
             // Expanded content - chapter description
             if isExpanded, let chapterDescription = day.chapterDescription {
@@ -396,11 +432,24 @@ struct ExpandableDayRow: View {
         }
         .background(isCurrentDay ? AppTheme.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(12)
+        .alert("Book Not Found", isPresented: $showBookNotFoundAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Unable to find the book '\(day.book)' in the Bible. Please contact support.")
+        }
+    }
+    
+    private func handleNavigation() {
+        guard BibleData.book(named: day.book) != nil else {
+            showBookNotFoundAlert = true
+            return
+        }
+        onNavigate()
     }
     
     private var localizedReference: String {
-        let localizedBook = BibleData.localizedBookName(day.book, language: settingsStore.primaryLanguage)
-        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+        let localizedBook = BibleData.localizedBookName(day.book, appLanguage: settingsStore.appLanguage)
+        let chapterPrefix = BibleData.localizedChapterText(appLanguage: settingsStore.appLanguage)
         
         if let verseStart = day.verseStart, let verseEnd = day.verseEnd {
             if chapterPrefix == "第" {
@@ -487,8 +536,8 @@ struct DayRow: View {
     }
     
     private var localizedReference: String {
-        let localizedBook = BibleData.localizedBookName(day.book, language: settingsStore.primaryLanguage)
-        let chapterPrefix = BibleData.localizedChapterText(language: settingsStore.primaryLanguage)
+        let localizedBook = BibleData.localizedBookName(day.book, appLanguage: settingsStore.appLanguage)
+        let chapterPrefix = BibleData.localizedChapterText(appLanguage: settingsStore.appLanguage)
         
         if let verseStart = day.verseStart, let verseEnd = day.verseEnd {
             if chapterPrefix == "第" {
@@ -507,6 +556,8 @@ struct DayRow: View {
 }
 
 #Preview {
-    ReadingPlanDetailSheet(plan: ReadingPlanStore.shared.plans[0])
-        .environmentObject(AppRouter())
+    if let plan = ReadingPlanStore.shared.plans.first {
+        ReadingPlanDetailSheet(plan: plan)
+            .environmentObject(AppRouter())
+    }
 }

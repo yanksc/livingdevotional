@@ -143,7 +143,10 @@ struct ChatViewWrapper: View {
                 chapter: verse.chapter,
                 verse: verse.verseNumber,
                 verseText: verse.text(for: SettingsStore.shared.primaryLanguage),
-                appLanguage: SettingsStore.shared.appLanguage
+                appLanguage: SettingsStore.shared.appLanguage,
+                onLimitReached: {
+                    router.presentUsageLimitPaywall(context: SettingsStore.shared.appLanguage.localizedString("UsageLimitReached"))
+                }
             )
             
             ChatView(

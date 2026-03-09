@@ -43,14 +43,24 @@ struct ExploreView: View {
                     planIds: planStore.plans.map { $0.id }
                 )
             }
-            .navigationTitle(settingsStore.appLanguage == .chineseTraditional ? "探索" : 
-                           settingsStore.appLanguage == .chineseSimplified ? "探索" : "Explore")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "探索" :
+                         settingsStore.appLanguage == .chineseSimplified ? "探索" : "Explore")
+                        .font(.system(size: 17, weight: .bold, design: .serif))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    ProfileAvatarButton { router.showSettings = true }
+                }
+            }
             // Sheet modifiers
             .fullScreenCover(isPresented: $showPrayerFlow) {
                 PrayerFlowView()
+                    .environmentObject(router)
             }
             .sheet(isPresented: $showVerseSearch) {
                 VerseSearchView(settingsStore: settingsStore)
@@ -74,7 +84,10 @@ struct ExploreView: View {
                             verse: nil,
                             verseText: nil,
                             appLanguage: settingsStore.appLanguage,
-                            initialQuestion: nil
+                            initialQuestion: nil,
+                            onLimitReached: {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                            }
                         ),
                         settingsStore: settingsStore,
                         onClose: {
@@ -183,6 +196,10 @@ struct ExploreView: View {
                 HStack(spacing: 16) {
                     // "Ask Any Question" tile as the first item
                     Button(action: {
+                        if !UsageLimitStore.shared.canUseAIQuestion() {
+                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                            return
+                        }
                         showAskAnyQuestion = true
                     }) {
                         AskAnyQuestionCard(backgroundImage: backgroundManager.background(at: 0))
@@ -248,6 +265,10 @@ struct ExploreView: View {
     
     private var createPersonalizedPlanTile: some View {
         Button(action: {
+            if !UsageLimitStore.shared.canCreatePersonalizedPlan() {
+                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("PlanLimitReached"))
+                return
+            }
             showPersonalizedPlanCreation = true
         }) {
             ZStack(alignment: .center) {
@@ -300,6 +321,7 @@ struct ExploreView: View {
         .buttonStyle(PlainButtonStyle())
         .fullScreenCover(isPresented: $showPersonalizedPlanCreation) {
             PersonalizedPlanConfigView()
+                .environmentObject(router)
         }
     }
 }

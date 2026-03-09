@@ -26,6 +26,8 @@ class ChatViewModel: ObservableObject {
     private let initialVerseText: String?
     let appLanguage: AppLanguage
     let initialQuestion: String?
+    let chapterContext: String?
+    let chapterContextType: String?
     
     /// Returns the verse text - either provided or loaded from BibleService
     var verseText: String? {
@@ -37,7 +39,12 @@ class ChatViewModel: ObservableObject {
         return book != nil && chapter != nil && verse != nil
     }
     
-    init(aiService: AIServiceProtocol, book: String? = nil, chapter: Int? = nil, verse: Int? = nil, verseText: String? = nil, appLanguage: AppLanguage, sessionId: String? = nil, initialQuestion: String? = nil, onLimitReached: (() -> Void)? = nil) {
+    /// Check if chapter-level context exists (context or summary, no specific verse)
+    var hasChapterContext: Bool {
+        return book != nil && chapter != nil && verse == nil && chapterContext != nil
+    }
+    
+    init(aiService: AIServiceProtocol, book: String? = nil, chapter: Int? = nil, verse: Int? = nil, verseText: String? = nil, appLanguage: AppLanguage, sessionId: String? = nil, initialQuestion: String? = nil, chapterContext: String? = nil, chapterContextType: String? = nil, onLimitReached: (() -> Void)? = nil) {
         self.aiService = aiService
         self.book = book
         self.chapter = chapter
@@ -46,6 +53,8 @@ class ChatViewModel: ObservableObject {
         self.loadedVerseText = verseText
         self.appLanguage = appLanguage
         self.initialQuestion = initialQuestion
+        self.chapterContext = chapterContext
+        self.chapterContextType = chapterContextType
         self.onLimitReached = onLimitReached
         
         if let sessionId = sessionId, let existingSession = chatStore.getSession(id: sessionId) {
@@ -89,18 +98,26 @@ class ChatViewModel: ObservableObject {
     func loadSuggestions() async {
         guard session == nil || session?.messages.isEmpty == true else { return }
         
-        // Only load verse-specific suggestions if we have verse context
-        guard let book = book, let chapter = chapter, let verse = verse, let verseText = verseText else {
-            return
-        }
+        guard let service = aiService as? AIService else { return }
         
         do {
-            if let service = aiService as? AIService {
+            if let book = book, let chapter = chapter, let verse = verse, let verseText = verseText {
+                // Verse-specific suggestions
                 suggestedQuestions = try await service.generateSuggestedQuestions(
                     book: book,
                     chapter: chapter,
                     verse: verse,
                     verseText: verseText,
+                    appLanguage: appLanguage
+                )
+            } else if let book = book, let chapter = chapter,
+                      let chapterContext = chapterContext, let chapterContextType = chapterContextType {
+                // Chapter-level suggestions based on context or summary
+                suggestedQuestions = try await service.generateChapterSuggestedQuestions(
+                    book: book,
+                    chapter: chapter,
+                    chapterContent: chapterContext,
+                    contentType: chapterContextType,
                     appLanguage: appLanguage
                 )
             }
@@ -153,13 +170,26 @@ class ChatViewModel: ObservableObject {
             if let service = aiService as? AIService {
                 let stream: AsyncThrowingStream<String, Error>
                 
-                // Use verse-specific chat if verse context exists, otherwise use general chat
+                // Route to the appropriate chat method based on available context
                 if let book = book, let chapter = chapter, let verse = verse, let verseText = verseText {
+                    // Verse-specific chat
                     stream = try await service.chatWithVerse(
                         book: book,
                         chapter: chapter,
                         verse: verse,
                         verseText: verseText,
+                        appLanguage: appLanguage,
+                        conversationHistory: history,
+                        userQuestion: question
+                    )
+                } else if let book = book, let chapter = chapter,
+                          let chapterContext = chapterContext, let chapterContextType = chapterContextType {
+                    // Chapter-level chat using context or summary
+                    stream = try await service.chatWithChapterContext(
+                        book: book,
+                        chapter: chapter,
+                        chapterContent: chapterContext,
+                        contentType: chapterContextType,
                         appLanguage: appLanguage,
                         conversationHistory: history,
                         userQuestion: question

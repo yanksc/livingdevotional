@@ -6,7 +6,7 @@ import SwiftUI
 struct CheckInCard: View {
     @ObservedObject var checkInStore: CheckInStore
     @ObservedObject private var settingsStore = SettingsStore.shared
-    @State private var showEncouragement = false
+    var onPrayNow: () -> Void
     @State private var calendarViewMode: CalendarViewMode = .week
     
     var body: some View {
@@ -23,9 +23,7 @@ struct CheckInCard: View {
                 HStack(spacing: 12) {
                     // App Open Streak
                     HStack(spacing: 4) {
-                        Image(systemName: "cross.fill")
-                            .foregroundColor(AppTheme.accentColor)
-                            .font(.caption)
+                        LatinCrossView(size: 12, lineWidth: 1.5, color: AppTheme.accentColor)
                         Text("\(checkInStore.currentStreak)")
                             .font(.subheadline)
                             .fontWeight(.bold)
@@ -101,70 +99,40 @@ struct CheckInCard: View {
             )
             .padding(.vertical, 4)
             
-            // Task Status Summary
-            if !checkInStore.hasPrayedToday || !checkInStore.hasReadToday {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "今日進度" : "Today's Progress")
-                        .font(.subheadline)
-                        .foregroundColor(AppTheme.primaryText)
-                    
-                    HStack(spacing: 8) {
-                        // Reading status
-                        HStack(spacing: 4) {
-                            Image(systemName: checkInStore.hasReadToday ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(checkInStore.hasReadToday ? .green : AppTheme.secondaryText)
-                                .font(.caption)
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "讀經" : "Read")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.secondaryText)
+            // Prayer prompt (only when user has not prayed today)
+            if !checkInStore.hasPrayedToday {
+                HStack(spacing: 12) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            checkInStore.recordPrayer()
                         }
-                        
-                        // Prayer status
-                        HStack(spacing: 4) {
-                            Image(systemName: checkInStore.hasPrayedToday ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(checkInStore.hasPrayedToday ? .green : AppTheme.secondaryText)
-                                .font(.caption)
-                            Text(settingsStore.appLanguage == .chineseTraditional ? "禱告" : "Pray")
-                                .font(.caption)
-                                .foregroundColor(AppTheme.secondaryText)
-                        }
-                        
-                        Spacer()
+                    } label: {
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "已禱告" : "Prayed")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 44)
+                            .background(AppTheme.accentColor)
+                            .cornerRadius(8)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(ScaleButtonStyle())
                     
-                    // Prayer prompt (only if not prayed)
-                    if !checkInStore.hasPrayedToday {
-                        HStack(spacing: 12) {
-                            Button {
-                                withAnimation {
-                                    checkInStore.recordPrayer()
-                                }
-                            } label: {
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "已禱告" : "Prayed")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(AppTheme.accentColor)
-                                    .cornerRadius(8)
-                            }
-                            
-                            Button {
-                                showEncouragement = true
-                            } label: {
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "稍後" : "Later")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(AppTheme.primaryText)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(AppTheme.secondaryText.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
-                        }
-                        .padding(.top, 4)
+                    Button {
+                        onPrayNow()
+                    } label: {
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "現在禱告" : "Pray Now")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(AppTheme.primaryText)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 44)
+                            .background(AppTheme.secondaryText.opacity(0.1))
+                            .cornerRadius(8)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(ScaleButtonStyle())
                 }
             }
         }
@@ -172,13 +140,5 @@ struct CheckInCard: View {
         .background(AppTheme.cardGradient)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
-        .sheet(isPresented: $showEncouragement) {
-            PrayerEncouragementView(onPrayNow: {
-                withAnimation {
-                    checkInStore.recordPrayer()
-                }
-            })
-            .presentationDetents([.large])
-        }
     }
 }

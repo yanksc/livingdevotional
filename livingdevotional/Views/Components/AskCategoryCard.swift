@@ -61,9 +61,12 @@ struct AskCategoryCard: View {
 }
 
 #Preview {
-    HStack {
-        AskCategoryCard(category: AskCategoryStore.shared.categories[0], backgroundImage: "SereneBackground1")
-        AskCategoryCard(category: AskCategoryStore.shared.categories[1], backgroundImage: "SereneBackground2")
+    let categories = AskCategoryStore.shared.categories
+    if categories.count >= 2 {
+        HStack {
+            AskCategoryCard(category: categories[0], backgroundImage: "SereneBackground1")
+            AskCategoryCard(category: categories[1], backgroundImage: "SereneBackground2")
+        }
+        .padding()
     }
-    .padding()
 }

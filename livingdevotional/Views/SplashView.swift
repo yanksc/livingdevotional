@@ -30,6 +30,12 @@ struct SplashView: View {
                     .opacity(breathingPhase ? 0.02 : 0.0)
                     .ignoresSafeArea()
             }
+            
+            // Loading spinner - signals app is loading, not stuck
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.accentColor))
+                .scaleEffect(1.2)
+                .opacity(imageOpacity * 0.9)
         }
         .preferredColorScheme(.light)
         .onAppear {

@@ -1,0 +1,5 @@
+// Debug.xcconfig - Used for Debug/Simulator builds
+// Include LocalSecrets for HELICONE_API_KEY; override RevenueCat with Test key
+
+#include "LocalSecrets.xcconfig"
+REVENUECAT_APPLE_API_KEY = test_rjJXxoetXCUPdyInuTfmDOvpqIX

@@ -33,6 +33,8 @@ struct PersonalizedPlanConfigView: View {
     @State private var isGeneratingPlan = false
     @State private var errorMessage: String?
     @State private var draftPlan: ReadingPlan?
+    @State private var customFocusText: String = ""
+    @State private var questionnaireStepIndex: Int = 0
     
     private var isChinese: Bool {
         settingsStore.appLanguage == .chineseTraditional || 
@@ -55,8 +57,12 @@ struct PersonalizedPlanConfigView: View {
                         case .profileConfirmation:
                             ProfileConfirmationStep(
                                 profile: profileStore.profile,
+                                customFocusText: $customFocusText,
                                 onConfirm: { proceedToQuestionnaire() },
-                                onEdit: { navigateToProfile() },
+                                onEdit: {
+                                    dismiss()
+                                    router.showSettings = true
+                                },
                                 settingsStore: settingsStore
                             )
                         case .questionnaire:
@@ -65,6 +71,9 @@ struct PersonalizedPlanConfigView: View {
                                 answers: $answers,
                                 isLoading: isLoadingQuestions,
                                 onComplete: { generatePlan() },
+                                onProgressChange: { index in
+                                    questionnaireStepIndex = index
+                                },
                                 settingsStore: settingsStore
                             )
                         case .generation:
@@ -113,33 +122,26 @@ struct PersonalizedPlanConfigView: View {
     }
     
     private var progressIndicator: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<4) { index in
+        let filledCount: Int = {
+            switch currentStep {
+            case .profileConfirmation: return 1
+            case .questionnaire: return 2 + questionnaireStepIndex  // Q1=2, Q2=3, ..., Q5=6
+            case .generation, .review: return 6
+            }
+        }()
+        return HStack(spacing: 8) {
+            ForEach(0..<6, id: \.self) { index in
                 Circle()
-                    .fill(stepIndex <= index ? AppTheme.accentColor : AppTheme.secondaryText.opacity(0.3))
+                    .fill(index < filledCount ? AppTheme.accentColor : AppTheme.secondaryText.opacity(0.3))
                     .frame(width: 8, height: 8)
             }
         }
         .padding(.vertical, 16)
     }
     
-    private var stepIndex: Int {
-        switch currentStep {
-        case .profileConfirmation: return 0
-        case .questionnaire: return 1
-        case .generation: return 2
-        case .review: return 3
-        }
-    }
-    
     private func proceedToQuestionnaire() {
+        questionnaireStepIndex = 0
         currentStep = .questionnaire
-    }
-    
-    private func navigateToProfile() {
-        // Navigate to profile editor - this would need router integration
-        // For now, just proceed
-        proceedToQuestionnaire()
     }
     
     private func loadDynamicQuestions() {
@@ -221,8 +223,12 @@ struct PersonalizedPlanConfigView: View {
                 guard let aiService = aiService else {
                     throw NSError(domain: "PersonalizedPlanConfig", code: -1, userInfo: [NSLocalizedDescriptionKey: "AI service unavailable"])
                 }
+                var planAnswers = answers
+                if !customFocusText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    planAnswers["customFocus"] = customFocusText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
                 let plan = try await aiService.generateReadingPlan(
-                    answers: answers,
+                    answers: planAnswers,
                     profile: profileStore.profile,
                     appLanguage: settingsStore.appLanguage
                 )
@@ -268,12 +274,14 @@ struct PersonalizedPlanConfigView: View {
 
 struct ProfileConfirmationStep: View {
     let profile: UserProfile
+    @Binding var customFocusText: String
     let onConfirm: () -> Void
     let onEdit: () -> Void
     @ObservedObject var settingsStore: SettingsStore
     
     private var isChinese: Bool {
         settingsStore.appLanguage == .chineseTraditional || 
+        settingsStore.appLanguage == .chineseSimplified ||
         (settingsStore.appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
     }
     
@@ -291,31 +299,108 @@ struct ProfileConfirmationStep: View {
                         .font(.subheadline)
                         .foregroundColor(AppTheme.secondaryText)
                 }
+                .padding(.horizontal, 20)
                 
-                // Profile Summary
-                VStack(alignment: .leading, spacing: 16) {
+                // Profile Summary Card - full width with proper padding (match Settings)
+                VStack(alignment: .leading, spacing: 0) {
+                    // Name & Spiritual Maturity
                     profileRow(
+                        icon: "person.circle.fill",
+                        label: isChinese ? "名字" : "Name",
+                        value: profile.name.isEmpty ? (isChinese ? "未填寫" : "Not set") : profile.name
+                    )
+                    
+                    profileDivider
+                    profileRow(
+                        icon: "leaf.fill",
                         label: isChinese ? "屬靈階段" : "Spiritual Maturity",
                         value: profile.spiritualMaturity.localizedDisplayName(for: settingsStore.appLanguage)
                     )
                     
+                    profileDivider
                     profileRow(
-                        label: isChinese ? "目標" : "Goals",
-                        value: profile.spiritualGoals.isEmpty ? 
-                            (isChinese ? "無" : "None") :
-                            profile.spiritualGoals.map { $0.localizedDisplayName(for: settingsStore.appLanguage) }.joined(separator: ", ")
+                        icon: "text.magnifyingglass",
+                        label: isChinese ? "解釋深度" : "Explanation Depth",
+                        value: profile.explanationDepth.localizedDisplayName(for: settingsStore.appLanguage)
                     )
                     
-                    profileRow(
-                        label: isChinese ? "生活焦點" : "Life Focus",
-                        value: profile.lifeFocusAreas.isEmpty ?
-                            (isChinese ? "無" : "None") :
-                            profile.lifeFocusAreas.map { $0.localizedDisplayName(for: settingsStore.appLanguage) }.joined(separator: ", ")
-                    )
+                    // Personal Reflection
+                    if let reflection = profile.personalReflection, !reflection.isEmpty {
+                        profileDivider
+                        profileRow(
+                            icon: "text.quote",
+                            label: isChinese ? "心裡的話" : "Your Reflection",
+                            value: reflection,
+                            valueLineLimit: 3
+                        )
+                    }
+                    
+                    // Saved Verse
+                    if let savedVerse = profile.savedOnboardingVerse {
+                        profileDivider
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bookmark.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 20)
+                                Text(isChinese ? "收藏的經文" : "Saved Verse")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.secondaryText)
+                            }
+                            Text(savedVerse.reference)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppTheme.primaryText)
+                            Text(savedVerse.text)
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
+                                .lineLimit(2)
+                        }
+                        .padding(.vertical, 12)
+                    }
+                    
+                    // Relationship Desire
+                    if let desire = profile.relationshipDesire {
+                        profileDivider
+                        profileRow(
+                            icon: "hands.sparkles",
+                            label: isChinese ? "與神的關係" : "Seeking in Faith",
+                            value: desire.localizedDisplayName(for: settingsStore.appLanguage)
+                        )
+                    }
                 }
-                .padding()
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(AppTheme.cardGradient)
                 .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .padding(.horizontal, 20)
+                
+                // Focus text box
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isChinese ? "這次計劃想特別關注什麼？" : "Anything you'd like to focus on for this plan?")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppTheme.primaryText)
+                    
+                    TextField(
+                        isChinese ? "例如：安慰、信心、在工作中的見證..." : "e.g. comfort, faith, witness at work...",
+                        text: $customFocusText,
+                        axis: .vertical
+                    )
+                    .textFieldStyle(.plain)
+                    .padding(12)
+                    .lineLimit(3...6)
+                    .background(AppTheme.cardGradient)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(AppTheme.secondaryText.opacity(0.2), lineWidth: 1)
+                    )
+                    .foregroundColor(AppTheme.primaryText)
+                }
+                .padding(.horizontal, 20)
                 
                 // Action buttons
                 VStack(spacing: 12) {
@@ -330,32 +415,52 @@ struct ProfileConfirmationStep: View {
                     }
                     
                     Button(action: onEdit) {
-                        Text(isChinese ? "編輯個人資料" : "Edit Profile")
-                            .fontWeight(.medium)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.clear)
-                            .foregroundColor(AppTheme.accentColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(AppTheme.accentColor, lineWidth: 1)
-                            )
+                        HStack(spacing: 8) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 14, weight: .medium))
+                            Text(isChinese ? "編輯個人資料" : "Edit Profile")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.clear)
+                        .foregroundColor(AppTheme.accentColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppTheme.accentColor, lineWidth: 1)
+                        )
                     }
                 }
+                .padding(.horizontal, 20)
             }
-            .padding()
+            .padding(.vertical, 16)
         }
     }
     
-    private func profileRow(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundColor(AppTheme.secondaryText)
-            Text(value)
-                .font(.body)
-                .foregroundColor(AppTheme.primaryText)
+    private var profileDivider: some View {
+        Divider()
+            .background(AppTheme.secondaryText.opacity(0.2))
+            .padding(.vertical, 8)
+    }
+    
+    private func profileRow(icon: String, label: String, value: String, valueLineLimit: Int = 1) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+                Text(value)
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(valueLineLimit)
+            }
+            Spacer(minLength: 0)
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -366,11 +471,11 @@ struct QuestionnaireStep: View {
     @Binding var answers: [String: String]
     let isLoading: Bool
     let onComplete: () -> Void
+    var onProgressChange: ((Int) -> Void)? = nil
     @ObservedObject var settingsStore: SettingsStore
     
     @State private var currentQuestionIndex: Int = 0
     @State private var selectedDuration: Int = 7
-    @State private var selectedFocus: PlanFocus = .topic
     @State private var selectedDirection: PlanDirection = .new
     @State private var selectedOptions: [String: Set<String>] = [:] // question index -> selected option IDs
     
@@ -387,7 +492,6 @@ struct QuestionnaireStep: View {
         }
         // Add static questions
         items.append(.duration)
-        items.append(.focus)
         items.append(.direction)
         return items
     }
@@ -460,6 +564,12 @@ struct QuestionnaireStep: View {
                 }
                 .padding()
                 .background(AppTheme.backgroundGradient)
+                .onAppear {
+                    onProgressChange?(currentQuestionIndex)
+                }
+                .onChange(of: currentQuestionIndex) { _, newValue in
+                    onProgressChange?(newValue)
+                }
             }
         }
     }
@@ -495,8 +605,6 @@ struct QuestionnaireStep: View {
                 dynamicQuestionView(planQuestion, index: index)
             case .duration:
                 durationQuestionView
-            case .focus:
-                focusQuestionView
             case .direction:
                 directionQuestionView
             }
@@ -646,56 +754,6 @@ struct QuestionnaireStep: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    private var focusQuestionView: some View {
-        let title = isChinese ? "閱讀重點" : "Reading Focus"
-        let focusOptions = [PlanFocus.topic, PlanFocus.book, PlanFocus.mix]
-        
-        return VStack(alignment: .leading, spacing: 20) {
-            Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(AppTheme.primaryText)
-            
-            focusOptionsView(options: focusOptions)
-        }
-    }
-    
-    private func focusOptionsView(options: [PlanFocus]) -> some View {
-        VStack(spacing: 12) {
-            ForEach(options, id: \.self) { focus in
-                focusOptionButton(focus: focus)
-            }
-        }
-    }
-    
-    private func focusOptionButton(focus: PlanFocus) -> some View {
-        let isSelected = selectedFocus == focus
-        
-        return Button(action: {
-            selectedFocus = focus
-        }) {
-            HStack {
-                Text(focus.displayName(isChinese: isChinese))
-                    .font(.body)
-                    .foregroundColor(AppTheme.primaryText)
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(AppTheme.accentColor)
-                }
-            }
-            .padding()
-            .background(backgroundForOption(isSelected: isSelected))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? AppTheme.accentColor : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-    
     private var directionQuestionView: some View {
         let title = isChinese ? "閱讀方向" : "Reading Direction"
         let directionOptions = [PlanDirection.review, PlanDirection.continue, PlanDirection.new]
@@ -774,8 +832,6 @@ struct QuestionnaireStep: View {
             return !(selectedOptions[key]?.isEmpty ?? true)
         case .duration:
             return true // Always has a default
-        case .focus:
-            return true // Always has a default
         case .direction:
             return true // Always has a default
         }
@@ -788,6 +844,7 @@ struct QuestionnaireStep: View {
         } else {
             withAnimation {
                 currentQuestionIndex += 1
+                onProgressChange?(currentQuestionIndex)
             }
         }
     }
@@ -795,6 +852,7 @@ struct QuestionnaireStep: View {
     private func previousQuestion() {
         withAnimation {
             currentQuestionIndex = max(0, currentQuestionIndex - 1)
+            onProgressChange?(currentQuestionIndex)
         }
     }
     
@@ -813,7 +871,6 @@ struct QuestionnaireStep: View {
         
         // Collect static answers
         answers["duration"] = "\(selectedDuration)"
-        answers["focus"] = selectedFocus.rawValue
         answers["direction"] = selectedDirection.rawValue
     }
 }
@@ -821,21 +878,7 @@ struct QuestionnaireStep: View {
 enum QuestionItem {
     case dynamic(AIService.PlanQuestion, index: Int)
     case duration
-    case focus
     case direction
-}
-
-extension PlanFocus {
-    func displayName(isChinese: Bool) -> String {
-        switch self {
-        case .topic:
-            return isChinese ? "主題" : "Topic"
-        case .book:
-            return isChinese ? "書卷" : "Book"
-        case .mix:
-            return isChinese ? "混合" : "Mix"
-        }
-    }
 }
 
 extension PlanDirection {
@@ -849,12 +892,6 @@ extension PlanDirection {
             return isChinese ? "全新探索" : "New Exploration"
         }
     }
-}
-
-enum PlanFocus: String {
-    case topic = "topic"
-    case book = "book"
-    case mix = "mix"
 }
 
 enum PlanDirection: String {
@@ -934,6 +971,16 @@ struct PlanReviewStep: View {
         (settingsStore.appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
     }
     
+    private func localizedBookChapter(day: ReadingPlanDay) -> String {
+        let localizedBook = BibleData.localizedBookName(day.book, appLanguage: settingsStore.appLanguage)
+        let chapterPrefix = BibleData.localizedChapterText(appLanguage: settingsStore.appLanguage)
+        if chapterPrefix == "第" {
+            return "\(localizedBook) \(chapterPrefix)\(day.chapter)章"
+        } else {
+            return "\(localizedBook) \(chapterPrefix) \(day.chapter)"
+        }
+    }
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -996,7 +1043,7 @@ struct PlanReviewStep: View {
                                     .background(AppTheme.accentColor)
                                     .clipShape(Circle())
                                 
-                                Text("\(day.book) \(day.chapter)")
+                                Text(localizedBookChapter(day: day))
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.primaryText)
                                 

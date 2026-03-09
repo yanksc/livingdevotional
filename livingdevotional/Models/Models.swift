@@ -46,6 +46,19 @@ enum Language: String, Codable, CaseIterable, Identifiable {
         }
     }
     
+    var compactDisplayName: String {
+        switch self {
+        case .bsb: return "BSB"
+        case .cuv: return "和合本 CUV"
+        case .cu1: return "和合本 CU1"
+        case .kjv: return "KJV"
+        case .web: return "WEB"
+        case .spa_r09: return "Español (RV1909)"
+        case .por_blj: return "Português (BLJ)"
+        case .none: return "無"
+        }
+    }
+    
     var description: String {
         switch self {
         case .bsb: return "Berean Standard Bible"
@@ -192,8 +205,9 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "NotSet": ["en": "Not Set", "zh-Hant": "未設定", "zh-Hans": "未设置", "es": "No Establecido", "pt": "Não Definido"],
             "ResetProfile": ["en": "Reset Profile", "zh-Hant": "重置個人檔案", "zh-Hans": "重置个人档案", "es": "Restablecer Perfil", "pt": "Redefinir Perfil"],
             "HistoryAndMyNotes": ["en": "History & My Notes", "zh-Hant": "歷史記錄與我的筆記", "zh-Hans": "历史记录与我的笔记", "es": "Historial y Mis Notas", "pt": "Histórico e Minhas Notas"],
+            "MyRecords": ["en": "My Records", "zh-Hant": "我的記錄", "zh-Hans": "我的记录", "es": "Mis Registros", "pt": "Meus Registros"],
             "ClearChatHistory": ["en": "Clear Chat History", "zh-Hant": "清除聊天記錄", "zh-Hans": "清除聊天记录", "es": "Borrar Historial de Chat", "pt": "Limpar Histórico de Chat"],
-            "QAHistory": ["en": "Q&A History", "zh-Hant": "問答記錄", "zh-Hans": "问答记录", "es": "Historial de Preguntas y Respuestas", "pt": "Histórico de Perguntas e Respostas"],
+            "QAHistory": ["en": "Conversations", "zh-Hant": "對話記錄", "zh-Hans": "对话记录", "es": "Conversaciones", "pt": "Conversas"],
             "PrayerRecords": ["en": "Prayer Records", "zh-Hant": "禱告記錄", "zh-Hans": "祷告记录", "es": "Registros de Oración", "pt": "Registros de Oração"],
             "Notifications": ["en": "Notifications", "zh-Hant": "通知設定", "zh-Hans": "通知设置", "es": "Notificaciones", "pt": "Notificações"],
             "EnableNotifications": ["en": "Enable Notifications", "zh-Hant": "啟用通知", "zh-Hans": "启用通知", "es": "Activar Notificaciones", "pt": "Ativar Notificações"],
@@ -223,7 +237,35 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
             "BecauseYouAsked": ["en": "Because you asked about %@", "zh-Hant": "因為您詢問了 %@", "zh-Hans": "因为您询问了 %@", "es": "Porque preguntaste sobre %@", "pt": "Porque você perguntou sobre %@"],
             "SinceYouRead": ["en": "Since you read %@", "zh-Hant": "因為您讀了 %@", "zh-Hans": "因为您读了 %@", "es": "Desde que leíste %@", "pt": "Desde que você leu %@"],
             "YouSavedNotes": ["en": "You saved notes on %@", "zh-Hant": "您在 %@ 上保存了筆記", "zh-Hans": "您在 %@ 上保存了笔记", "es": "Guardaste notas en %@", "pt": "Você salvou notas em %@"],
-            "FromYourPrayer": ["en": "From your prayer about %@", "zh-Hant": "來自您關於 %@ 的禱告", "zh-Hans": "来自您关于 %@ 的祷告", "es": "De tu oración sobre %@", "pt": "Da sua oração sobre %@"]
+            "FromYourPrayer": ["en": "From your prayer about %@", "zh-Hant": "來自您關於 %@ 的禱告", "zh-Hans": "来自您关于 %@ 的祷告", "es": "De tu oración sobre %@", "pt": "Da sua oração sobre %@"],
+            "UsageLimitReached": ["en": "You've reached today's limit", "zh-Hant": "今日已達使用上限", "zh-Hans": "今日已达使用上限", "es": "Has alcanzado el límite de hoy", "pt": "Você atingiu o limite de hoje"],
+            "PrayerLimitReached": ["en": "You've used your daily prayer", "zh-Hant": "今日禱告已使用", "zh-Hans": "今日祷告已使用", "es": "Ya usaste tu oración diaria", "pt": "Você usou sua oração diária"],
+            "PlanLimitReached": ["en": "Free users can have 1 plan", "zh-Hant": "免費版僅限一個閱讀計劃", "zh-Hans": "免费版仅限一个阅读计划", "es": "Usuarios gratuitos pueden tener 1 plan", "pt": "Usuários gratuitos podem ter 1 plano"],
+            "JourneyRefreshLimitReached": ["en": "You've reached today's refresh limit", "zh-Hant": "今日更新次數已達上限", "zh-Hans": "今日更新次数已达上限", "es": "Has alcanzado el límite de actualizaciones de hoy", "pt": "Você atingiu o limite de atualizações de hoje"],
+            "BecomeSupporter": ["en": "Become a Supporter", "zh-Hant": "成為支持者", "zh-Hans": "成为支持者", "es": "Hazte Partidario", "pt": "Torne-se um Apoiador"],
+            "SupporterActive": ["en": "Supporter Active", "zh-Hant": "支持者已啟用", "zh-Hans": "支持者已启用", "es": "Partidario Activo", "pt": "Apoiador Ativo"],
+            "UnlockAllFeatures": ["en": "Unlock all features", "zh-Hant": "解鎖所有功能", "zh-Hans": "解锁所有功能", "es": "Desbloquea todas las funciones", "pt": "Desbloqueie todos os recursos"],
+            "ThankYouSupport": ["en": "Thank you for your support!", "zh-Hant": "感謝您的支持！", "zh-Hans": "感谢您的支持！", "es": "¡Gracias por tu apoyo!", "pt": "Obrigado pelo seu apoio!"],
+            "RestorePurchases": ["en": "Restore Purchases", "zh-Hant": "恢復購買", "zh-Hans": "恢复购买", "es": "Restaurar Compras", "pt": "Restaurar Compras"],
+            "Restoring": ["en": "Restoring...", "zh-Hant": "恢復中...", "zh-Hans": "恢复中...", "es": "Restaurando...", "pt": "Restaurando..."],
+            "PrayerIntroGreeting": ["en": "Let's pray", "zh-Hant": "一起禱告", "zh-Hans": "一起祷告", "es": "Oremos", "pt": "Vamos orar"],
+            "PrayerIntroSubtitle": ["en": "Prayer draws us closer to God—continue your spiritual journey by praying.", "zh-Hant": "禱告讓我們更親近神，延續你的屬靈旅程。", "zh-Hans": "祷告让我们更亲近神，延续你的属灵旅程。", "es": "La oración nos acerca a Dios—continúa tu viaje espiritual orando.", "pt": "A oração nos aproxima de Deus—continue sua jornada espiritual orando."],
+            "PrayerIntroLine2": ["en": "Every prayer brings you closer to Him.", "zh-Hant": "每一次禱告都使你更親近神。", "zh-Hans": "每一次祷告都使你更亲近神。", "es": "Cada oración te acerca más a Él.", "pt": "Cada oração te aproxima mais dEle."],
+            "PrayerIntroLine3": ["en": "The LORD is near to all who call on him, to all who call on him in truth. — Psalm 145:18", "zh-Hant": "凡求告耶和華的，就是誠心求告他的，耶和華便與他們相近。— 詩篇 145:18", "zh-Hans": "凡求告耶和华的，就是诚心求告他的，耶和华便与他们相近。— 诗篇 145:18", "es": "Cercano está el SEÑOR a todos los que le invocan, a todos los que le invocan de verdad. — Salmo 145:18", "pt": "Perto está o SENHOR de todos os que o invocam, de todos os que o invocam em verdade. — Salmo 145:18"],
+            "PrayerIntroFriend": ["en": "Friend", "zh-Hant": "朋友", "zh-Hans": "朋友", "es": "Amigo", "pt": "Amigo"],
+            "PrayerFirstPrompt": ["en": "What's on your heart to pray?", "zh-Hant": "您想為什麼禱告？", "zh-Hans": "您想为什么祷告？", "es": "¿Qué hay en tu corazón para orar?", "pt": "O que está no seu coração para orar?"],
+            "PrayerFirstOrChoose": ["en": "Or pick from the options below", "zh-Hant": "或從下方選擇", "zh-Hans": "或从下方选择", "es": "O elige de las opciones de abajo", "pt": "Ou escolha das opções abaixo"],
+            "PrayerFirstPlaceholder": ["en": "e.g., work, family, health...", "zh-Hant": "例如：工作、家庭、健康...", "zh-Hans": "例如：工作、家庭、健康...", "es": "ej., trabajo, familia, salud...", "pt": "ex., trabalho, família, saúde..."],
+            "VerseForYourPrayer": ["en": "Verse for your prayer", "zh-Hant": "為您禱告挑選的經文", "zh-Hans": "为您祷告挑选的经文", "es": "Versículo para tu oración", "pt": "Versículo para sua oração"],
+            "ContinueWithThisVerse": ["en": "Continue with this verse", "zh-Hant": "使用此經文禱告", "zh-Hans": "使用此经文祷告", "es": "Continuar con este versículo", "pt": "Continuar com este versículo"],
+            "OtherRelatedVerses": ["en": "Other related verses", "zh-Hant": "其他相關經文", "zh-Hans": "其他相关经文", "es": "Otros versículos relacionados", "pt": "Outros versículos relacionados"],
+            "FindDifferentVerse": ["en": "Find a different verse", "zh-Hant": "重新尋找經文", "zh-Hans": "重新寻找经文", "es": "Buscar otro versículo", "pt": "Encontrar outro versículo"],
+            "ChooseVerseTitle": ["en": "Choose a verse to pray with", "zh-Hant": "選擇一節經文來禱告", "zh-Hans": "选择一节经文来祷告", "es": "Elige un versículo para orar", "pt": "Escolha um versículo para orar"],
+            "LoadVerseOptions": ["en": "Load Verse Options", "zh-Hant": "載入經文選項", "zh-Hans": "载入经文选项", "es": "Cargar opciones", "pt": "Carregar opções"],
+            "FindingVerse": ["en": "Finding a verse for you...", "zh-Hant": "正在為您尋找經文...", "zh-Hans": "正在为您寻找经文...", "es": "Buscando un versículo...", "pt": "Procurando um versículo..."],
+            "FindVerseForMe": ["en": "Find a verse for me", "zh-Hant": "為我找一節經文", "zh-Hans": "为我找一节经文", "es": "Encuéntrame un versículo", "pt": "Encontre um versículo para mim"],
+            "Amen": ["en": "Amen", "zh-Hant": "阿們", "zh-Hans": "阿们", "es": "Amén", "pt": "Amém"],
+            "AmenHoldHint": ["en": "Hold to finish prayer", "zh-Hant": "長按以完成禱告", "zh-Hans": "长按以完成祷告", "es": "Mantén presionado para terminar", "pt": "Segure para finalizar a oração"]
         ]
         
         return strings[key]?[languageCode] ?? strings[key]?["en"] ?? key
@@ -408,6 +450,7 @@ struct DailyVerse: Codable {
     let book: String
     let chapter: Int
     let verseNumber: Int
+    let verseNumberEnd: Int?  // nil = single verse; set = last verse of range (e.g. 4 for John 3:1-4)
     let textBsb: String
     let textCuv: String
     let textCu1: String
@@ -425,6 +468,7 @@ struct DailyVerse: Codable {
     enum CodingKeys: String, CodingKey {
         case book, chapter, reference
         case verseNumber = "verse_number"
+        case verseNumberEnd = "verse_number_end"
         case textBsb = "text_bsb"
         case textCuv = "text_cuv"
         case textCu1 = "text_cu1"
@@ -439,10 +483,11 @@ struct DailyVerse: Codable {
         case backgroundImage = "background_image"
     }
     
-    init(book: String, chapter: Int, verseNumber: Int, textBsb: String, textCuv: String, textCu1: String, textKjv: String, textWeb: String, textSpa: String, textPor: String, reference: String, selectedDate: String, reason: String? = nil, source: String? = nil, rationale: String? = nil, backgroundImage: String? = nil) {
+    init(book: String, chapter: Int, verseNumber: Int, verseNumberEnd: Int? = nil, textBsb: String, textCuv: String, textCu1: String, textKjv: String, textWeb: String, textSpa: String, textPor: String, reference: String, selectedDate: String, reason: String? = nil, source: String? = nil, rationale: String? = nil, backgroundImage: String? = nil) {
         self.book = book
         self.chapter = chapter
         self.verseNumber = verseNumber
+        self.verseNumberEnd = verseNumberEnd
         self.textBsb = textBsb
         self.textCuv = textCuv
         self.textCu1 = textCu1

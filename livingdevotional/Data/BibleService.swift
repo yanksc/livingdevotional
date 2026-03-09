@@ -139,8 +139,7 @@ class BibleService {
                     
                     return apiContainer.chapter.content.compactMap { verseContent in
                         guard verseContent.type == "verse" else { return nil }
-                        // Join the content array into a single string
-                        let verseText = verseContent.content.joined(separator: " ")
+                        let verseText = verseContent.content.compactMap(\.textValue).joined(separator: " ")
                         
                         return BibleVerse(
                             id: "\(bookId)-\(chapter)-\(verseContent.number)",
@@ -228,6 +227,38 @@ private struct APIChapterContent: Codable {
 private struct APIVerseContent: Codable {
     let type: String
     let number: Int
-    let content: [String]  // Array of strings that need to be joined
+    let content: [VerseContentElement]
+}
+
+/// Handles mixed-type content arrays where elements can be strings or footnote objects (e.g. `{"noteId": 4}`)
+private enum VerseContentElement: Codable {
+    case text(String)
+    case footnote
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let str = try? container.decode(String.self) {
+            self = .text(str)
+        } else {
+            self = .footnote
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .text(let str):
+            try container.encode(str)
+        case .footnote:
+            try container.encode([String: Int]())
+        }
+    }
+    
+    var textValue: String? {
+        switch self {
+        case .text(let str): return str
+        case .footnote: return nil
+        }
+    }
 }
 

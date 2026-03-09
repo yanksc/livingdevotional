@@ -52,7 +52,16 @@ struct ChapterInfoView: View {
     
     var body: some View {
         ZStack {
-            SereneGradientBackground()
+            // Very light creamy/ivory gradient — no green, minimal color
+            LinearGradient(
+                colors: [
+                    Color(hue: 48.0 / 360, saturation: 0.08, brightness: 0.98),  // top: ivory
+                    Color(hue: 42.0 / 360, saturation: 0.10, brightness: 0.97)   // bottom: soft cream
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header with close button
@@ -102,7 +111,7 @@ struct ChapterInfoView: View {
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(AppTheme.accentColor)
                             }
-                            .padding(.horizontal, 20)
+                            .padding(20)
                         } else if isLoading && content.isEmpty {
                             // Loading state
                             HStack(spacing: 12) {
@@ -113,49 +122,56 @@ struct ChapterInfoView: View {
                                     .foregroundColor(AppTheme.secondaryText)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
+                            .padding(20)
                         } else if !content.isEmpty {
-                            // Content - selectable text
-                            Text(content)
-                                .font(.system(size: 16))
-                                .foregroundColor(AppTheme.primaryText)
-                                .lineSpacing(6)
-                                .textSelection(.enabled)
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 20)
-                            
-                            // Ask button - appears with fade-in animation after content loads
-                            if showAskButton {
-                                Button {
-                                    showChatSheet = true
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                                            .font(.system(size: 14, weight: .medium))
-                                        Text(settingsStore.appLanguage == .chineseTraditional ? "詢問更多" : "Ask More")
-                                            .font(.system(size: 14, weight: .medium))
+                            VStack(spacing: 0) {
+                                // Content - selectable text
+                                Text(content)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(AppTheme.primaryText)
+                                    .lineSpacing(6)
+                                    .textSelection(.enabled)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(20)
+                                
+                                // Ask button - appears with fade-in animation after content loads
+                                if showAskButton {
+                                    Button {
+                                        if !UsageLimitStore.shared.canUseAIQuestion() {
+                                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                            return
+                                        }
+                                        showChatSheet = true
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                                .font(.system(size: 14, weight: .medium))
+                                            Text(settingsStore.appLanguage == .chineseTraditional ? "詢問更多" : "Ask More")
+                                                .font(.system(size: 14, weight: .medium))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            Capsule()
+                                                .fill(AppTheme.accentColor)
+                                        )
                                     }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        Capsule()
-                                            .fill(AppTheme.accentColor)
-                                    )
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 16)
+                                    .padding(.bottom, 24)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                                } else {
+                                    // Placeholder to reserve space while button fades in
+                                    Color.clear
+                                        .frame(height: 80)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.top, 16)
-                                .padding(.bottom, 40)
-                                .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                            } else {
-                                // Placeholder to reserve space while button fades in
-                                Color.clear
-                                    .frame(height: 80)
                             }
                         }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
                 }
             }
         }
@@ -164,21 +180,17 @@ struct ChapterInfoView: View {
         }
         .sheet(isPresented: $showChatSheet) {
             if let aiService = services.aiService {
-                let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
-                let modeDescription = mode == .context ? 
-                    (settingsStore.appLanguage == .chineseTraditional ? "背景" : "context") :
-                    (settingsStore.appLanguage == .chineseTraditional ? "摘要" : "summary")
-                
-                // Create initial context message that includes the summary/context content
-                let contextMessage = settingsStore.appLanguage == .chineseTraditional ?
-                    "我剛讀完 \(localizedBook) 第\(chapter)章的\(modeDescription)：\n\n「\(content)」\n\n我想更深入了解這段內容。" :
-                    "I just read the \(modeDescription) of \(book) chapter \(chapter):\n\n\"\(content)\"\n\nI'd like to understand this more deeply."
-                
                 ChatView(
                     viewModel: ChatViewModel(
                         aiService: aiService,
+                        book: book,
+                        chapter: chapter,
                         appLanguage: settingsStore.appLanguage,
-                        initialQuestion: contextMessage
+                        chapterContext: content,
+                        chapterContextType: mode.cacheKey,
+                        onLimitReached: {
+                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                        }
                     ),
                     settingsStore: settingsStore,
                     onClose: {

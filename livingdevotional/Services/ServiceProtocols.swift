@@ -26,7 +26,7 @@ protocol AIServiceProtocol {
     func summarizeChapterStream(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
     func getChapterContext(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
     func searchBible(query: String, language: Language) async throws -> [SearchResult]
-    func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage) async throws -> DailyVerse
+    func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage, excludeReferences: [String]) async throws -> DailyVerse
     func generateVerseRationale(verseReference: String, verseText: String, userAction: String, appLanguage: AppLanguage) async throws -> String
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis
     func chatGeneral(appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
@@ -74,6 +74,7 @@ protocol JourneyServiceProtocol {
     func getJourneyStats() async throws -> JourneyStats
     func getMilestones(limit: Int) async throws -> [JourneyMilestone]
     func getDailyInsight() async throws -> JourneyInsight
+    func getPersistedAnalysisIfValid(appLanguage: AppLanguage) -> AIJourneyAnalysis?
     func getAIJourneyAnalysis(appLanguage: AppLanguage) async throws -> AIJourneyAnalysis
 }
 
@@ -163,42 +164,35 @@ struct JourneyInsight: Codable, Identifiable {
 
 struct AIJourneyAnalysis: Codable, Identifiable {
     let id: String
-    let encouragement: String
-    let journeySummary: String
     let pathStatus: PathStatus
-    let recommendedVerse: RecommendedVerse?
     let pathHighlights: [PathHighlight]
-    let nextStep: String
+    let recommendedReading: RecommendedReading
     let generatedAt: Date
     
     init(
         id: String = UUID().uuidString,
-        encouragement: String,
-        journeySummary: String,
         pathStatus: PathStatus,
-        recommendedVerse: RecommendedVerse?,
         pathHighlights: [PathHighlight],
-        nextStep: String,
+        recommendedReading: RecommendedReading,
         generatedAt: Date = Date()
     ) {
         self.id = id
-        self.encouragement = encouragement
-        self.journeySummary = journeySummary
         self.pathStatus = pathStatus
-        self.recommendedVerse = recommendedVerse
         self.pathHighlights = pathHighlights
-        self.nextStep = nextStep
+        self.recommendedReading = recommendedReading
         self.generatedAt = generatedAt
     }
 }
 
 struct PathStatus: Codable {
     let title: String
-    let description: String
+    let subtitle: String   // warm one-liner echoing recent action
+    let description: String // expanded to ~100 words
     let iconName: String
     
-    init(title: String, description: String, iconName: String) {
+    init(title: String, subtitle: String, description: String, iconName: String) {
         self.title = title
+        self.subtitle = subtitle
         self.description = description
         self.iconName = iconName
     }
@@ -228,10 +222,31 @@ struct PathHighlight: Codable, Identifiable {
     }
 }
 
+// Recommended reading for next step
+struct RecommendedReading: Codable {
+    let book: String    // English book name, e.g. "John"
+    let chapter: Int    // Chapter number
+    let reason: String  // Why this is recommended (20-30 words)
+    
+    init(book: String, chapter: Int, reason: String) {
+        self.book = book
+        self.chapter = chapter
+        self.reason = reason
+    }
+}
+
+// Activity snapshot for cache invalidation
+struct ActivitySnapshot: Codable {
+    let chaptersRead: Int
+    let versesSaved: Int
+    let questionsAsked: Int
+    let prayerCount: Int
+}
+
 // Input data structure for AI analysis
 struct JourneyDataForAI {
     let stats: JourneyStats
-    let readingHistory: [String] // Book names read (low priority)
+    let readingHistory: [String] // Detailed recent entries: "Book Chapter (date)" e.g. "John 3 (yesterday)"
     
     // Priority 1: Custom prayers with verse context
     let customPrayers: [IntentionalAction]

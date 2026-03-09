@@ -94,6 +94,7 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    /// Whether user has seen the supporter invitation (onboarding step 12). Key unchanged for UserDefaults compatibility.
     @Published var hasSeenOnboardingPaywall: Bool {
         didSet {
             userDefaults.set(hasSeenOnboardingPaywall, forKey: hasSeenOnboardingPaywallKey)

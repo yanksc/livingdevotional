@@ -14,13 +14,6 @@ class JourneyViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var aiErrorMessage: String?
     
-    var hasCachedAnalysis: Bool {
-        guard let journeyService = services.journeyService as? JourneyService else {
-            return false
-        }
-        return journeyService.hasValidCache
-    }
-    
     private let services: ServiceContainer
     
     init(services: ServiceContainer = .shared) {
@@ -53,10 +46,20 @@ class JourneyViewModel: ObservableObject {
     }
     
     @MainActor
+    func loadPersistedAnalysisIfNeeded(appLanguage: AppLanguage) {
+        guard let journeyService = services.journeyService,
+              let persisted = journeyService.getPersistedAnalysisIfValid(appLanguage: appLanguage) else { return }
+        aiAnalysis = persisted
+    }
+    
+    @MainActor
     func loadAIAnalysis(appLanguage: AppLanguage) async {
         guard let journeyService = services.journeyService else { return }
         
-        isLoadingAI = true
+        // Only show loading if we don't have analysis to display (avoids flicker when refreshing in background)
+        if aiAnalysis == nil {
+            isLoadingAI = true
+        }
         aiErrorMessage = nil
         
         do {
@@ -73,12 +76,19 @@ class JourneyViewModel: ObservableObject {
     func refreshAIAnalysis(appLanguage: AppLanguage) async {
         guard let journeyService = services.journeyService as? JourneyService else { return }
         
+        // Check usage limit first
+        guard UsageLimitStore.shared.canRefreshJourneyAnalysis() else {
+            aiErrorMessage = appLanguage.localizedString("JourneyRefreshLimitReached")
+            return
+        }
+        
         isLoadingAI = true
         aiErrorMessage = nil
         
         do {
             let analysis = try await journeyService.refreshAIAnalysis(appLanguage: appLanguage)
             self.aiAnalysis = analysis
+            UsageLimitStore.shared.recordJourneyRefreshUsed()
             self.isLoadingAI = false
         } catch {
             self.aiErrorMessage = error.localizedDescription

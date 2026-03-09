@@ -7,9 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		623AC8812F3D521900690A32 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 623AC8802F3D521900690A32 /* StoreKit.framework */; };
 		6291CDB12F2A7DB7008A9CF0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */; };
 		6291CDB32F2A7DB7008A9CF0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */; };
 		6291CDBF2F2A7DB9008A9CF0 /* livingpathwidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		62CB97032F0267DE00A2C3D1 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 62CB97022F0267DE00A2C3D1 /* RevenueCat */; };
 		62CBE41F2F02752F00A2C3D1 /* BibleData.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */; };
 /* End PBXBuildFile section */
 
@@ -38,12 +40,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		623AC8802F3D521900690A32 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = livingpathwidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = livingpathwidgetExtension.entitlements; sourceTree = "<group>"; };
 		62CB97162F0267DE00A2C3D1 /* livingdevotional.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = livingdevotional.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = BibleData.bundle; path = livingdevotional/Resources/BibleData.bundle; sourceTree = "<group>"; };
+		62RC0DB12F00000100A2C3D1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		62RC0REL2F00000200A2C3D1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -96,6 +101,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62CB97032F0267DE00A2C3D1 /* RevenueCat in Frameworks */,
+				623AC8812F3D521900690A32 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +112,7 @@
 		6291CDAF2F2A7DB7008A9CF0 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				623AC8802F3D521900690A32 /* StoreKit.framework */,
 				6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */,
 				6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */,
 			);
@@ -114,6 +122,8 @@
 		62CB970D2F0267DE00A2C3D1 = {
 			isa = PBXGroup;
 			children = (
+				62RC0DB12F00000100A2C3D1 /* Debug.xcconfig */,
+				62RC0REL2F00000200A2C3D1 /* Release.xcconfig */,
 				6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */,
 				62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */,
 				62CB97182F0267DE00A2C3D1 /* livingdevotional */,
@@ -176,6 +186,7 @@
 			);
 			name = livingdevotional;
 			packageProductDependencies = (
+				62CB97022F0267DE00A2C3D1 /* RevenueCat */,
 			);
 			productName = livingdevotional;
 			productReference = 62CB97162F0267DE00A2C3D1 /* livingdevotional.app */;
@@ -208,6 +219,9 @@
 			);
 			mainGroup = 62CB970D2F0267DE00A2C3D1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				62CB97012F0267DE00A2C3D1 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 62CB97172F0267DE00A2C3D1 /* Products */;
 			projectDirPath = "";
@@ -321,6 +335,7 @@
 		};
 		62CB97222F0267E000A2C3D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 62RC0DB12F00000100A2C3D1 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -384,6 +399,7 @@
 		};
 		62CB97232F0267E000A2C3D1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 62RC0REL2F00000200A2C3D1 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -545,6 +561,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		62CB97012F0267DE00A2C3D1 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		62CB97022F0267DE00A2C3D1 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62CB97012F0267DE00A2C3D1 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 62CB970E2F0267DE00A2C3D1 /* Project object */;
 }

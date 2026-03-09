@@ -1,4 +1,4 @@
-// LanguageSelectionView - Step 2: Language selection
+// LanguageSelectionView - Step 3: Language selection
 
 import SwiftUI
 
@@ -123,8 +123,8 @@ struct LanguageSelectionView: View {
     private func animateOptionsIn() {
         // Stagger language options fade-in
         for i in 0..<displayedLanguages.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.15) {
-                withAnimation(.easeOut(duration: 0.4)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.30) {
+                withAnimation(.easeOut(duration: 0.8)) {
                     _ = visibleOptions.insert(i)
                 }
             }

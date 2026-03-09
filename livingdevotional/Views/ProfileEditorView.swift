@@ -1,4 +1,4 @@
-// ProfileEditorView - Edit user spiritual profile with inline editing
+// ProfileEditorView - View and edit user profile aligned with onboarding data
 
 import SwiftUI
 
@@ -10,25 +10,20 @@ struct ProfileEditorView: View {
     
     @State private var name: String
     @State private var selectedMaturity: SpiritualMaturity
-    @State private var selectedGoals: Set<SpiritualGoal>
-    @State private var selectedLifeFocusAreas: Set<LifeFocusArea>
-    @State private var selectedTimeCommitment: DailyTimeCommitment
+    @State private var selectedRelationshipDesire: RelationshipDesire?
     @State private var selectedExplanationDepth: ExplanationDepth
-    @State private var selectedTradition: ChristianTradition
     
     init() {
         let store = UserProfileStore.shared
         _name = State(initialValue: store.profile.name)
         _selectedMaturity = State(initialValue: store.profile.spiritualMaturity)
-        _selectedGoals = State(initialValue: Set(store.profile.spiritualGoals))
-        _selectedLifeFocusAreas = State(initialValue: Set(store.profile.lifeFocusAreas))
-        _selectedTimeCommitment = State(initialValue: store.profile.dailyTimeCommitment)
+        _selectedRelationshipDesire = State(initialValue: store.profile.relationshipDesire)
         _selectedExplanationDepth = State(initialValue: store.profile.explanationDepth)
-        _selectedTradition = State(initialValue: store.profile.tradition)
     }
     
     private var isChinese: Bool {
-        settingsStore.appLanguage == .chineseTraditional || 
+        settingsStore.appLanguage == .chineseTraditional ||
+        settingsStore.appLanguage == .chineseSimplified ||
         (settingsStore.appLanguage == .system && Locale.preferredLanguages.first?.hasPrefix("zh") == true)
     }
     
@@ -38,7 +33,14 @@ struct ProfileEditorView: View {
                 .ignoresSafeArea()
             
             ScrollView {
-                mainContent
+                VStack(alignment: .leading, spacing: 20) {
+                    headerSection
+                    editableSection
+                    onboardingDataSection
+                    appDataSection
+                    footerText
+                }
+                .padding()
             }
         }
         .navigationTitle(isChinese ? "個人檔案" : "Profile")
@@ -57,31 +59,15 @@ struct ProfileEditorView: View {
         .onChange(of: selectedMaturity) { _, newValue in
             profileStore.profile.spiritualMaturity = newValue
         }
-        .onChange(of: selectedGoals) { _, newValue in
-            profileStore.profile.spiritualGoals = Array(newValue)
-        }
-        .onChange(of: selectedLifeFocusAreas) { _, newValue in
-            profileStore.profile.lifeFocusAreas = Array(newValue)
-        }
-        .onChange(of: selectedTimeCommitment) { _, newValue in
-            profileStore.profile.dailyTimeCommitment = newValue
+        .onChange(of: selectedRelationshipDesire) { _, newValue in
+            profileStore.profile.relationshipDesire = newValue
         }
         .onChange(of: selectedExplanationDepth) { _, newValue in
             profileStore.profile.explanationDepth = newValue
         }
-        .onChange(of: selectedTradition) { _, newValue in
-            profileStore.profile.tradition = newValue
-        }
     }
     
-    private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerSection
-            profileFieldsSection
-            footerText
-        }
-        .padding()
-    }
+    // MARK: - Header
     
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -89,7 +75,7 @@ struct ProfileEditorView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(AppTheme.primaryText)
-                .padding(.top, 20)
+                .padding(.top, 12)
             
             Text(isChinese ? "以下是目前儲存的資訊：" : "Here's what is currently stored:")
                 .font(.subheadline)
@@ -97,187 +83,226 @@ struct ProfileEditorView: View {
         }
     }
     
-    private var profileFieldsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            nameField
-            spiritualStageField
-            goalsField
-            lifeFocusField
-            timeCommitmentField
-            explanationDepthField
-            churchBackgroundField
-            chatSessionsField
+    // MARK: - Editable Profile Section
+    
+    private var editableSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel(isChinese ? "基本資料" : "Profile", icon: "person.circle")
+            
+            VStack(alignment: .leading, spacing: 16) {
+                // Name
+                editableInfoRow(
+                    title: isChinese ? "名字" : "Name",
+                    textBinding: $name,
+                    placeholder: isChinese ? "輸入你的名字" : "Enter your name"
+                )
+                
+                // Spiritual Stage
+                editablePickerRow(
+                    title: isChinese ? "屬靈階段" : "Spiritual Stage",
+                    selection: $selectedMaturity,
+                    options: SpiritualMaturity.allCases,
+                    displayName: { $0.localizedDisplayName(for: settingsStore.appLanguage) }
+                )
+                
+                // Relationship Desire
+                if selectedRelationshipDesire != nil {
+                    editablePickerRow(
+                        title: isChinese ? "與神的關係" : "Seeking in Faith",
+                        selection: Binding(
+                            get: { selectedRelationshipDesire ?? .closerWalk },
+                            set: { selectedRelationshipDesire = $0 }
+                        ),
+                        options: RelationshipDesire.allCases,
+                        displayName: { $0.localizedDisplayName(for: settingsStore.appLanguage) }
+                    )
+                }
+                
+                // Explanation Depth
+                editablePickerRow(
+                    title: isChinese ? "解釋深度" : "Explanation Depth",
+                    selection: $selectedExplanationDepth,
+                    options: ExplanationDepth.allCases,
+                    displayName: { $0.localizedDisplayName(for: settingsStore.appLanguage) }
+                )
+            }
+            .padding(16)
+            .background(AppTheme.cardGradient)
+            .cornerRadius(12)
         }
-        .padding()
-        .background(AppTheme.cardGradient)
-        .cornerRadius(12)
     }
     
-    private var nameField: some View {
-        editableInfoRow(
-            title: isChinese ? "名字" : "Name",
-            value: name.isEmpty ? (isChinese ? "未設定" : "Not Set") : name,
-            textBinding: $name
-        )
-    }
+    // MARK: - Onboarding Data Section (read-only)
     
-    private var spiritualStageField: some View {
-        editablePickerRow(
-            title: isChinese ? "屬靈階段" : "Spiritual Stage",
-            value: maturityDisplayValue,
-            selection: $selectedMaturity,
-            options: SpiritualMaturity.allCases,
-            displayName: maturityDisplayName
-        )
-    }
-    
-    private var maturityDisplayValue: String {
-        selectedMaturity.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private func maturityDisplayName(_ maturity: SpiritualMaturity) -> String {
-        maturity.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private var goalsField: some View {
-        editableGoalsRow(
-            title: isChinese ? "目標" : "Goals",
-            value: goalsDisplayValue,
-            selectedGoals: $selectedGoals
-        )
-    }
-    
-    private var goalsDisplayValue: String {
-        if selectedGoals.isEmpty {
-            return isChinese ? "無" : "None"
+    private var onboardingDataSection: some View {
+        let hasAnyData = profileStore.profile.personalReflection != nil ||
+                         profileStore.profile.savedOnboardingVerse != nil ||
+                         profileStore.profile.recommendedVerses?.first != nil
+        
+        return Group {
+            if hasAnyData {
+                VStack(alignment: .leading, spacing: 0) {
+                    sectionLabel(isChinese ? "你的旅程" : "Your Journey", icon: "leaf")
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Personal Reflection
+                        if let reflection = profileStore.profile.personalReflection, !reflection.isEmpty {
+                            readOnlyRow(
+                                icon: "text.quote",
+                                title: isChinese ? "心裡的話" : "Your Reflection",
+                                content: reflection,
+                                isItalic: true
+                            )
+                        }
+                        
+                        // Saved Verse (from Scripture Echo)
+                        if let savedVerse = profileStore.profile.savedOnboardingVerse {
+                            if profileStore.profile.personalReflection != nil {
+                                rowDivider
+                            }
+                            readOnlyVerseRow(
+                                icon: "bookmark.fill",
+                                title: isChinese ? "收藏的經文" : "Saved Verse",
+                                reference: savedVerse.reference,
+                                text: savedVerse.text
+                            )
+                        }
+                        
+                        // Verse of the Day (from onboarding)
+                        if let verse = profileStore.profile.recommendedVerses?.first {
+                            if profileStore.profile.savedOnboardingVerse != nil || profileStore.profile.personalReflection != nil {
+                                rowDivider
+                            }
+                            readOnlyVerseRow(
+                                icon: "sun.max",
+                                title: isChinese ? "為你挑選的經文" : "Your First Verse of the Day",
+                                reference: verse.reference,
+                                text: verse.text
+                            )
+                        }
+                    }
+                    .padding(16)
+                    .background(AppTheme.cardGradient)
+                    .cornerRadius(12)
+                }
+            }
         }
-        return selectedGoals.map { goal in
-            goal.localizedDisplayName(for: settingsStore.appLanguage)
-        }.joined(separator: ", ")
     }
     
-    private var lifeFocusField: some View {
-        editableLifeFocusRow(
-            title: isChinese ? "生活焦點" : "Life Focus Areas",
-            value: lifeFocusDisplayValue,
-            selectedAreas: $selectedLifeFocusAreas
-        )
-    }
+    // MARK: - App Data Section
     
-    private var lifeFocusDisplayValue: String {
-        if selectedLifeFocusAreas.isEmpty {
-            return isChinese ? "無" : "None"
+    private var appDataSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel(isChinese ? "應用資料" : "App Data", icon: "square.stack.3d.up")
+            
+            VStack(alignment: .leading, spacing: 0) {
+                // Chat sessions
+                HStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.system(size: 16))
+                        .foregroundColor(AppTheme.accentColor)
+                        .frame(width: 20)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(isChinese ? "聊天記錄" : "Chat Sessions")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                        Text(chatSessionsDisplayValue)
+                            .font(.body)
+                            .foregroundColor(AppTheme.primaryText)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+                
+                // Recommended Books
+                if let books = profileStore.profile.recommendedBooks, !books.isEmpty {
+                    rowDivider
+                    
+                    HStack(spacing: 12) {
+                        Image(systemName: "books.vertical")
+                            .font(.system(size: 16))
+                            .foregroundColor(AppTheme.accentColor)
+                            .frame(width: 20)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isChinese ? "推薦書卷" : "Recommended Books")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
+                            Text(books.map { $0.bookName }.joined(separator: ", "))
+                                .font(.body)
+                                .foregroundColor(AppTheme.primaryText)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .padding(16)
+            .background(AppTheme.cardGradient)
+            .cornerRadius(12)
         }
-        return selectedLifeFocusAreas.map { area in
-            area.localizedDisplayName(for: settingsStore.appLanguage)
-        }.joined(separator: ", ")
     }
     
-    private var timeCommitmentField: some View {
-        editablePickerRow(
-            title: isChinese ? "每日時間" : "Daily Time Commitment",
-            value: timeCommitmentDisplayValue,
-            selection: $selectedTimeCommitment,
-            options: DailyTimeCommitment.allCases,
-            displayName: timeCommitmentDisplayName
-        )
-    }
-    
-    private var timeCommitmentDisplayValue: String {
-        selectedTimeCommitment.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private func timeCommitmentDisplayName(_ commitment: DailyTimeCommitment) -> String {
-        commitment.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private var explanationDepthField: some View {
-        editablePickerRow(
-            title: isChinese ? "解釋深度" : "Explanation Depth",
-            value: explanationDepthDisplayValue,
-            selection: $selectedExplanationDepth,
-            options: ExplanationDepth.allCases,
-            displayName: explanationDepthDisplayName
-        )
-    }
-    
-    private var explanationDepthDisplayValue: String {
-        selectedExplanationDepth.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private func explanationDepthDisplayName(_ depth: ExplanationDepth) -> String {
-        depth.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private var churchBackgroundField: some View {
-        editablePickerRow(
-            title: isChinese ? "教會背景" : "Church Background",
-            value: traditionDisplayValue,
-            selection: $selectedTradition,
-            options: ChristianTradition.allCases,
-            displayName: traditionDisplayName
-        )
-    }
-    
-    private var traditionDisplayValue: String {
-        selectedTradition.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private func traditionDisplayName(_ tradition: ChristianTradition) -> String {
-        tradition.localizedDisplayName(for: settingsStore.appLanguage)
-    }
-    
-    private var chatSessionsField: some View {
-        infoRow(
-            title: isChinese ? "聊天記錄" : "Chat Sessions",
-            value: chatSessionsDisplayValue
-        )
-    }
-    
-    private var chatSessionsDisplayValue: String {
-        let count = chatStore.sessions.count
-        let suffix = isChinese ? "個對話" : "conversations"
-        return "\(count) \(suffix)"
-    }
+    // MARK: - Footer
     
     private var footerText: some View {
-        Text(isChinese ? 
+        Text(isChinese ?
              "您的所有資料都儲存在裝置上，不會與他人分享。" :
              "All your data is stored on your device and is never shared with anyone.")
             .font(.caption)
             .foregroundColor(AppTheme.secondaryText)
             .padding(.horizontal)
+            .padding(.top, 4)
     }
+    
+    // MARK: - Save
     
     private func saveProfile() {
         profileStore.profile.name = name.trimmingCharacters(in: .whitespaces)
         profileStore.profile.spiritualMaturity = selectedMaturity
-        profileStore.profile.spiritualGoals = Array(selectedGoals)
-        profileStore.profile.lifeFocusAreas = Array(selectedLifeFocusAreas)
-        profileStore.profile.dailyTimeCommitment = selectedTimeCommitment
+        profileStore.profile.relationshipDesire = selectedRelationshipDesire
         profileStore.profile.explanationDepth = selectedExplanationDepth
-        profileStore.profile.tradition = selectedTradition
     }
     
-    private func infoRow(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+    // MARK: - Helpers
+    
+    private var chatSessionsDisplayValue: String {
+        let count = chatStore.sessions.count
+        return isChinese ? "\(count) 個對話" : "\(count) conversations"
+    }
+    
+    // MARK: - Reusable Row Components
+    
+    private func sectionLabel(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(AppTheme.accentColor)
             Text(title)
-                .font(.caption)
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.secondaryText)
-            Text(value)
-                .font(.body)
-                .foregroundColor(AppTheme.primaryText)
+                .textCase(.uppercase)
+                .tracking(0.5)
         }
+        .padding(.bottom, 8)
+    }
+    
+    private var rowDivider: some View {
+        Divider()
+            .padding(.vertical, 10)
     }
     
     @ViewBuilder
-    private func editableInfoRow(title: String, value: String, textBinding: Binding<String>) -> some View {
+    private func editableInfoRow(title: String, textBinding: Binding<String>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
                 .foregroundColor(AppTheme.secondaryText)
             
-            TextField(title, text: textBinding)
+            TextField(placeholder, text: textBinding)
                 .textFieldStyle(.roundedBorder)
                 .font(.body)
                 .foregroundColor(AppTheme.primaryText)
@@ -287,7 +312,6 @@ struct ProfileEditorView: View {
     @ViewBuilder
     private func editablePickerRow<T: Hashable & Identifiable>(
         title: String,
-        value: String,
         selection: Binding<T>,
         options: [T],
         displayName: @escaping (T) -> String
@@ -308,60 +332,66 @@ struct ProfileEditorView: View {
         }
     }
     
-    @ViewBuilder
-    private func editableGoalsRow(
-        title: String,
-        value: String,
-        selectedGoals: Binding<Set<SpiritualGoal>>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(AppTheme.secondaryText)
+    private func readOnlyRow(icon: String, title: String, content: String, isItalic: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 20)
+                .padding(.top, 2)
             
-            FlowLayout(spacing: 8) {
-                ForEach(SpiritualGoal.allCases) { goal in
-                    SelectableTag(
-                        title: goal.localizedDisplayName(for: settingsStore.appLanguage),
-                        isSelected: selectedGoals.wrappedValue.contains(goal)
-                    ) {
-                        if selectedGoals.wrappedValue.contains(goal) {
-                            selectedGoals.wrappedValue.remove(goal)
-                        } else {
-                            selectedGoals.wrappedValue.insert(goal)
-                        }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+                
+                Group {
+                    if isItalic {
+                        Text(content)
+                            .italic()
+                    } else {
+                        Text(content)
                     }
                 }
+                .font(.system(size: 14))
+                .foregroundColor(AppTheme.primaryText)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
             }
+            
+            Spacer()
         }
+        .padding(.vertical, 4)
     }
     
-    @ViewBuilder
-    private func editableLifeFocusRow(
-        title: String,
-        value: String,
-        selectedAreas: Binding<Set<LifeFocusArea>>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(AppTheme.secondaryText)
+    private func readOnlyVerseRow(icon: String, title: String, reference: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.accentColor)
+                .frame(width: 20)
+                .padding(.top, 2)
             
-            FlowLayout(spacing: 8) {
-                ForEach(LifeFocusArea.allCases) { area in
-                    SelectableTag(
-                        title: area.localizedDisplayName(for: settingsStore.appLanguage),
-                        isSelected: selectedAreas.wrappedValue.contains(area)
-                    ) {
-                        if selectedAreas.wrappedValue.contains(area) {
-                            selectedAreas.wrappedValue.remove(area)
-                        } else {
-                            selectedAreas.wrappedValue.insert(area)
-                        }
-                    }
-                }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+                
+                Text(reference)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.primaryText)
+                
+                Text(text)
+                    .font(.system(size: 13, design: .serif))
+                    .foregroundColor(AppTheme.secondaryText)
+                    .lineSpacing(3)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            
+            Spacer()
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -444,7 +474,6 @@ struct FlowLayout: Layout {
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
             
-            // Check if we need to wrap to next line
             if currentX + size.width > maxWidth && currentX > 0 {
                 currentX = 0
                 currentY += lineHeight + spacing

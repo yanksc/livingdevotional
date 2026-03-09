@@ -1,4 +1,4 @@
-// NameInputView - Step 1: Name input
+// NameInputView - Step 2: Welcome + Name input with staggered cinematic reveal
 
 import SwiftUI
 
@@ -6,40 +6,29 @@ struct NameInputView: View {
     @ObservedObject var state: OnboardingState
     @FocusState private var isNameFieldFocused: Bool
     
+    // MARK: - Animation States
+    @State private var showParagraph = false
+    @State private var paragraphDisplayed = ""
     @State private var showField = false
     @State private var showContinue = false
     
+    private let paragraphFullText = "Your living path begins with a name.\nWhat should we call you?"
+    
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 0) {
             Spacer()
             
-            // Prompt with typewriter effect
-            // Note: Always English - language selection happens in Step 2
-            TypewriterText(
-                text: promptText,
-                fontSize: 24,
-                isChinese: false
-            ) {
-                // After typewriter completes, show field and continue
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.easeOut(duration: 0.4)) {
-                        showField = true
-                        showContinue = true
-                    }
-                    // Auto-focus after animation
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        isNameFieldFocused = true
-                    }
-                }
-            }
+            // Paragraph with typewriter
+            paragraphText
+                .padding(.bottom, 28)
             
-            // Name field - always rendered, opacity-based visibility
+            // Name field + continue (after typewriter completes)
             nameField
                 .opacity(showField ? 1 : 0)
             
             Spacer()
             
-            // Bottom navigation - continue button only (step 1 has no back)
+            // Bottom navigation - continue button only (no back to welcome splash)
             HStack {
                 Spacer()
                 continueButton
@@ -48,14 +37,85 @@ struct NameInputView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
+        .onAppear {
+            startRevealSequence()
+        }
     }
     
-    // MARK: - Content
+    // MARK: - Animation Sequence
     
-    // Always English - language selection happens in Step 2
-    private var promptText: String {
-        return "Your personal path through Scripture begins here.\nWhat's your name?"
+    private func startRevealSequence() {
+        // Phase 1: Paragraph typewriter starts at t=0.5s
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            showParagraph = true
+            startParagraphTypewriter()
+        }
     }
+    
+    private func startParagraphTypewriter() {
+        let characters = Array(paragraphFullText)
+        var index = 0
+        let speed: TimeInterval = 0.055
+        
+        func typeNext() {
+            guard index < characters.count else {
+                // Typewriter complete — show name field + continue
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        showField = true
+                        showContinue = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        isNameFieldFocused = true
+                    }
+                }
+                return
+            }
+            
+            let char = String(characters[index])
+            paragraphDisplayed += char
+            index += 1
+            
+            // Pause longer on punctuation for natural rhythm
+            var delay = speed
+            if [".", "!", "?"].contains(char) {
+                delay = speed * 6
+            } else if [","].contains(char) {
+                delay = speed * 3
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                typeNext()
+            }
+        }
+        
+        typeNext()
+    }
+    
+    // MARK: - Paragraph (typewriter with fixed height)
+    
+    private var paragraphText: some View {
+        ZStack(alignment: .top) {
+            // Invisible full text to reserve the exact vertical space
+            Text(paragraphFullText)
+                .font(.system(size: 17, weight: .regular, design: .serif))
+                .multilineTextAlignment(.center)
+                .lineSpacing(10)
+                .padding(.horizontal, 36)
+                .hidden()
+            
+            // Visible typewriter text
+            Text(paragraphDisplayed)
+                .font(.system(size: 17, weight: .regular, design: .serif))
+                .foregroundColor(AppTheme.onboardingText.opacity(0.8))
+                .multilineTextAlignment(.center)
+                .lineSpacing(10)
+                .padding(.horizontal, 36)
+        }
+        .opacity(showParagraph ? 1 : 0)
+    }
+    
+    // MARK: - Name Field
     
     // Always English - language selection happens in Step 2
     private var placeholderText: String {
@@ -66,8 +126,8 @@ struct NameInputView: View {
         VStack(alignment: .leading, spacing: 12) {
             TextField(placeholderText, text: $state.name)
                 .focused($isNameFieldFocused)
-                .font(.system(size: 20))
-                .padding(18)
+                .font(.system(size: 18))
+                .padding(16)
                 .background(
                     RoundedRectangle(cornerRadius: OnboardingDesign.inputCornerRadius)
                         .fill(Color.white.opacity(0.95))
@@ -88,7 +148,7 @@ struct NameInputView: View {
                     }
                 }
         }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 36)
     }
     
     // MARK: - Continue Button

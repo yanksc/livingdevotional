@@ -8,6 +8,7 @@ class AIService: AIServiceProtocol {
     private let heliconeBaseURL = AppConfig.heliconeBaseURL
     private let heliconeAPIKey = AppConfig.heliconeAPIKey
     private let openAIModel = AppConfig.openAIModel
+    private let premiumModel = AppConfig.premiumModel
     
     // MARK: - User Profile Context
     
@@ -23,36 +24,37 @@ class AIService: AIServiceProtocol {
     private func buildUserContext(appLanguage: AppLanguage) -> String {
         let profile = UserProfileStore.shared.profile
         let isChinese = isChineseLanguage(appLanguage)
-        let isSimplified = isSimplifiedChinese(appLanguage)
         
         let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
-        let goals = profile.spiritualGoals.isEmpty ? 
-            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
-            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
-        let tradition = profile.tradition.localizedDisplayName(for: appLanguage)
-        let companionStyle = profile.companionStyle.localizedDisplayName(for: appLanguage)
+        let readerName = profile.name.isEmpty ? (isChinese ? "一位讀者" : "a reader") : profile.name
         
         if isChinese {
             return """
-            你是一位\(companionStyle)。你正在與\(profile.name.isEmpty ? "一位讀者" : profile.name)對話，他是一位\(maturity)的信徒。
+            你是一位充滿智慧、溫暖且具有牧者心腸的屬靈導師。你正在與\(readerName)對話，他是一位\(maturity)的信徒。
             
-            背景資訊：
-            - 屬靈階段：\(maturity)
-            - 目標：\(goals)
-            - 教會背景：\(tradition)
+            你的回應原則：
+            - 你的每一個回答都必須以聖經為根基。引用真實的經文（至少一到兩處）來支持你的見解，並以標準格式標明，例如「約翰福音 3:16」。
+            - 你代表整個基督徒大公傳統——包括更正教、天主教、東正教和各靈恩派等不同宗派——在無爭議的核心真理上發言，不偏向任何單一教派的立場。
+            - 以\(readerName)為一個完整的人來對待——帶著好奇心、掙扎和信仰之旅。在提供見解之前，先以同理心回應他們問題背後的心情。
+            - 以\(maturity)信徒的程度來調整你回應的深度和語言——對初信者使用親切易懂的方式，對成熟信徒則可以進入更深的神學探討。
+            - 引導讀者自己發現真理，而不是僅僅給出答案。在適當的時候，以一個溫和的反思問題來結束你的回應，邀請更深的默想。
+            - 以牧者的確信發言——溫暖、有愛、清晰，但不輕浮，也不回避聖經中的難題。
             
-            請根據這些資訊調整你的語調和深度，使其更貼近這位讀者的需要。
+            屬靈程度：\(maturity)
             """
         } else {
             return """
-            You are a \(companionStyle). You are speaking with \(profile.name.isEmpty ? "a reader" : profile.name), who is a \(maturity) believer.
+            You are a wise, warmly pastoral spiritual mentor — someone who speaks with both scholarly depth and personal care. You are speaking with \(readerName), who is a \(maturity) believer.
             
-            Background:
-            - Spiritual Stage: \(maturity)
-            - Goals: \(goals)
-            - Church Background: \(tradition)
+            Your guiding principles:
+            - Every response must be rooted in Scripture. Cite real, specific Bible passages (at least one or two) to ground your insights, using standard format like "John 3:16" or "Romans 8:28".
+            - You represent the broad, cross-denominational Christian tradition — Protestant, Catholic, Orthodox, Evangelical, Charismatic — speaking to the shared heart of orthodox faith without favoring any single tradition.
+            - Treat \(readerName) as a whole person with curiosity, struggles, and a faith journey. Before offering insight, meet the human heart behind their question with genuine warmth.
+            - Calibrate your depth and language to a \(maturity) believer — approachable and concrete for new believers, theologically rich for mature ones.
+            - Guide \(readerName) toward discovery rather than just delivering answers. Where fitting, close with a gentle reflective question that invites deeper meditation.
+            - Speak with pastoral confidence — warm, loving, clear, and unafraid of Scripture's difficult passages or honest questions.
             
-            Please adjust your tone and depth based on this information to better serve this reader's needs.
+            Spiritual stage: \(maturity)
             """
         }
     }
@@ -196,7 +198,7 @@ class AIService: AIServiceProtocol {
                     """
                 }
             case .pray:
-                let prayerLengthConstraint = isChinese ? "請控制在 80-120 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 60-100 words."
+                let prayerLengthConstraint = isChinese ? "請控制在 105-155 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 60-100 words."
                 if isChinese {
                     initialPrompt = """
                     請根據這節經文撰寫一篇簡短而深刻的禱告文。
@@ -384,6 +386,8 @@ class AIService: AIServiceProtocol {
         
         // Build personalized system message with user context
         let userContext = buildUserContext(isChinese: isChinese)
+        let verseProfile = UserProfileStore.shared.profile
+        let readerName = verseProfile.name.isEmpty ? (isChinese ? "一位讀者" : "a reader") : verseProfile.name
         let systemMessage: [String: Any] = [
             "role": "system",
             "content": isChinese ? """
@@ -397,16 +401,23 @@ class AIService: AIServiceProtocol {
             經文：「\(verseText)」
             
             \(languageInstruction)
-            請保持回答友善、有深度且符合聖經真理。
+            
+            **回應結構（自然地整合，勿使用標題或條列）：**
+            1. 先以同理心回應問題背後的心情或關切
+            2. 提供紮實的釋經洞見——這節經文的意義、語境、以及神學要點，並引用一至兩處相關的聖經交叉引用來加深理解
+            3. 在適當時，簡要提及基督徒不同傳統（更正教、天主教、東正教等）如何理解這段經文
+            4. 提供具體且貼近生活的個人應用——\(readerName)如何在今天的生活中活出這真理
+            5. 以一個溫和的反思問題結尾，邀請更深的默想或對話
             
             **重要規則：**
-            - 回答請簡潔扼要，控制在 100-150 字以內
-            - 直接回答問題，不需要重複經文內容
-            - 如果引用其他經文，請使用標準格式如「約翰福音 3:16」或「John 3:16」
+            - 回應目標為 200-280 字，提供有深度的解答
+            - 不需要重複經文內容，直接深化理解
+            - 引用其他經文請使用標準格式如「約翰福音 3:16」
+            - 以溫暖、有牧者確信的語調發言
             """ : """
             \(userContext)
             
-            You are helping readers understand the following verse and answering their questions:
+            You are helping \(readerName) understand the following verse and answering their questions:
             
             Book: \(book)
             Chapter: \(chapter)
@@ -414,12 +425,19 @@ class AIService: AIServiceProtocol {
             Verse Text: "\(verseText)"
             
             \(languageInstruction)
-            Please keep answers friendly, insightful, and biblically accurate.
+            
+            **Response structure (weave naturally — no headers or bullet points in output):**
+            1. Open by meeting the heart or curiosity behind the question with genuine warmth
+            2. Offer substantive exegetical insight — the meaning, context, and theological weight of this verse, anchored with 1–2 cross-references from Scripture
+            3. Where fitting, briefly note how different Christian traditions (Protestant, Catholic, Orthodox, etc.) have understood this passage
+            4. Offer a concrete personal application — how \(readerName) might live this truth today
+            5. Close with a gentle reflective question that invites deeper meditation or continued conversation
             
             **Important rules:**
-            - Keep responses concise, around 80-120 words
-            - Answer directly without repeating the verse content
-            - When referencing other verses, use standard format like "John 3:16" or "Genesis 1:1"
+            - Aim for 200–280 words — give a rich, substantive answer
+            - Do not repeat the verse text; deepen understanding instead
+            - Cite other verses in standard format like "John 3:16" or "Psalm 23:1"
+            - Speak with pastoral warmth and spiritual confidence
             """
         ]
         messages.append(systemMessage)
@@ -442,13 +460,12 @@ class AIService: AIServiceProtocol {
         ]
         messages.append(userMessage)
         
-        // Create request body - limit to 500 tokens for concise responses
         let requestBody: [String: Any] = [
             "model": openAIModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 500
+            "max_tokens": 900
         ]
         
         // Create URL request
@@ -520,6 +537,290 @@ class AIService: AIServiceProtocol {
         }
     }
     
+    func chatWithChapterContext(
+        book: String,
+        chapter: Int,
+        chapterContent: String,
+        contentType: String,
+        appLanguage: AppLanguage,
+        conversationHistory: [ChatMessage],
+        userQuestion: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        var messages: [[String: Any]] = []
+
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+        let languageInstruction: String
+        if isSimplified {
+            languageInstruction = "请用简体中文回答。"
+        } else if isChinese {
+            languageInstruction = "請用繁體中文（台灣用語）回答。"
+        } else {
+            languageInstruction = "Please answer in English."
+        }
+
+        let userContext = buildUserContext(appLanguage: appLanguage)
+        let profile = UserProfileStore.shared.profile
+        let readerName = profile.name.isEmpty ? (isChinese ? "一位讀者" : "a reader") : profile.name
+
+        let contentTypeLabel: String
+        if isSimplified {
+            contentTypeLabel = contentType == "summary" ? "摘要" : "背景"
+        } else if isChinese {
+            contentTypeLabel = contentType == "summary" ? "摘要" : "背景"
+        } else {
+            contentTypeLabel = contentType == "summary" ? "summary" : "context"
+        }
+
+        let systemMessage: [String: Any] = [
+            "role": "system",
+            "content": isSimplified ? """
+            \(userContext)
+
+            你正在帮助读者理解以下圣经章节，并回答他们的问题。
+
+            经卷：\(book)
+            章：\(chapter)
+            章节\(contentTypeLabel)：
+            \(chapterContent)
+
+            \(languageInstruction)
+
+            **回应结构（自然地整合，勿使用标题或条列）：**
+            1. 先以同理心回应问题背后的心情或关切
+            2. 以上述\(contentTypeLabel)为锚点，提供扎实的释经洞见，并引用一至两处相关的圣经交叉引用来加深理解
+            3. 在适当时，简要提及基督徒不同传统如何理解这段经文或其中的神学要点
+            4. 提供具体且贴近生活的个人应用——读者如何在今天的生活中活出这真理
+            5. 以一个温和的反思问题结尾，邀请更深的默想或对话
+
+            **重要规则：**
+            - 回应目标为 200-280 字，提供有深度的解答
+            - 不需要重复\(contentTypeLabel)内容，直接深化理解
+            - 引用经文请使用标准格式如「约翰福音 3:16」
+            - 以温暖、有牧者确信的语调发言
+            """ : isChinese ? """
+            \(userContext)
+
+            你正在幫助讀者理解以下聖經章節，並回答他們的問題。
+
+            經卷：\(book)
+            章：\(chapter)
+            章節\(contentTypeLabel)：
+            \(chapterContent)
+
+            \(languageInstruction)
+
+            **回應結構（自然地整合，勿使用標題或條列）：**
+            1. 先以同理心回應問題背後的心情或關切
+            2. 以上述\(contentTypeLabel)為錨點，提供紮實的釋經洞見，並引用一至兩處相關的聖經交叉引用來加深理解
+            3. 在適當時，簡要提及基督徒不同傳統如何理解這段經文或其中的神學要點
+            4. 提供具體且貼近生活的個人應用——讀者如何在今天的生活中活出這真理
+            5. 以一個溫和的反思問題結尾，邀請更深的默想或對話
+
+            **重要規則：**
+            - 回應目標為 200-280 字，提供有深度的解答
+            - 不需要重複\(contentTypeLabel)內容，直接深化理解
+            - 引用其他經文請使用標準格式如「約翰福音 3:16」
+            - 以溫暖、有牧者確信的語調發言
+            """ : """
+            \(userContext)
+
+            You are helping \(readerName) understand the following Bible chapter and answering their questions.
+
+            Book: \(book)
+            Chapter: \(chapter)
+            Chapter \(contentTypeLabel):
+            \(chapterContent)
+
+            \(languageInstruction)
+
+            **Response structure (weave naturally — no headers or bullet points in output):**
+            1. Open by meeting the heart or curiosity behind the question with genuine warmth
+            2. Use the \(contentTypeLabel) above as your anchor, offering substantive insight with 1–2 cross-references from Scripture to enrich understanding
+            3. Where fitting, briefly note how different Christian traditions have understood this passage or its key theological point
+            4. Offer a concrete personal application — how \(readerName) might live this truth today
+            5. Close with a gentle reflective question that invites deeper meditation or continued conversation
+
+            **Important rules:**
+            - Aim for 200–280 words — give a rich, substantive answer
+            - Do not repeat the \(contentTypeLabel) content; deepen understanding instead
+            - Cite other verses in standard format like "John 3:16" or "Psalm 23:1"
+            - Speak with pastoral warmth and spiritual confidence
+            """
+        ]
+        messages.append(systemMessage)
+
+        for msg in conversationHistory {
+            if msg.role != .system {
+                let message: [String: Any] = [
+                    "role": msg.role.rawValue,
+                    "content": msg.content
+                ]
+                messages.append(message)
+            }
+        }
+
+        let userMessage: [String: Any] = [
+            "role": "user",
+            "content": userQuestion
+        ]
+        messages.append(userMessage)
+
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "stream": true,
+            "stream_options": ["include_usage": false],
+            "max_tokens": 900
+        ]
+
+        guard let url = URL(string: heliconeBaseURL) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
+        }
+        request.httpBody = jsonData
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+
+                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                        continuation.finish(throwing: NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+                        return
+                    }
+
+                    var byteBuffer = Data()
+                    for try await byte in asyncBytes {
+                        byteBuffer.append(byte)
+
+                        if let decodedString = String(data: byteBuffer, encoding: .utf8) {
+                            var remainingString = decodedString
+                            while let newlineIndex = remainingString.firstIndex(of: "\n") {
+                                let line = String(remainingString[..<newlineIndex])
+                                remainingString.removeSubrange(remainingString.startIndex...newlineIndex)
+
+                                if line.hasPrefix("data: "),
+                                   let jsonData = line.dropFirst(6).data(using: .utf8),
+                                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                                   let choices = json["choices"] as? [[String: Any]],
+                                   let firstChoice = choices.first,
+                                   let delta = firstChoice["delta"] as? [String: Any],
+                                   let content = delta["content"] as? String {
+                                    continuation.yield(content)
+                                }
+                            }
+
+                            if !remainingString.isEmpty {
+                                byteBuffer = remainingString.data(using: .utf8) ?? Data()
+                            } else {
+                                byteBuffer.removeAll()
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    func generateChapterSuggestedQuestions(
+        book: String,
+        chapter: Int,
+        chapterContent: String,
+        contentType: String,
+        appLanguage: AppLanguage
+    ) async throws -> [String] {
+        let isChinese = isChineseLanguage(appLanguage)
+        let isSimplified = isSimplifiedChinese(appLanguage)
+
+        let contentTypeLabel: String
+        if isSimplified {
+            contentTypeLabel = contentType == "summary" ? "摘要" : "背景"
+        } else if isChinese {
+            contentTypeLabel = contentType == "summary" ? "摘要" : "背景"
+        } else {
+            contentTypeLabel = contentType == "summary" ? "summary" : "context"
+        }
+
+        let prompt: String
+        if isSimplified {
+            prompt = """
+            请根据以下圣经章节的\(contentTypeLabel)，提供 2 个读者可能会问的简短问题，以便更深入了解这章内容。
+            问题应简洁明了（20字以内）。
+            请直接列出这两个问题，用换行分隔，不要有编号或其他文字。
+
+            经卷：\(book) 第\(chapter)章
+            章节\(contentTypeLabel)：
+            \(chapterContent.prefix(600))
+            """
+        } else if isChinese {
+            prompt = """
+            請根據以下聖經章節的\(contentTypeLabel)，提供 2 個讀者可能會問的簡短問題，以便更深入了解這章內容。
+            問題應簡潔明瞭（20字以內）。
+            請直接列出這兩個問題，用換行分隔，不要有編號或其他文字。
+
+            經卷：\(book) 第\(chapter)章
+            章節\(contentTypeLabel)：
+            \(chapterContent.prefix(600))
+            """
+        } else {
+            prompt = """
+            Based on the following chapter \(contentTypeLabel), provide 2 short questions a reader might ask to better understand this chapter.
+            Questions should be concise (under 15 words).
+            List the two questions directly, separated by a newline, without numbers or other text.
+
+            Book: \(book) Chapter \(chapter)
+            Chapter \(contentTypeLabel):
+            \(chapterContent.prefix(600))
+            """
+        }
+
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+
+        let requestBody: [String: Any] = [
+            "model": openAIModel,
+            "messages": messages,
+            "max_tokens": 120
+        ]
+
+        guard let url = URL(string: heliconeBaseURL) else { return [] }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            return []
+        }
+
+        return content.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .prefix(2)
+            .map { String($0) }
+    }
+
     func generateSuggestedQuestions(
         book: String,
         chapter: Int,
@@ -1157,32 +1458,46 @@ class AIService: AIServiceProtocol {
         
         // Build personalized system message with user context
         let userContext = buildUserContext(appLanguage: appLanguage)
+        let generalProfile = UserProfileStore.shared.profile
+        let generalReaderName = generalProfile.name.isEmpty ? (isChinese ? "一位讀者" : "a reader") : generalProfile.name
         let systemMessage: [String: Any] = [
             "role": "system",
             "content": isChinese ? """
             \(userContext)
             
-            你是一位溫暖且鼓勵人的屬靈導師，幫助讀者理解聖經、屬靈成長和信仰問題。
-            
             \(languageInstruction)
-            請保持回答友善、有深度且符合聖經真理。當問題涉及特定經文時，可以引用相關經文來支持你的回答。
+            
+            **回應結構（自然地整合，勿使用標題或條列）：**
+            1. 先以同理心回應\(generalReaderName)問題背後的心情、掙扎或好奇
+            2. 以紮實的聖經根基來回應——引用一至兩處具體經文（不只是提及，而是短暫解釋其意義），讓答案有聖經的重量
+            3. 在適當時，指出這個問題如何在基督徒不同傳統或整本聖經的脈絡中被理解
+            4. 幫助\(generalReaderName)自己走向發現——不是直接給答案，而是引導他們思考、反省、連結自己的信仰旅程
+            5. 以一個真誠的問題或邀請結尾，讓對話繼續，讓他們感到被聆聽與重視
             
             **重要規則：**
-            - 回答請簡潔扼要，控制在 100-150 字以內
-            - 直接回答問題，不要長篇大論
-            - 如果引用經文，請使用標準格式如「約翰福音 3:16」或「John 3:16」
+            - 回應目標為 200-300 字，提供有深度、有溫度的答案
+            - 每個回答必須有至少一處具體的聖經根據
+            - 引用經文請使用標準格式如「約翰福音 3:16」
+            - 以溫暖、有牧者確信的語調發言，不要說教，要陪伴
+            - 若有人表達極度痛苦或危機，以溫柔的方式關心他們的安危，並鼓勵尋求支持
             """ : """
             \(userContext)
             
-            You are a warm and encouraging spiritual mentor, helping readers understand the Bible, spiritual growth, and faith questions.
-            
             \(languageInstruction)
-            Please keep answers friendly, insightful, and biblically accurate. When questions involve specific verses, you may reference relevant verses to support your answers.
+            
+            **Response structure (weave naturally — no headers or bullet points in output):**
+            1. First, genuinely acknowledge the heart, struggle, or curiosity behind \(generalReaderName)'s question — meet them where they are
+            2. Offer a substantive, Scripture-grounded response, citing 1–2 specific passages (not just naming them, but briefly unpacking their meaning) to give the answer real biblical weight
+            3. Where fitting, note how this question is addressed across Scripture or how different Christian traditions approach it
+            4. Guide \(generalReaderName) toward their own discovery — don't just deliver the answer; ask a question or offer a reflection that helps them connect this truth to their own life and faith journey
+            5. Close with a genuine question or warm invitation that keeps the conversation alive and leaves them feeling heard
             
             **Important rules:**
-            - Keep responses concise, around 80-120 words
-            - Answer directly without being verbose
-            - When referencing verses, use standard format like "John 3:16" or "Genesis 1:1"
+            - Aim for 200–300 words — give a substantive, warm, and personally resonant response
+            - Every answer must include at least one specific, grounded biblical reference
+            - Cite verses in standard format like "John 3:16" or "Romans 8:28"
+            - Speak with pastoral warmth and confidence — accompany, don't lecture
+            - If someone expresses deep pain or a crisis of faith, gently acknowledge their suffering and encourage them to also reach out to someone they trust
             """
         ]
         messages.append(systemMessage)
@@ -1205,13 +1520,12 @@ class AIService: AIServiceProtocol {
         ]
         messages.append(userMessage)
         
-        // Create request body - limit to 500 tokens for concise responses
         let requestBody: [String: Any] = [
             "model": openAIModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 500
+            "max_tokens": 1000
         ]
         
         // Create URL request
@@ -1339,45 +1653,51 @@ class AIService: AIServiceProtocol {
         let prompt: String
         if isSimplified {
             prompt = """
-            请为以下圣经章节提供简短的摘要：
+            请为以下圣经章节提供深入的摘要：
             
             经卷：\(book)
             章：\(chapter)
             
-            请用1-2段简短的段落（总共约120-170字）概述这一章的内容，包括：
+            请用2-3段自然流畅的段落（总共约180-230字）概述这一章，包括：
             
-            1. 主要主题和中心思想
-            2. 重要事件或教导的精华
+            1. 主要主题和中心思想，以及这些教导的神学意义
+            2. 关键事件、人物或教导，以及它们在整本圣经叙事中的位置
+            3. 一至两处与本章相呼应的圣经交叉引用（如适用），说明这主题如何贯穿圣经
+            4. 以一句话点出本章的灵修核心——读者今天可以从中带走什么
             
             请直接开始摘要，不需要标题或开场白。使用简体中文书写。
             """
         } else if isChinese {
             prompt = """
-            請為以下聖經章節提供簡短的摘要：
+            請為以下聖經章節提供深入的摘要：
             
             經卷：\(book)
             章：\(chapter)
             
-            請用1-2段簡短的段落（總共約120-170字）概述這一章的內容，包括：
+            請用2-3段自然流暢的段落（總共約180-230字）概述這一章，包括：
             
-            1. 主要主題和中心思想
-            2. 重要事件或教導的精華
+            1. 主要主題和中心思想，以及這些教導的神學意義
+            2. 關鍵事件、人物或教導，以及它們在整本聖經敘事中的位置
+            3. 一至兩處與本章相呼應的聖經交叉引用（如適用），說明這主題如何貫穿聖經
+            4. 以一句話點出本章的靈修核心——讀者今天可以從中帶走什麼
             
             請直接開始摘要，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
             """
         } else {
             prompt = """
-            Please provide a brief summary of the following Bible chapter:
+            Please provide a rich summary of the following Bible chapter:
             
             Book: \(book)
             Chapter: \(chapter)
             
-            Please summarize this chapter in 1-2 short paragraphs (approximately 80-110 words total), including:
+            Please write 2–3 natural, flowing paragraphs (approximately 150–200 words total) that include:
             
-            1. Main themes and central ideas
-            2. Key events or teachings
+            1. The main themes and central ideas, along with their theological significance
+            2. Key events, figures, or teachings, and how they fit within the broader biblical narrative
+            3. One or two cross-references to other parts of Scripture that echo or illuminate this chapter's themes (where applicable)
+            4. A one-sentence devotional takeaway — the spiritual heart of this chapter that a reader can carry with them today
             
-            Please start directly with the summary, no title or introduction. Write in English. Keep it concise.
+            Start directly with the summary, no title or introduction. Write in English.
             """
         }
         
@@ -1393,7 +1713,7 @@ class AIService: AIServiceProtocol {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 400
+            "max_tokens": 700
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {
@@ -1513,45 +1833,51 @@ class AIService: AIServiceProtocol {
         let prompt: String
         if isSimplified {
             prompt = """
-            请为以下圣经章节提供背景和作者信息：
+            请为以下圣经章节提供深入的背景和历史信息：
             
             经卷：\(book)
             章：\(chapter)
             
-            请简要包含：
-            1. 作者和写作背景
-            2. 历史背景和文化脉络要点
-            3. 这一章的核心位置和重要性
+            请用2-3段自然流畅的段落（总共约180-230字）包含：
             
-            请用1-2段简短的段落（总共约120-170字）说明，直接开始，不需要标题或开场白。使用简体中文书写。
+            1. 作者、写作时间与背景，以及写作目的
+            2. 历史背景与文化脉络——当时的读者所处的世界，以及这如何影响对这章的理解
+            3. 这一章在整本圣经（或整卷书）大叙事中的位置——它如何与更广的救恩故事相连
+            4. 基督徒不同传统（如更正教、天主教、东正教等）如何理解这章中的核心神学主题，或这段经文的重要解读
+            
+            直接开始，不需要标题或开场白。使用简体中文书写。
             """
         } else if isChinese {
             prompt = """
-            請為以下聖經章節提供背景和作者資訊：
+            請為以下聖經章節提供深入的背景和歷史資訊：
             
             經卷：\(book)
             章：\(chapter)
             
-            請簡要包含：
-            1. 作者和寫作背景
-            2. 歷史背景和文化脈絡要點
-            3. 這一章的核心位置和重要性
+            請用2-3段自然流暢的段落（總共約180-230字）包含：
             
-            請用1-2段簡短的段落（總共約120-170字）說明，直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            1. 作者、寫作時間與背景，以及寫作目的
+            2. 歷史背景與文化脈絡——當時的讀者所處的世界，以及這如何影響對這章的理解
+            3. 這一章在整本聖經（或整卷書）大敘事中的位置——它如何與更廣的救恩故事相連
+            4. 基督徒不同傳統（如更正教、天主教、東正教等）如何理解這章中的核心神學主題，或這段經文的重要詮釋
+            
+            直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
             """
         } else {
             prompt = """
-            Please provide background and author information for the following Bible chapter:
+            Please provide rich background and historical context for the following Bible chapter:
             
             Book: \(book)
             Chapter: \(chapter)
             
-            Please briefly include:
-            1. Author and writing background
-            2. Key historical and cultural context
-            3. Position and importance of this chapter
+            Write 2–3 natural, flowing paragraphs (approximately 150–200 words total) that include:
             
-            Please explain in 1-2 short paragraphs (approximately 80-110 words total), start directly without title or introduction. Write in English. Keep it concise.
+            1. The author, approximate date, and purpose of writing — who wrote this, when, and why
+            2. The historical and cultural world of the original audience — what they were living through, and how that shapes the meaning of this chapter
+            3. This chapter's place in the larger biblical narrative — how it connects to the overarching story of salvation and the rest of Scripture
+            4. A brief note on how different Christian traditions (Protestant, Catholic, Orthodox, etc.) have read or valued this passage — its enduring theological contribution
+            
+            Start directly without title or introduction. Write in English.
             """
         }
         
@@ -1567,7 +1893,7 @@ class AIService: AIServiceProtocol {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 400
+            "max_tokens": 700
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {
@@ -1643,9 +1969,14 @@ class AIService: AIServiceProtocol {
         throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
     
-    func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage) async throws -> DailyVerse {
+    func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage, excludeReferences: [String]) async throws -> DailyVerse {
         let isChinese = isChineseLanguage(appLanguage)
         let isSimplified = isSimplifiedChinese(appLanguage)
+        
+        let excludeList = excludeReferences.joined(separator: ", ")
+        let exclusionBlockSimplified = excludeReferences.isEmpty ? "" : "\n**重要**：请不要推荐以下已经显示过的经文：\(excludeList) 请选择其他不同的经文。\n"
+        let exclusionBlockTraditional = excludeReferences.isEmpty ? "" : "\n**重要**：請不要推薦以下已經顯示過的經文：\(excludeList) 請選擇其他不同的經文。\n"
+        let exclusionBlockEnglish = excludeReferences.isEmpty ? "" : "\n**Important**: Do NOT recommend any of these verses already shown: \(excludeList). Choose a different verse instead.\n"
         
         // Build prompt for AI to suggest a verse
         let prompt: String
@@ -1655,7 +1986,7 @@ class AIService: AIServiceProtocol {
             
             心中的关注：\(focus)
             需要的帮助：\(need)
-            
+            \(exclusionBlockSimplified)
             请推荐 1 节最相关且重要的圣经经文来帮助用户祷告。请选择：
             1. 经典且广为人知的经文
             2. 与主题直接相关的重要经文
@@ -1676,7 +2007,7 @@ class AIService: AIServiceProtocol {
             
             心中的關注：\(focus)
             需要的幫助：\(need)
-            
+            \(exclusionBlockTraditional)
             請推薦 1 節最相關且重要的聖經經文來幫助用戶禱告。請選擇：
             1. 經典且廣為人知的經文
             2. 與主題直接相關的重要經文
@@ -1697,7 +2028,7 @@ class AIService: AIServiceProtocol {
             
             What's on their heart: \(focus)
             What they need: \(need)
-            
+            \(exclusionBlockEnglish)
             Please recommend 1 most relevant and important Bible verse to help the user pray. Choose:
             1. Classic and well-known verses
             2. Important verses directly related to the theme
@@ -1961,7 +2292,7 @@ class AIService: AIServiceProtocol {
         let prompt: String
         if isChinese {
             prompt = """
-            你是一位溫暖且鼓勵人的屬靈導師。請根據以下用戶的信仰成長數據，生成一份個人化的分析報告。
+            你是一位溫暖的聖經學者和屬靈導師。請根據以下用戶的信仰成長數據，生成一份個人化的分析報告——深入探討用戶所接觸的具體經文的神學意義（救恩、恩典、重生、犧牲、禱告的力量、神的公義等），不要流於表面或給出空洞的鼓勵；要具體且以聖經為根基。
 
             用戶資料：
             - 名字：\(data.userName.isEmpty ? "朋友" : data.userName)
@@ -1970,6 +2301,9 @@ class AIService: AIServiceProtocol {
 
             **【最重要】最近5個行動 - 這些最能反映用戶目前的屬靈狀態和關注焦點：**
             \(recentActionsStr)
+
+            **【最近閱讀歷程】（高優先級 - 反映用戶的閱讀模式和關注領域）：**
+            \(readingBooksStr)
 
             **請優先分析用戶的「有意識行為」，這些行為更能反映他們的屬靈狀態和成長：**
 
@@ -1989,41 +2323,38 @@ class AIService: AIServiceProtocol {
             \(savedNotesWithoutContentStr)
 
             【背景數據】（參考用，權重較低）
-            - 總共閱讀章數：\(data.stats.totalChaptersRead)（用戶可能只是快速瀏覽，不要過度解讀）
+            - 總共閱讀章數：\(data.stats.totalChaptersRead)
             - 保存經文數：\(data.stats.totalVersesSaved)
             - 連續簽到天數：\(data.currentStreak)
             - 總活躍天數：\(data.totalDaysActive)
-            - 閱讀過的書卷：\(readingBooksStr)
             - 保存經文的書卷：\(savedBooksStr)
             - 使用的標籤：\(labelsStr)
 
             請生成以下內容（以JSON格式回應）：
 
             {
-              "encouragement": "簡短的一句鼓勵（15-20字以內）。要具體且溫暖但簡潔。例如：「你在箴言中尋求智慧，顯示一顆渴望成長的心。」",
-              "journeySummary": "簡短總結用戶的信仰歷程特點（30-50字），重點分析他們與經文的互動模式和屬靈狀態",
               "pathStatus": {
                 "title": "路上的你 - 必須基於最近5個行動中的實際經文內容和用戶行為，創造一個具體、有創意、令人印象深刻的狀態描述。例如：如果用戶最近保存了約翰福音3:16並寫了關於愛的筆記，可以說「在愛的真理中扎根」；如果最近為焦慮禱告並使用腓立比書4:6-7，可以說「在憂慮中尋求平安」。絕對不要用模糊的詞彙如「成長中」、「理解中」等。要具體引用經文主題或用戶關注的屬靈主題。",
-                "description": "擴展的情境分析（約60字）。分析用戶最近的行動，提供具體洞察。結構：以一句簡短的鼓勵開頭，然後提供關於他們旅程的分析內容。引用他們歷史中的具體經文、筆記、禱告或問題。避免泛泛的鼓勵 - 專注於他們的行動揭示了什麼關於他們的屬靈焦點和成長。要有洞察力但不過度情緒化。",
+                "subtitle": "溫暖的一句話（15-20字），回應用戶最近的行動。要具體且貼近他們當前的狀態。",
+                "description": "深入的經文神學反思（約100字）。針對用戶最近互動的每節經文，簡要解釋那節經文的核心屬靈意義——它所承載的神學真理（例如：以弗所書2:8，解釋恩典作為神的白白恩賜在神學上意味著什麼；約翰福音3:3，解釋屬靈重生意味著身份的徹底更新；腓立比書4:6，解釋代禱禱告的力量和姿態；羅馬書1，解釋神藉信心所顯明的公義）。然後，將這些具體真理與用戶對這些經文的實際互動方式聯繫起來。避免使用「很好地投入聖經」或「建立穩固基礎」等通用詞語。每一句話都要紮根於用戶實際閱讀的經文內容。",
                 "iconName": "SF Symbol 名稱（如 figure.walk, heart.fill, lightbulb.fill, star.fill, cross.fill, sparkles, hands.sparkles.fill）"
               },
-              "recommendedVerse": {
-                "reference": "推薦經文出處（英文書名 章:節，如 Philippians 4:13）",
-                "text": "經文內容（繁體中文）",
-                "reason": "為什麼推薦這節經文（15-25字），要與用戶的屬靈狀態和需要相關"
-              },
               "pathHighlights": [
-                {"emoji": "📖", "fact": "第一個路徑亮點（15-25字），基於用戶的有意識行為"},
-                {"emoji": "⭐", "fact": "第二個路徑亮點（15-25字），觀察他們的屬靈成長模式"},
-                {"emoji": "✨", "fact": "第三個路徑亮點（15-25字），鼓勵或洞察"}
+                {"emoji": "📖", "fact": "第一個亮點：必須直接引用用戶的具體行為。例如：若用戶保存了詩篇23篇，就寫「你將詩篇23篇納入收藏」；若為焦慮禱告，就寫「你為焦慮向神交託禱告」。禁止泛泛建議如「親近神」「保持信心」"},
+                {"emoji": "⭐", "fact": "第二個亮點：必須基於閱讀歷史或實際數據。例如：若讀了約翰福音，就寫「你最近探索約翰福音」；若有連續簽到，就寫「連續7天堅持讀經」。禁止空洞鼓勵"},
+                {"emoji": "✨", "fact": "第三個亮點：必須是從筆記、禱告或提問中觀察到的具體主題。例如：筆記提到「愛」，就寫「你的筆記聚焦於愛的真理」。禁止通用靈修套話"}
               ],
-              "nextStep": "下一步建議（20-30字），具體且可執行，要與用戶目前的狀態相關"
+              "recommendedReading": {
+                "book": "英文書名（如 Philippians）",
+                "chapter": 4,
+                "reason": "為什麼推薦這一章（20-30字），要與用戶目前的焦點相關"
+              }
             }
 
             **重要規則：**
             1. 語氣要溫暖但分析性 - 避免過度情緒化的語言
-            2. **encouragement 必須是簡短的一句話（15-20字）**：這只是一個簡短的開場，不是主要內容
-            3. **pathStatus.description 是主要內容（約60字）**：在這裡提供實質性分析。引用最近行動中的具體經文/主題。解釋他們的行動揭示了什麼關於他們的屬靈旅程
+            2. **pathStatus.subtitle 必須是溫暖的一句話（15-20字）**：回應用戶最近的行動，要具體且貼近他們當前的狀態
+            3. **pathStatus.description 是主要內容（約100字）**：深入的經文神學反思——針對用戶互動的每節經文，解釋該經文真正的屬靈意義（例如：以弗所書2:8 = 恩典是神白白賜予的禮物，不是人的努力所能得；約翰福音3:3 = 屬靈重生意味著身份的徹底更新；腓立比書4:6 = 禱告是將憂慮交託給神的具體行動；羅馬書1 = 神藉信心所顯明的公義）。將這些具體真理與用戶的實際互動聯繫起來。不要用「很好地投入聖經」「建立穩固基礎」「豐富屬靈生命」等空洞套話——每一句話都要紮根於用戶實際接觸的經文內容
             4. **pathStatus的title必須基於最近5個行動的實際內容**：仔細閱讀最近5個行動中的經文內容、筆記、禱告主題，創造一個具體、有創意、令人印象深刻的狀態描述
             5. **絕對避免模糊詞彙**：不要用「成長中」、「理解中」、「學習中」等泛泛而談的詞。要具體引用經文主題、屬靈主題或用戶關注的焦點
             6. **必須引用具體內容**：如果用戶最近保存了某節經文，pathStatus應該反映那節經文的主題；如果最近為某個主題禱告，應該反映那個主題；如果有筆記，應該反映筆記中的思考
@@ -2031,13 +2362,13 @@ class AIService: AIServiceProtocol {
             8. 仔細閱讀用戶保存的經文內容和筆記，分析他們關注的主題和屬靈需要
             9. 「pathStatus」要描述用戶「在路徑上的狀態」，而不是「性格類型」。要反映他們如何與神的話語互動，以及目前的屬靈狀態
             10. 如果用戶有自訂禱告或筆記，要特別關注這些內容，分析他們關注的主題和需要
-            11. 閱讀章節數只是背景資訊，不要過度解讀（用戶可能只是快速瀏覽）
-            12. recommendedVerse 的 reference 必須用英文書名
+            11. **recommendedReading 必須推薦用戶尚未閱讀的章節**：根據他們最近的主題和屬靈需要，推薦一個具體的章節。book 必須用英文書名
+            12. **pathHighlights 必須具體連結用戶的歷史數據**：每個亮點都要引用具體的經文、章節、禱告主題、筆記內容或閱讀行為。絕對禁止泛泛的靈修建議（如「親近神」「保持信心」「繼續成長」等）
             13. 只回傳JSON，不要其他文字
             """
         } else {
             prompt = """
-            You are a warm and encouraging mentor. Based on the following user's faith journey data, generate a personalized analysis report.
+            You are a warm biblical scholar and spiritual guide. Based on the following user's faith journey data, generate a personalized analysis that goes deep into the actual theological meaning of the specific verses they've engaged with — explaining what salvation, grace, rebirth, sacrifice, the power of prayer, God's righteousness, or any other doctrine those verses carry. Do not be generic or flattering; be specific and scripturally grounded.
 
             User Profile:
             - Name: \(data.userName.isEmpty ? "Friend" : data.userName)
@@ -2046,6 +2377,9 @@ class AIService: AIServiceProtocol {
 
             **[MOST IMPORTANT] Recent 5 Actions - These best reflect user's current spiritual state and focus:**
             \(recentActionsStr)
+
+            **[Recent Reading History] (High priority - reflects user's reading patterns and focus areas):**
+            \(readingBooksStr)
 
             **IMPORTANT: Prioritize analyzing user's "intentional actions" - these better reflect their spiritual state and growth:**
 
@@ -2065,41 +2399,38 @@ class AIService: AIServiceProtocol {
             \(savedNotesWithoutContentStr)
 
             [Background Data] (Reference only, lower weight)
-            - Total chapters read: \(data.stats.totalChaptersRead) (User may have just skimmed, don't over-interpret)
+            - Total chapters read: \(data.stats.totalChaptersRead)
             - Verses saved: \(data.stats.totalVersesSaved)
             - Current streak: \(data.currentStreak) days
             - Total active days: \(data.totalDaysActive)
-            - Books read: \(readingBooksStr)
             - Books with saved verses: \(savedBooksStr)
             - Labels used: \(labelsStr)
 
             Please generate the following content (respond in JSON format):
 
             {
-              "encouragement": "A SHORT 1-sentence encouragement (15-20 words max). Be specific and warm but concise. Example: 'Your pursuit of wisdom in Proverbs shows a heart eager to grow.'",
-              "journeySummary": "Brief summary of the user's journey characteristics (20-40 words), focus on their interaction patterns with Scripture and spiritual state",
               "pathStatus": {
                 "title": "Along the Path - MUST be based on actual verse content and user actions from the recent 5 actions. Create a specific, creative, and impressive status description. For example: if user recently saved John 3:16 with a note about love, say 'Rooted in Love's Truth'; if recently prayed about anxiety using Philippians 4:6-7, say 'Seeking Peace in Worry'. NEVER use vague terms like 'growing', 'understanding', 'learning'. Must specifically reference verse themes or spiritual themes the user is focusing on.",
-                "description": "EXPANDED in-context analysis (~60 words). Analyze the user's recent actions to provide specific insights. Structure: Start with one brief encouraging sentence, then provide analytical content about their journey. Reference specific verses, notes, prayers, or questions from their history. Avoid generic encouragement - focus on what their actions reveal about their spiritual focus and growth. Be insightful but not overly emotional.",
+                "subtitle": "A warm one-liner (15-20 words) that echoes the user's most recent action. Be specific and close to their current state.",
+                "description": "Deep scriptural reflection tied to the user's actual verses (~100 words). For each verse the user recently engaged with, briefly explain what that verse actually means spiritually — the core doctrine or truth it carries (e.g. for Ephesians 2:8, explain what grace as gift means theologically; for John 3:3, explain what spiritual rebirth entails; for Philippians 4:6, explain the power and posture of intercessory prayer; for Romans 1, explain the revelation of God's righteousness). Then weave in how the user's engagement with these specific truths shapes their spiritual journey. Avoid generic phrases like 'wonderful commitment' or 'building a strong foundation'. Root every sentence in the actual content of the verses they read.",
                 "iconName": "SF Symbol name (e.g., figure.walk, heart.fill, lightbulb.fill, star.fill, cross.fill, sparkles, hands.sparkles.fill)"
               },
-              "recommendedVerse": {
-                "reference": "Recommended verse reference (English book name Chapter:Verse, e.g., Philippians 4:13)",
-                "text": "The verse text in English",
-                "reason": "Why this verse is recommended (15-25 words), should relate to user's spiritual state and needs"
-              },
               "pathHighlights": [
-                {"emoji": "📖", "fact": "First path highlight (15-25 words), based on user's intentional actions"},
-                {"emoji": "⭐", "fact": "Second path highlight (15-25 words), observe their spiritual growth patterns"},
-                {"emoji": "✨", "fact": "Third path highlight (15-25 words), encouragement or insight"}
+                {"emoji": "📖", "fact": "First highlight: MUST cite a specific user action. E.g. if they saved Psalm 23, write 'You saved Psalm 23 to your collection'; if they prayed about anxiety, write 'You brought anxiety before God in prayer'. NEVER generic advice like 'stay close to God' or 'keep the faith'"},
+                {"emoji": "⭐", "fact": "Second highlight: MUST be based on reading history or concrete data. E.g. if they read John, write 'You've been exploring John's gospel'; if they have a streak, write '7 days of consistent reading'. NEVER vague encouragement"},
+                {"emoji": "✨", "fact": "Third highlight: MUST observe a specific theme from their notes, prayers, or questions. E.g. if a note mentions love, write 'Your notes focus on love's truth'. NEVER generic spiritual platitudes"}
               ],
-              "nextStep": "Suggested next step (15-25 words), specific and actionable, should relate to user's current state"
+              "recommendedReading": {
+                "book": "English book name (e.g., Philippians)",
+                "chapter": 4,
+                "reason": "Why this chapter is recommended (20-30 words), tied to user's current focus"
+              }
             }
 
             **Important Rules:**
             1. Tone should be warm but analytical - avoid excessive emotional language
-            2. **encouragement MUST be 1 short sentence (15-20 words)**: This is just a brief opener, not the main content
-            3. **pathStatus.description is the MAIN content (~60 words)**: Provide substantive analysis here. Reference specific verses/themes from recent actions. Explain what their actions reveal about their spiritual journey
+            2. **pathStatus.subtitle MUST be a warm one-liner (15-20 words)**: Echo the user's most recent action, be specific and close to their current state
+            3. **pathStatus.description is the MAIN content (~100 words)**: Deep scriptural reflection — for each verse the user engaged with, explain what it actually means theologically (e.g. Ephesians 2:8 = grace as God's unearned gift, not human effort; John 3:3 = spiritual rebirth as a complete transformation of identity; Philippians 4:6 = prayer as the act of casting anxiety onto God; Romans 1 = God's righteousness revealed through faith). Weave these truths together around the user's actual engagement. Never use generic phrases like "wonderful commitment", "building a strong foundation", or "enriching your spiritual journey" — root every sentence in the real content of the verses
             4. **pathStatus title MUST be based on actual content from recent 5 actions**: Carefully read the verse content, notes, and prayer topics from the recent 5 actions, create a specific, creative, and impressive status description
             5. **Absolutely avoid vague terms**: Don't use generic phrases like "growing", "understanding", "learning". Must specifically reference verse themes, spiritual themes, or focus areas the user is engaging with
             6. **Must reference specific content**: If user recently saved a verse, pathStatus should reflect that verse's theme; if recently prayed about a topic, should reflect that topic; if has notes, should reflect the thoughts in those notes
@@ -2107,8 +2438,8 @@ class AIService: AIServiceProtocol {
             8. Carefully read the verse content and notes user saved, analyze themes they're focusing on and spiritual needs
             9. "pathStatus" should describe user's "status along the path", NOT a "personality type". Reflect how they interact with God's Word and their current spiritual state
             10. If user has custom prayers or notes, pay special attention to these contents, analyze themes and needs they're focusing on
-            11. Chapter reading count is just background info, don't over-interpret (user may have just skimmed)
-            12. recommendedVerse reference must use English book names
+            11. **recommendedReading MUST recommend a chapter the user has NOT yet read**: Based on their recent themes and spiritual needs, recommend a specific chapter. book must use English book names
+            12. **pathHighlights MUST be tied to concrete user history**: Each highlight must cite specific verses, chapters, prayer topics, note content, or reading behavior. NEVER use generic spiritual advice (e.g. "stay close to God", "keep the faith", "continue growing")
             13. Return only JSON, no other text
             """
         }
@@ -2161,15 +2492,13 @@ class AIService: AIServiceProtocol {
         }
         
         // Parse the response into our model
-        let encouragement = analysisJson["encouragement"] as? String ?? ""
-        let journeySummary = analysisJson["journeySummary"] as? String ?? ""
-        let nextStep = analysisJson["nextStep"] as? String ?? ""
         
-        // Parse path status (formerly readingPersonality)
-        var pathStatus = PathStatus(title: "Along the Path", description: "Beginning your journey", iconName: "figure.walk")
+        // Parse path status (merged with encouragement and summary)
+        var pathStatus = PathStatus(title: "Along the Path", subtitle: "Beginning your journey", description: "Your spiritual path is just starting", iconName: "figure.walk")
         if let statusJson = analysisJson["pathStatus"] as? [String: Any] {
             pathStatus = PathStatus(
                 title: statusJson["title"] as? String ?? "Along the Path",
+                subtitle: statusJson["subtitle"] as? String ?? "Beginning your journey",
                 description: statusJson["description"] as? String ?? "",
                 iconName: statusJson["iconName"] as? String ?? "figure.walk"
             )
@@ -2177,18 +2506,9 @@ class AIService: AIServiceProtocol {
             // Fallback for old format
             pathStatus = PathStatus(
                 title: personalityJson["title"] as? String ?? "Along the Path",
+                subtitle: personalityJson["subtitle"] as? String ?? "Beginning your journey",
                 description: personalityJson["description"] as? String ?? "",
                 iconName: personalityJson["iconName"] as? String ?? "figure.walk"
-            )
-        }
-        
-        // Parse recommended verse
-        var recommendedVerse: RecommendedVerse? = nil
-        if let verseJson = analysisJson["recommendedVerse"] as? [String: Any] {
-            recommendedVerse = RecommendedVerse(
-                reference: verseJson["reference"] as? String ?? "",
-                text: verseJson["text"] as? String ?? "",
-                reason: verseJson["reason"] as? String ?? ""
             )
         }
         
@@ -2211,13 +2531,20 @@ class AIService: AIServiceProtocol {
             }
         }
         
+        // Parse recommended reading
+        var recommendedReading = RecommendedReading(book: "Psalms", chapter: 23, reason: "Start your spiritual journey with comfort and guidance")
+        if let readingJson = analysisJson["recommendedReading"] as? [String: Any] {
+            recommendedReading = RecommendedReading(
+                book: readingJson["book"] as? String ?? "Psalms",
+                chapter: readingJson["chapter"] as? Int ?? 23,
+                reason: readingJson["reason"] as? String ?? "Start your spiritual journey"
+            )
+        }
+        
         return AIJourneyAnalysis(
-            encouragement: encouragement,
-            journeySummary: journeySummary,
             pathStatus: pathStatus,
-            recommendedVerse: recommendedVerse,
             pathHighlights: pathHighlights,
-            nextStep: nextStep
+            recommendedReading: recommendedReading
         )
     }
     
@@ -2251,14 +2578,8 @@ class AIService: AIServiceProtocol {
         let isChinese = isChineseLanguage(appLanguage)
         let isSimplified = isSimplifiedChinese(appLanguage)
         
-        // Build context string
+        // Build context string (profile subset: maturity only; goals/focus/dailyTime deprecated)
         let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
-        let goals = profile.spiritualGoals.isEmpty ? 
-            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
-            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
-        let focusAreas = profile.lifeFocusAreas.isEmpty ?
-            (isChinese ? (isSimplified ? "未设定" : "未設定") : "not set") :
-            profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
         
         var contextString = ""
         if let history = history {
@@ -2273,8 +2594,6 @@ class AIService: AIServiceProtocol {
             contextString = """
             User Profile:
             - Spiritual Maturity: \(maturity)
-            - Goals: \(goals)
-            - Life Focus Areas: \(focusAreas)
             
             Recent Activity:
             \(recentActivity)
@@ -2284,9 +2603,6 @@ class AIService: AIServiceProtocol {
             contextString = """
             User Profile:
             - Spiritual Maturity: \(maturity)
-            - Goals: \(goals)
-            - Life Focus Areas: \(focusAreas)
-            - Daily Time Commitment: \(profile.dailyTimeCommitment.localizedDisplayName(for: appLanguage))
             
             Note: This is a new user with no reading history yet.
             """
@@ -2299,10 +2615,11 @@ class AIService: AIServiceProtocol {
             
             \(contextString)
             
-            请生成2-3个深入且相关的问题，帮助了解用户的具体需求和期望。每个问题应该：
-            1. 基于用户的属灵阶段、目标和生活焦点领域
+            请生成恰好 3 个深入且相关的问题，帮助了解用户的具体需求和期望。每个问题应该：
+            1. 基于用户的属灵阶段
             2. 如果用户有活动历史，要参考他们的笔记、祷告和问题
             3. 问题应该具体、有针对性，能帮助生成更个性化的阅读计划
+            4. 只问能直接帮助决定适合经文与阅读结构的问题。不要问参与方式（如参加教会、与家人分享）、生活习惯或其他与选择阅读计划无关的问题。
             
             请以JSON数组格式返回，每个问题包含：
             {
@@ -2325,10 +2642,11 @@ class AIService: AIServiceProtocol {
             
             \(contextString)
             
-            請生成2-3個深入且相關的問題，幫助了解用戶的具體需求和期望。每個問題應該：
-            1. 基於用戶的屬靈階段、目標和生活焦點領域
+            請生成恰好 3 個深入且相關的問題，幫助了解用戶的具體需求和期望。每個問題應該：
+            1. 基於用戶的屬靈階段
             2. 如果用戶有活動歷史，要參考他們的筆記、禱告和問題
             3. 問題應該具體、有針對性，能幫助生成更個性化的閱讀計劃
+            4. 只問能直接幫助決定適合經文與閱讀結構的問題。不要問參與方式（如參加教會、與家人分享）、生活習慣或其他與選擇閱讀計劃無關的問題。
             
             請以JSON陣列格式返回，每個問題包含：
             {
@@ -2351,10 +2669,11 @@ class AIService: AIServiceProtocol {
             
             \(contextString)
             
-            Please generate 2-3 insightful and relevant questions to understand the user's specific needs and expectations. Each question should:
-            1. Be based on the user's spiritual maturity, goals, and life focus areas
+            Please generate exactly 3 insightful and relevant questions to understand the user's specific needs and expectations. Each question should:
+            1. Be based on the user's spiritual maturity
             2. If the user has activity history, reference their notes, prayers, and questions
             3. Be specific and targeted to help generate a more personalized reading plan
+            4. Ask ONLY questions that directly help determine what Scriptures and reading structure suit the user. Do NOT ask about participation style (e.g. attending church, sharing with family), lifestyle habits, or other topics unrelated to selecting the right reading plan.
             
             Please return in JSON array format, each question containing:
             {
@@ -2456,13 +2775,11 @@ class AIService: AIServiceProtocol {
         let isChinese = isChineseLanguage(appLanguage)
         let isSimplified = isSimplifiedChinese(appLanguage)
         
-        // Build context from profile and answers
+        // Build context from profile and answers (goals/lifeFocus deprecated; use maturity + answers)
         let maturity = profile.spiritualMaturity.localizedDisplayName(for: appLanguage)
-        let goals = profile.spiritualGoals.isEmpty ? 
-            (isChinese ? (isSimplified ? "无特定目标" : "無特定目標") : "no specific goals") :
-            profile.spiritualGoals.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", ")
-        
         let answersText = answers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+        let customFocus = answers["customFocus"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasCustomFocus = (customFocus?.isEmpty == false)
         
         let prompt: String
         if isSimplified {
@@ -2471,8 +2788,7 @@ class AIService: AIServiceProtocol {
             
             用户资料：
             - 属灵阶段：\(maturity)
-            - 目标：\(goals)
-            - 生活焦点：\(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            \(hasCustomFocus ? "- **本次特别关注**：\(customFocus ?? "")（请围绕此主题精心挑选经文）" : "")
             
             用户回答：
             \(answersText)
@@ -2514,8 +2830,7 @@ class AIService: AIServiceProtocol {
             
             用戶資料：
             - 屬靈階段：\(maturity)
-            - 目標：\(goals)
-            - 生活焦點：\(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            \(hasCustomFocus ? "- **本次特別關注**：\(customFocus ?? "")（請圍繞此主題精心挑選經文）" : "")
             
             用戶回答：
             \(answersText)
@@ -2557,8 +2872,7 @@ class AIService: AIServiceProtocol {
             
             User Profile:
             - Spiritual Maturity: \(maturity)
-            - Goals: \(goals)
-            - Life Focus Areas: \(profile.lifeFocusAreas.map { $0.localizedDisplayName(for: appLanguage) }.joined(separator: ", "))
+            \(hasCustomFocus ? "- **Special focus for this plan**: \(customFocus ?? "") (Please curate verses around this theme)" : "")
             
             User Answers:
             \(answersText)
@@ -2682,6 +2996,12 @@ class AIService: AIServiceProtocol {
                     throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid day structure"])
                 }
                 
+                // VALIDATE book exists in BibleData
+                guard BibleData.book(named: book) != nil else {
+                    throw NSError(domain: "AIService", code: -1, 
+                        userInfo: [NSLocalizedDescriptionKey: "AI returned invalid book name: '\(book)'. Expected English names like 'John', 'Psalms', 'Matthew'."])
+                }
+                
                 let verseStart = dayJson["verseStart"] as? Int
                 let verseEnd = dayJson["verseEnd"] as? Int
                 let dayDescription = dayJson["description"] as? String
@@ -2731,45 +3051,60 @@ class AIService: AIServiceProtocol {
         }
         
         let isChinese = isChineseLanguage(language)
-        let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : language.rawValue
+        let isSimplified = language == .chineseSimplified
+        let languageInstruction: String
+        if isSimplified {
+            languageInstruction = "Simplified Chinese (简体中文)"
+        } else if isChinese {
+            languageInstruction = "Traditional Chinese (繁體中文)"
+        } else if language == .spanish {
+            languageInstruction = "Spanish (Español)"
+        } else {
+            languageInstruction = "English"
+        }
         
         let prompt = """
-        You are a gentle, empathetic spiritual guide. A person named \(name) has shared what's on their heart:
+        You are a gentle, empathetic spiritual companion. \(name) has opened up about what is on their heart:
 
         "\(reflection)"
 
-        Respond in \(languageInstruction) with:
+        Respond entirely in \(languageInstruction).
 
-        1. ECHO (2-3 sentences): 
-           - Rephrase what they shared in a warm, understanding way
-           - Validate their feelings and make them feel heard
-           - Soothe their emotions - say what they need to hear right now
-           - Do NOT use generic phrases like "I hear you" or "I understand"
-           - Instead, reflect back their specific experience with warmth
+        Your response has two parts:
 
-        2. VERSE: Select ONE Bible verse that speaks directly to their situation. 
-           Choose something comforting and hopeful that addresses their specific need.
+        PART 1 — ECHO (4-5 sentences, concise but warm):
+        Write a warm, heartfelt reflection that shows you truly understand what \(name) is feeling. 
+        - Mirror their specific emotions and situation — do NOT use generic phrases like "I hear you" or "That must be hard."
+        - Gently validate their experience and name the feelings behind their words.
+        - End with a brief word of encouragement that connects their struggle to hope.
+        - Tone: intimate, gentle, caring — like a trusted friend sitting beside them.
+        - Keep it concise — every word should matter.
 
-        Tone: Gentle, soothing, warm. Like a caring presence who truly listens. 
-        No preaching, no advice-giving, no clichés. Just warmth and comfort.
+        PART 2 — VERSE:
+        Choose ONE Bible verse that speaks PRECISELY to their situation.
+        IMPORTANT: Draw from the FULL breadth of Scripture. Consider Psalms, Isaiah, Lamentations, Jeremiah, Romans, 2 Corinthians, 1 Peter, James, Hebrews, Philippians, Colossians, Ephesians, John, and others.
+        DO NOT default to commonly-quoted verses like Matthew 11:28 or Jeremiah 29:11 unless they are genuinely the best fit.
+        Pick something that would feel personal and surprising — a verse they might not have encountered before.
+        Include the full verse text (not just a fragment).
 
-        Format your response as JSON:
+        Return ONLY valid JSON in this exact structure:
         {
-          "echo": "Your empathetic response here...",
-          "verse_reference": "Matthew 11:28",
-          "verse_text": "Come to me, all you who are weary and burdened, and I will give you rest."
+          "echo": "Your heartfelt echo here...",
+          "verse_reference": "Book Chapter:Verse",
+          "verse_text": "The full text of the verse."
         }
         """
         
         let messages: [[String: Any]] = [
+            ["role": "system", "content": "You are a deeply empathetic spiritual companion who responds with genuine warmth and carefully chosen Scripture. Always return valid JSON."],
             ["role": "user", "content": prompt]
         ]
         
         let requestBody: [String: Any] = [
-            "model": openAIModel,
+            "model": premiumModel,
             "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 800
+            "temperature": 0.9,
+            "max_tokens": 1000
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {
@@ -2951,6 +3286,21 @@ class AIService: AIServiceProtocol {
         }
     }
     
+    /// Sanitizes AI-generated book intro: removes emojis, [name] placeholder, and leading "Name, "
+    private func sanitizeBookIntro(_ intro: String, userName: String) -> String {
+        var result = intro
+        result = result.replacingOccurrences(of: "[name]", with: "", options: .caseInsensitive)
+        if !userName.isEmpty {
+            let prefix = "\(userName), "
+            if result.hasPrefix(prefix) {
+                result = String(result.dropFirst(prefix.count))
+            }
+        }
+        result = String(result.unicodeScalars.filter { !$0.properties.isEmoji })
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "  ", with: " ")
+    }
+    
     /// Generates personalized book intros for Psalms, Matthew, and Philippians
     func generateBookIntros(
         name: String,
@@ -2985,10 +3335,10 @@ class AIService: AIServiceProtocol {
         let prompt = """
         \(contextSection)
 
-        Generate a 5-10 word personalized intro for each book (Psalms, Matthew, Philippians),
+        Generate a personalized intro for each book (Psalms, Matthew, Philippians),
         connecting the book's themes to what they shared and their area of exploration.
+        CRITICAL: Each intro must explicitly reference their input—e.g. "Based on your reflection about finding peace, Psalms offers..." or "Because you want to explore prayer, Matthew..." so users clearly see it's personalized, not a random suggestion. 1–2 sentences per book. No emojis. Do not include the user's name.
 
-        Make each intro feel like it was chosen specifically for them.
         Warm, inviting tone - like a friend suggesting a book.
 
         Language: \(languageInstruction)
@@ -3053,9 +3403,10 @@ class AIService: AIServiceProtocol {
             
             let now = Date()
             return booksArray.compactMap { bookJson -> RecommendedBook? in
-                guard let name = bookJson["name"] as? String,
-                      let intro = bookJson["intro"] as? String else { return nil }
-                return RecommendedBook(bookName: name, personalizedIntro: intro, recommendedAt: now)
+                guard let bookName = bookJson["name"] as? String,
+                      let rawIntro = bookJson["intro"] as? String else { return nil }
+                let intro = sanitizeBookIntro(rawIntro, userName: name)
+                return RecommendedBook(bookName: bookName, personalizedIntro: intro, recommendedAt: now)
             }
         } catch {
             return getDefaultBookIntros(language: language)
@@ -3085,20 +3436,19 @@ class AIService: AIServiceProtocol {
         And their desire to explore:
         "\(selection.displayText)"
         
-        Recommend 2-3 Bible verses that speak directly to this exploration.
-        For each verse:
-        - Choose a verse that offers comfort, guidance, or insight related to their area of interest
-        - Provide the full verse text
-        - Write a brief (1 sentence) explanation of why this verse connects to what they want to explore
+        Choose ONE Bible verse as their personalized "Verse of the Day" to begin their journey.
+        - Pick a verse that speaks directly to what they shared — comfort, guidance, or insight
+        - Provide the full verse text (not a fragment)
+        - Write a brief (1 sentence) personal explanation of why this verse was chosen for them
+        - Draw from the full breadth of Scripture — avoid overused verses like Jeremiah 29:11 or Matthew 11:28 unless they are truly the best fit
         
-        Make each recommendation feel personal and relevant to what they shared.
+        Make it feel personal, like this verse was handpicked just for them.
         Warm, contemplative tone.
         
         Language: \(languageInstruction)
         Format as JSON:
         {
           "verses": [
-            {"reference": "Book Chapter:Verse", "text": "...", "reason": "..."},
             {"reference": "Book Chapter:Verse", "text": "...", "reason": "..."}
           ]
         }
@@ -3109,10 +3459,10 @@ class AIService: AIServiceProtocol {
         ]
         
         let requestBody: [String: Any] = [
-            "model": openAIModel,
+            "model": premiumModel,
             "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 800
+            "temperature": 0.85,
+            "max_tokens": 500
         ]
         
         guard let url = URL(string: heliconeBaseURL) else {
@@ -3165,19 +3515,13 @@ class AIService: AIServiceProtocol {
         }
     }
     
-    /// Default related verses when AI fails
+    /// Default verse of the day when AI fails
     private func getDefaultRelatedVerses(language: AppLanguage) -> [OnboardingRecommendedVerse] {
         let isChinese = isChineseLanguage(language)
         let now = Date()
         
         if isChinese {
             return [
-                OnboardingRecommendedVerse(
-                    reference: "耶利米書 29:11",
-                    text: "耶和華說：我知道我向你們所懷的意念，是賜平安的意念，不是降災禍的意念，要叫你們末後有指望。",
-                    reason: "這節經文提醒我們神對我們有美好的計劃。",
-                    recommendedAt: now
-                ),
                 OnboardingRecommendedVerse(
                     reference: "詩篇 46:10",
                     text: "你們要休息，要知道我是神！",
@@ -3188,15 +3532,9 @@ class AIService: AIServiceProtocol {
         } else {
             return [
                 OnboardingRecommendedVerse(
-                    reference: "Jeremiah 29:11",
-                    text: "For I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope.",
-                    reason: "This verse reminds us that God has good plans for our lives.",
-                    recommendedAt: now
-                ),
-                OnboardingRecommendedVerse(
                     reference: "Psalm 46:10",
                     text: "Be still, and know that I am God.",
-                    reason: "Finding rest in God's presence amid life's busyness.",
+                    reason: "A moment of stillness as you begin your journey with Scripture.",
                     recommendedAt: now
                 )
             ]

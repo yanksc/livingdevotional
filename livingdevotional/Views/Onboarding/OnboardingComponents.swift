@@ -8,7 +8,7 @@ import SwiftUI
 /// Centralized design constants for easy tweaking
 enum OnboardingDesign {
     // Typography
-    static let promptFontSize: CGFloat = 26
+    static let promptFontSize: CGFloat = 20
     static let promptFontWeight: Font.Weight = .regular
     static let promptFontDesign: Font.Design = .serif
     
@@ -30,7 +30,7 @@ enum OnboardingDesign {
     // Animation Timing
     static let promptAppearDelay: Double = 0.3
     static let promptAnimationDuration: Double = 0.5
-    static let optionStaggerDelay: Double = 0.12
+    static let optionStaggerDelay: Double = 0.24
     static let optionBaseDelay: Double = 0.7
     
     // Shadow
@@ -231,7 +231,7 @@ struct TypewriterText: View {
         isComplete = false
         let characters = Array(text)
         var index = 0
-        let speed: TimeInterval = isChinese ? 0.05 : 0.03
+        let speed: TimeInterval = isChinese ? 0.075 : 0.05
         
         func typeNext() {
             guard index < characters.count else {

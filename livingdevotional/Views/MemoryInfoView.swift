@@ -11,9 +11,6 @@ struct MemoryInfoView: View {
     @State private var isEditing = false
     @State private var editedName: String = ""
     @State private var selectedMaturity: SpiritualMaturity = .growing
-    @State private var selectedGoals: Set<SpiritualGoal> = []
-    @State private var selectedTradition: ChristianTradition = .nondenominational
-    @State private var selectedCompanionStyle: AICompanionStyle = .mentor
     
     private var isChinese: Bool {
         let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
@@ -53,39 +50,6 @@ struct MemoryInfoView: View {
                             isEditing: isEditing,
                             selection: $selectedMaturity,
                             options: SpiritualMaturity.allCases,
-                            displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
-                        )
-                        
-                        editableGoalsRow(
-                            title: isChinese ? "目標" : "Goals",
-                            value: profileStore.profile.spiritualGoals.isEmpty ? 
-                                (isChinese ? "無" : "None") :
-                                profileStore.profile.spiritualGoals.map { 
-                                    isChinese ? $0.displayNameChinese : $0.displayName 
-                                }.joined(separator: ", "),
-                            isEditing: isEditing,
-                            selectedGoals: $selectedGoals
-                        )
-                        
-                        editablePickerRow(
-                            title: isChinese ? "教會背景" : "Church Background",
-                            value: isChinese ? 
-                                profileStore.profile.tradition.displayNameChinese : 
-                                profileStore.profile.tradition.displayName,
-                            isEditing: isEditing,
-                            selection: $selectedTradition,
-                            options: ChristianTradition.allCases,
-                            displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
-                        )
-                        
-                        editablePickerRow(
-                            title: isChinese ? "互動風格" : "Interaction Style",
-                            value: isChinese ? 
-                                profileStore.profile.companionStyle.displayNameChinese : 
-                                profileStore.profile.companionStyle.displayName,
-                            isEditing: isEditing,
-                            selection: $selectedCompanionStyle,
-                            options: AICompanionStyle.allCases,
                             displayName: { isChinese ? $0.displayNameChinese : $0.displayName }
                         )
                         
@@ -142,25 +106,16 @@ struct MemoryInfoView: View {
     private func startEditing() {
         editedName = profileStore.profile.name
         selectedMaturity = profileStore.profile.spiritualMaturity
-        selectedGoals = Set(profileStore.profile.spiritualGoals)
-        selectedTradition = profileStore.profile.tradition
-        selectedCompanionStyle = profileStore.profile.companionStyle
     }
     
     private func cancelEditing() {
         editedName = profileStore.profile.name
         selectedMaturity = profileStore.profile.spiritualMaturity
-        selectedGoals = Set(profileStore.profile.spiritualGoals)
-        selectedTradition = profileStore.profile.tradition
-        selectedCompanionStyle = profileStore.profile.companionStyle
     }
     
     private func saveChanges() {
         profileStore.profile.name = editedName.trimmingCharacters(in: .whitespaces)
         profileStore.profile.spiritualMaturity = selectedMaturity
-        profileStore.profile.spiritualGoals = Array(selectedGoals)
-        profileStore.profile.tradition = selectedTradition
-        profileStore.profile.companionStyle = selectedCompanionStyle
     }
     
     private func infoRow(title: String, value: String) -> some View {
@@ -225,45 +180,6 @@ struct MemoryInfoView: View {
         }
     }
     
-    @ViewBuilder
-    private func editableGoalsRow(
-        title: String,
-        value: String,
-        isEditing: Bool,
-        selectedGoals: Binding<Set<SpiritualGoal>>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(AppTheme.secondaryText)
-            
-            if isEditing {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(SpiritualGoal.allCases) { goal in
-                        Toggle(
-                            isChinese ? goal.displayNameChinese : goal.displayName,
-                            isOn: Binding(
-                                get: { selectedGoals.wrappedValue.contains(goal) },
-                                set: { isOn in
-                                    if isOn {
-                                        selectedGoals.wrappedValue.insert(goal)
-                                    } else {
-                                        selectedGoals.wrappedValue.remove(goal)
-                                    }
-                                }
-                            )
-                        )
-                        .tint(AppTheme.accentColor)
-                        .font(.body)
-                    }
-                }
-            } else {
-                Text(value)
-                    .font(.body)
-                    .foregroundColor(AppTheme.primaryText)
-            }
-        }
-    }
 }
 
 #Preview {

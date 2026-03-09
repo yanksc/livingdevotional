@@ -1,4 +1,4 @@
-// DeepDiveQuestionView - Step 7: AI-generated question for personalized exploration
+// DeepDiveQuestionView - Step 8: AI-generated question for personalized exploration
 
 import SwiftUI
 
@@ -28,11 +28,11 @@ struct DeepDiveQuestionView: View {
                         loadingView
                     } else if let question = state.deepDiveQuestion {
                         optionsView(question: question)
+                            .padding(.horizontal, OnboardingDesign.horizontalPadding)
                     } else if state.deepDiveError != nil {
                         errorView
                     }
                 }
-                .padding(.horizontal, 24)
             }
             
             Spacer()
@@ -45,7 +45,7 @@ struct DeepDiveQuestionView: View {
                 continueButton
                     .opacity(showContinue ? 1 : 0)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, OnboardingDesign.horizontalPadding)
             .padding(.bottom, 40)
         }
         .onAppear {
@@ -63,12 +63,15 @@ struct DeepDiveQuestionView: View {
     private var questionTextView: some View {
         Group {
             if showQuestion, let question = state.deepDiveQuestion {
-                Text(questionWithName(question.question))
-                    .font(.system(size: 20, weight: .regular, design: .serif))
-                    .foregroundColor(AppTheme.primaryText)
-                    .multilineTextAlignment(.leading)
-                    .lineSpacing(6)
-                    .frame(maxWidth: .infinity, minHeight: questionReservedHeight, alignment: .topLeading)
+                TypewriterText(
+                    text: questionWithName(question.question),
+                    fontSize: OnboardingDesign.promptFontSize,
+                    isChinese: state.isChinese,
+                    onComplete: {
+                        animateOptionsIn()
+                    }
+                )
+                .frame(minHeight: questionReservedHeight, alignment: .topLeading)
             } else {
                 Color.clear
                     .frame(height: questionReservedHeight)
@@ -100,11 +103,11 @@ struct DeepDiveQuestionView: View {
     
     private var loadingText: String {
         if state.isChinese {
-            return "正在為你準備問題..."
+            return "正在了解你的旅程..."
         } else if state.isSpanish {
-            return "Preparando una pregunta para ti..."
+            return "Conociendo tu camino..."
         } else {
-            return "Preparing a question for you..."
+            return "Getting to know your journey..."
         }
     }
     
@@ -216,6 +219,7 @@ struct DeepDiveQuestionView: View {
                                 .stroke(AppTheme.accentColor.opacity(0.2), lineWidth: 1)
                         )
                         .focused($isOtherInputFocused)
+                        .autocorrectionDisabled()
                         .lineLimit(3...5)
                         .onChange(of: otherInputText) { _, newValue in
                             if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -331,31 +335,27 @@ struct DeepDiveQuestionView: View {
     
     private func handleAppear() {
         if state.deepDiveQuestion != nil {
-            // Show question first
+            // Show question with typewriter effect first; options animate after typewriter completes
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeOut(duration: 0.5)) {
+                withAnimation(.easeOut(duration: 0.3)) {
                     showQuestion = true
                 }
             }
-            
-            // Animate options in staggered
-            animateOptionsIn()
         }
     }
     
     private func animateOptionsIn() {
-        // Show 4 options + "Other" (5 total)
+        // Show 4 options + "Other" (5 total), staggered after typewriter completes
         for i in 0..<5 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6 + Double(i) * 0.15) {
-                withAnimation(.easeOut(duration: 0.3)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 + Double(i) * 0.30) {
+                withAnimation(.easeOut(duration: 0.6)) {
                     _ = visibleOptionIndices.insert(i)
                 }
             }
         }
         
         // Show navigation (back button) after all options animate in
-        // Last option is at 0.6 + 4*0.15 = 1.2s, add buffer for animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
             withAnimation(.easeOut(duration: 0.4)) {
                 showNavigation = true
             }

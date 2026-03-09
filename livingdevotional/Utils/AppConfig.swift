@@ -34,6 +34,9 @@ enum AppConfig {
     /// Helicone AI Gateway base URL
     static let heliconeBaseURL = "https://ai-gateway.helicone.ai/v1/chat/completions"
     
-    /// OpenAI model to use
+    /// OpenAI model to use (default for most calls)
     static let openAIModel = "gpt-4o-mini"
+    
+    /// Premium model for high-quality onboarding moments (Scripture Echo, etc.)
+    static let premiumModel = "gpt-4o"
 }

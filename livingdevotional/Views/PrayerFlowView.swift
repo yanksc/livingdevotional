@@ -2,10 +2,10 @@
 // Anytime Prayer Feature - Allows users to generate personalized prayers
 //
 // Subviews and logic are organized in separate files:
-// - PrayerFlow/PrayerFlowModels.swift: VerseOption, PrayerFocus, EmotionalNeed, PrayerQuestionType
+// - PrayerFlow/PrayerFlowModels.swift: VerseOption, PrayerTopic, PrayerQuestionType
 // - PrayerFlow/PrayerFlowViewModel.swift: Business logic, AI calls, verse loading
-// - PrayerFlow/PrayerFlowQuestionViews.swift: HeartFocusQuestionView, ChooseVerseQuestionView,
-//   EmotionalNeedQuestionView, VerseOptionCard, ProgressIndicator
+// - PrayerFlow/PrayerFlowQuestionViews.swift: PrayerIntroView, PrayerFirstScreenView, ChooseVerseQuestionView,
+//   VerseOptionCard, ProgressIndicator
 // - PrayerFlow/PrayerResultView.swift: PrayerResultView, PrayerTypewriterText, AmenButton
 
 import SwiftUI
@@ -27,32 +27,20 @@ struct PrayerFlowView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background with cross-fade transition support
+                // Single background for entire prayer flow - no switching or replay
                 ZStack {
-                    // Base background (always visible)
-                    SerenePrayerBackground()
-                        .opacity(1.0 - viewModel.backgroundTransitionProgress)
-                        .overlay(
-                            Color.black.opacity(viewModel.backgroundTransitionProgress * 0.5)
-                        )
-                    
-                    // New prayer background (fading in during transition)
-                    if viewModel.backgroundTransitionProgress > 0 {
-                        SerenePrayerBackground(
-                            overlayOpacity: 0.45,
-                            edgeBoundaryWidth: 28,
-                            edgeBoundaryOpacity: 0.35,
-                            showVignette: true
-                        )
-                        .opacity(viewModel.backgroundTransitionProgress)
-                    }
+                    SerenePrayerBackground(overlayOpacity: 0.4)
+                        .ignoresSafeArea()
+                    Color.black
+                        .opacity(1.0 - (viewModel.introBackgroundProgress * 0.5))
+                        .ignoresSafeArea()
                 }
                 
-                if viewModel.isLoadingVerse || viewModel.isLoadingPrayer {
+                if viewModel.isLoadingPrayer {
                     PrayerGenerationWaitingView(
                         verse: viewModel.selectedVerse,
-                        focus: viewModel.selectedFocus,
-                        emotionalNeed: viewModel.emotionalNeed,
+                        topic: viewModel.selectedTopics.first,
+                        customTopicText: viewModel.customTopicText,
                         prayerIntent: viewModel.selectedIntent
                     )
                 } else if let verse = viewModel.selectedVerse, !viewModel.generatedPrayer.isEmpty {
@@ -78,7 +66,7 @@ struct PrayerFlowView: View {
                         Button(settingsStore.appLanguage == .chineseTraditional ? "重試" : "Retry") {
                             viewModel.errorMessage = nil
                             if viewModel.selectedVerse == nil {
-                                viewModel.generatePersonalizedVerse()
+                                viewModel.generateVerseOnly()
                             } else {
                                 Task {
                                     await viewModel.generatePrayer(for: viewModel.selectedVerse!)
@@ -94,51 +82,58 @@ struct PrayerFlowView: View {
                     ZStack {
                         ForEach(Array(viewModel.questions.enumerated()), id: \.offset) { index, question in
                             if index == viewModel.currentQuestionIndex {
-                                ScrollView {
-                                    VStack(spacing: 24) {
-                                        // Progress indicator
-                                        ProgressIndicator(
-                                            current: viewModel.currentQuestionIndex + 1,
-                                            total: viewModel.questions.count
+                                Group {
+                                    switch question {
+                                    case .prayerIntro:
+                                        PrayerIntroView(
+                                            introLine1Visible: $viewModel.introLine1Visible,
+                                            introLine2Visible: $viewModel.introLine2Visible,
+                                            onContinue: viewModel.advanceFromIntro,
+                                            onAppear: viewModel.startIntroSequence
                                         )
-                                        .padding(.top)
-                                        
-                                        // Question content
-                                        Group {
-                                            switch question {
-                                            case .prayerIntent:
-                                                PrayerIntentQuestionView(
-                                                    selectedIntent: $viewModel.selectedIntent,
-                                                    onNext: viewModel.handleAnswer,
-                                                    onSkip: viewModel.handleSkip
+                                    case .firstScreen:
+                                        ScrollView {
+                                            VStack(spacing: 24) {
+                                                ProgressIndicator(
+                                                    current: viewModel.currentQuestionIndex + 1,
+                                                    total: viewModel.questions.count
                                                 )
-                                            case .heartFocus:
-                                                HeartFocusQuestionView(
-                                                    selectedFocus: $viewModel.selectedFocus,
+                                                .padding(.top)
+                                                
+                                                PrayerFirstScreenView(
+                                                    selectedTopics: $viewModel.selectedTopics,
                                                     customTopicText: $viewModel.customTopicText,
-                                                    onNext: viewModel.handleAnswer,
-                                                    onSkip: viewModel.handleSkip
-                                                )
-                                            case .chooseVerse:
-                                                ChooseVerseQuestionView(
-                                                    verseOptions: viewModel.verseOptions,
-                                                    isLoading: viewModel.isLoadingOptions,
-                                                    selectedOption: $viewModel.selectedVerseOption,
-                                                    onNext: viewModel.handleAnswer,
-                                                    onSkip: viewModel.handleSkip,
-                                                    onLoadOptions: viewModel.loadVerseOptions
-                                                )
-                                            case .emotionalNeed:
-                                                EmotionalNeedQuestionView(
-                                                    selectedNeed: $viewModel.emotionalNeed,
-                                                    onNext: viewModel.handleAnswer,
-                                                    onSkip: viewModel.handleSkip
+                                                    selectedIntent: $viewModel.selectedIntent,
+                                                    onIntentSelected: viewModel.handleIntentSelected
                                                 )
                                             }
+                                            .padding(.horizontal, 32)
+                                            .padding(.vertical, 16)
+                                        }
+                                    case .chooseVerse:
+                                        ScrollView {
+                                            VStack(spacing: 24) {
+                                                ProgressIndicator(
+                                                    current: viewModel.currentQuestionIndex + 1,
+                                                    total: viewModel.questions.count
+                                                )
+                                                .padding(.top)
+                                                
+                                                ChooseVerseQuestionView(
+                                                    verseOptions: viewModel.verseOptions,
+                                                    isLoading: viewModel.isLoadingVerse,
+                                                    selectedVerse: viewModel.selectedVerse,
+                                                    selectedOption: $viewModel.selectedVerseOption,
+                                                    onFindVerse: viewModel.handleFindVerse,
+                                                    onSelectOption: viewModel.handleSelectVerseOption,
+                                                    onLoadOptions: viewModel.loadVerseOptions,
+                                                    onConfirmVerse: viewModel.handleConfirmVerseAndGeneratePrayer
+                                                )
+                                            }
+                                            .padding(.horizontal, 32)
+                                            .padding(.vertical, 16)
                                         }
                                     }
-                                    .padding(.horizontal, 32)
-                                    .padding(.vertical, 16)
                                 }
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),

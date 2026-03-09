@@ -17,15 +17,40 @@ class JourneyService: JourneyServiceProtocol {
     
     // Cache for AI analysis to avoid repeated API calls
     private var cachedAnalysis: AIJourneyAnalysis?
-    private var lastAnalysisDate: Date?
-    private let cacheExpirationHours: Int = 6 // Refresh every 6 hours
+    private var cachedSnapshot: ActivitySnapshot?
+    private let activityThreshold: Int = 3 // Regenerate after 3+ new activities
+    private let userDefaults = UserDefaults.standard
+    
+    private struct PersistedJourneyCache: Codable {
+        let analysis: AIJourneyAnalysis
+        let snapshot: ActivitySnapshot
+    }
+    
+    private func persistedCacheKey(appLanguage: AppLanguage) -> String {
+        "journeyAnalysis_\(appLanguage.rawValue)"
+    }
     
     var hasValidCache: Bool {
         guard let cached = cachedAnalysis,
-              let lastDate = lastAnalysisDate else {
+              let snapshot = cachedSnapshot else {
             return false
         }
-        return Date().timeIntervalSince(lastDate) < Double(cacheExpirationHours * 3600)
+        
+        // Build current snapshot
+        let currentChapters = progressStore.readingHistory.count
+        let currentVerses = noteStore.savedVerses.count
+        let currentQuestions = chatStore.sessions.reduce(0) { count, session in
+            count + session.messages.filter { $0.role == .user }.count
+        }
+        let currentPrayers = prayerLogStore.getAllLogs().count
+        
+        // Calculate total activity delta
+        let delta = abs(currentChapters - snapshot.chaptersRead) +
+                   abs(currentVerses - snapshot.versesSaved) +
+                   abs(currentQuestions - snapshot.questionsAsked) +
+                   abs(currentPrayers - snapshot.prayerCount)
+        
+        return delta < activityThreshold
     }
     
     init(
@@ -166,12 +191,28 @@ class JourneyService: JourneyServiceProtocol {
     
     // MARK: - AI Journey Analysis
     
+    func getPersistedAnalysisIfValid(appLanguage: AppLanguage) -> AIJourneyAnalysis? {
+        guard let cache = loadPersistedCache(appLanguage: appLanguage),
+              isPersistedCacheValid(cache.snapshot) else {
+            return nil
+        }
+        cachedAnalysis = cache.analysis
+        cachedSnapshot = cache.snapshot
+        return cache.analysis
+    }
+    
     func getAIJourneyAnalysis(appLanguage: AppLanguage) async throws -> AIJourneyAnalysis {
-        // Check cache first
-        if let cached = cachedAnalysis,
-           let lastDate = lastAnalysisDate,
-           Date().timeIntervalSince(lastDate) < Double(cacheExpirationHours * 3600) {
+        // Check in-memory cache first
+        if let cached = cachedAnalysis, hasValidCache {
             return cached
+        }
+        
+        // Check persisted cache (survives app restart)
+        if let persisted = loadPersistedCache(appLanguage: appLanguage),
+           isPersistedCacheValid(persisted.snapshot) {
+            cachedAnalysis = persisted.analysis
+            cachedSnapshot = persisted.snapshot
+            return persisted.analysis
         }
         
         // Get AI service
@@ -185,9 +226,30 @@ class JourneyService: JourneyServiceProtocol {
         // Call AI service
         let analysis = try await aiService.analyzeJourney(data: dataForAI, appLanguage: appLanguage)
         
-        // Cache the result
+        // Cache the result and snapshot (in-memory)
         cachedAnalysis = analysis
-        lastAnalysisDate = Date()
+        
+        // Save current activity counts as snapshot
+        let currentChapters = progressStore.readingHistory.count
+        let currentVerses = noteStore.savedVerses.count
+        let currentQuestions = chatStore.sessions.reduce(0) { count, session in
+            count + session.messages.filter { $0.role == .user }.count
+        }
+        let currentPrayers = prayerLogStore.getAllLogs().count
+        
+        cachedSnapshot = ActivitySnapshot(
+            chaptersRead: currentChapters,
+            versesSaved: currentVerses,
+            questionsAsked: currentQuestions,
+            prayerCount: currentPrayers
+        )
+        
+        // Persist to UserDefaults for instant load on app reopen
+        savePersistedCache(
+            analysis: analysis,
+            snapshot: cachedSnapshot!,
+            appLanguage: appLanguage
+        )
         
         return analysis
     }
@@ -195,11 +257,44 @@ class JourneyService: JourneyServiceProtocol {
     // Force refresh the AI analysis (ignore cache)
     func refreshAIAnalysis(appLanguage: AppLanguage) async throws -> AIJourneyAnalysis {
         cachedAnalysis = nil
-        lastAnalysisDate = nil
+        cachedSnapshot = nil
+        clearPersistedCache(appLanguage: appLanguage)
         return try await getAIJourneyAnalysis(appLanguage: appLanguage)
     }
     
     // MARK: - Private Helpers
+    
+    private func isPersistedCacheValid(_ snapshot: ActivitySnapshot) -> Bool {
+        let currentChapters = progressStore.readingHistory.count
+        let currentVerses = noteStore.savedVerses.count
+        let currentQuestions = chatStore.sessions.reduce(0) { count, session in
+            count + session.messages.filter { $0.role == .user }.count
+        }
+        let currentPrayers = prayerLogStore.getAllLogs().count
+        let delta = abs(currentChapters - snapshot.chaptersRead) +
+            abs(currentVerses - snapshot.versesSaved) +
+            abs(currentQuestions - snapshot.questionsAsked) +
+            abs(currentPrayers - snapshot.prayerCount)
+        return delta < activityThreshold
+    }
+    
+    private func savePersistedCache(analysis: AIJourneyAnalysis, snapshot: ActivitySnapshot, appLanguage: AppLanguage) {
+        let cache = PersistedJourneyCache(analysis: analysis, snapshot: snapshot)
+        guard let encoded = try? JSONEncoder().encode(cache) else { return }
+        userDefaults.set(encoded, forKey: persistedCacheKey(appLanguage: appLanguage))
+    }
+    
+    private func loadPersistedCache(appLanguage: AppLanguage) -> PersistedJourneyCache? {
+        guard let data = userDefaults.data(forKey: persistedCacheKey(appLanguage: appLanguage)),
+              let decoded = try? JSONDecoder().decode(PersistedJourneyCache.self, from: data) else {
+            return nil
+        }
+        return decoded
+    }
+    
+    private func clearPersistedCache(appLanguage: AppLanguage) {
+        userDefaults.removeObject(forKey: persistedCacheKey(appLanguage: appLanguage))
+    }
     
     private func collectDataForAI() async throws -> JourneyDataForAI {
         let stats = try await getJourneyStats()
@@ -208,8 +303,25 @@ class JourneyService: JourneyServiceProtocol {
         let bibleService = BibleService.shared
         let primaryLanguage = settingsStore.primaryLanguage
         
-        // Extract unique books from reading history (low priority)
-        let readingBooks = Array(Set(progressStore.readingHistory.map { $0.book }))
+        // Build detailed reading history with recent 10 entries (book + chapter + date)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .short
+        dateFormatter.timeStyle = .none
+        
+        let detailedReadingHistory = progressStore.readingHistory.prefix(10).map { item -> String in
+            let daysAgo = Calendar.current.dateComponents([.day], from: item.timestamp, to: Date()).day ?? 0
+            let dateStr: String
+            if daysAgo == 0 {
+                dateStr = settingsStore.appLanguage == .chineseTraditional ? "今天" : "today"
+            } else if daysAgo == 1 {
+                dateStr = settingsStore.appLanguage == .chineseTraditional ? "昨天" : "yesterday"
+            } else if daysAgo < 7 {
+                dateStr = settingsStore.appLanguage == .chineseTraditional ? "\(daysAgo)天前" : "\(daysAgo) days ago"
+            } else {
+                dateStr = dateFormatter.string(from: item.timestamp)
+            }
+            return "\(item.book) \(item.chapter) (\(dateStr))"
+        }
         
         // Extract books where verses were saved
         let savedBooks = Array(Set(noteStore.savedVerses.map { $0.book }))
@@ -325,7 +437,7 @@ class JourneyService: JourneyServiceProtocol {
         
         return JourneyDataForAI(
             stats: stats,
-            readingHistory: readingBooks,
+            readingHistory: detailedReadingHistory,
             customPrayers: customPrayers,
             prayerTopics: prayerTopics,
             questions: questions,

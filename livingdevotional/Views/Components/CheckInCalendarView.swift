@@ -3,6 +3,32 @@
 
 import SwiftUI
 
+/// Latin cross (Christian cross) with horizontal bar in upper third
+struct LatinCrossView: View {
+    var size: CGFloat = 14
+    var lineWidth: CGFloat = 1.75
+    var color: Color = AppTheme.accentColor
+    
+    private var horizontalBarY: CGFloat { size * 0.28 }
+    private var horizontalBarWidth: CGFloat { size * 0.55 }
+    
+    var body: some View {
+        ZStack {
+            // Vertical bar - centered
+            RoundedRectangle(cornerRadius: lineWidth / 2)
+                .fill(color)
+                .frame(width: lineWidth, height: size)
+            
+            // Horizontal bar - centered horizontally, positioned in upper third
+            RoundedRectangle(cornerRadius: lineWidth / 2)
+                .fill(color)
+                .frame(width: horizontalBarWidth, height: lineWidth)
+                .offset(y: horizontalBarY - size / 2)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 enum CalendarViewMode: String, CaseIterable {
     case week
     case month
@@ -139,11 +165,13 @@ struct WeekCalendarView: View {
                                     .frame(width: 32, height: 32)
                             }
                             
-                            // App open streak indicator (cross) - centered
+                            // App open streak indicator (Latin cross)
                             if day.hasAppOpen {
-                                Image(systemName: "cross.fill")
-                                    .font(.system(size: day.appOpenStreakPosition > 0 ? 14 : 12, weight: .bold))
-                                    .foregroundColor(AppTheme.accentColor)
+                                LatinCrossView(
+                                    size: day.appOpenStreakPosition > 0 ? 16 : 14,
+                                    lineWidth: 1.75,
+                                    color: AppTheme.accentColor
+                                )
                             }
                             
                             // Task completion only (no app open) - show checkmark
@@ -399,11 +427,9 @@ struct MonthCalendarView: View {
                     .frame(width: 20, height: 20)
             }
             
-            // App open indicator (cross) - centered
+            // App open indicator (Latin cross)
             if day.hasAppOpen {
-                Image(systemName: "cross.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(AppTheme.accentColor)
+                LatinCrossView(size: 12, lineWidth: 1.5, color: AppTheme.accentColor)
             }
             
             // Task completion only (no app open) - show checkmark

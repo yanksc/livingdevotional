@@ -8,6 +8,7 @@ struct VerseAIPanel: View {
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject private var aiCacheStore = AICacheStore.shared
     @Environment(\.services) var services
+    @EnvironmentObject var router: AppRouter
     @State private var explanation: String = ""
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
@@ -161,6 +162,12 @@ struct VerseAIPanel: View {
             return
         }
         
+        guard UsageLimitStore.shared.canUseAIQuestion() else {
+            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+            onClose()
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         explanation = ""
@@ -197,10 +204,11 @@ struct VerseAIPanel: View {
                     }
                 }
                 
-                // Cache the final response
+                // Cache the final response and record usage
                 await MainActor.run {
                     if !accumulatedText.isEmpty {
                         aiCacheStore.cacheResponse(verseId: verse.id, mode: mode, appLanguage: settingsStore.appLanguage, content: accumulatedText)
+                        UsageLimitStore.shared.recordAIQuestionUsed()
                     }
                 }
             } catch {

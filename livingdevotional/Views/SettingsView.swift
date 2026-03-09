@@ -237,6 +237,23 @@ struct SettingsPickerRow<T: Hashable & Identifiable>: View {
     let selection: Binding<T>
     let options: [T]
     let displayName: (T) -> String
+    let compactDisplayName: ((T) -> String)?
+    
+    init(
+        icon: String,
+        title: String,
+        selection: Binding<T>,
+        options: [T],
+        compactDisplayName: ((T) -> String)? = nil,
+        displayName: @escaping (T) -> String
+    ) {
+        self.icon = icon
+        self.title = title
+        self.selection = selection
+        self.options = options
+        self.compactDisplayName = compactDisplayName
+        self.displayName = displayName
+    }
     
     var body: some View {
         HStack(spacing: 16) {
@@ -251,14 +268,42 @@ struct SettingsPickerRow<T: Hashable & Identifiable>: View {
             
             Spacer()
             
-            Picker("", selection: selection) {
-                ForEach(options) { option in
-                    Text(displayName(option))
-                        .tag(option)
+            if let compactDisplayName {
+                Menu {
+                    ForEach(options) { option in
+                        Button {
+                            selection.wrappedValue = option
+                        } label: {
+                            HStack {
+                                Text(displayName(option))
+                                if selection.wrappedValue == option {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(compactDisplayName(selection.wrappedValue))
+                            .font(.system(size: 16))
+                            .foregroundColor(AppTheme.accentColor)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(AppTheme.accentColor)
+                    }
                 }
+            } else {
+                Picker("", selection: selection) {
+                    ForEach(options) { option in
+                        Text(displayName(option))
+                            .tag(option)
+                    }
+                }
+                .tint(AppTheme.accentColor)
+                .labelsHidden()
             }
-            .tint(AppTheme.accentColor)
-            .labelsHidden()
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -302,48 +347,18 @@ struct SettingsProfileRow: View {
 
 struct SettingsView: View {
     @ObservedObject var settingsStore = SettingsStore.shared
-    @ObservedObject private var noteStore = NoteStore.shared
     @ObservedObject private var profileStore = UserProfileStore.shared
-    @ObservedObject private var prayerLogStore = PrayerLogStore.shared
+    @ObservedObject private var supporterService = SupporterService.shared
     @EnvironmentObject var router: AppRouter
-    @State private var showSavedNotes = false
-    @State private var showChatHistory = false
     @State private var showProfileEditor = false
-    @State private var showReadingHistory = false
-    @State private var showPrayerHistory = false
-    @State private var isRefreshingVerse = false
-    @State private var showVerseRefreshedAlert = false
+    @State private var showSupporterPaywall = false
+    @State private var restoreMessage: String?
+    @State private var isRestoring = false
     
     // MARK: - Computed Properties
     
     private var isChinese: Bool {
         settingsStore.appLanguage == .chineseTraditional || settingsStore.appLanguage == .chineseSimplified
-    }
-    
-    // MARK: - Helper Functions
-    
-    private func localizedBookName(_ name: String) -> String {
-        let chineseNames: [String: String] = [
-            "Psalms": "詩篇",
-            "Matthew": "馬太福音",
-            "Philippians": "腓立比書",
-            "John": "約翰福音",
-            "Romans": "羅馬書",
-            "Proverbs": "箴言",
-            "Genesis": "創世記",
-            "Exodus": "出埃及記",
-            "Isaiah": "以賽亞書",
-            "Jeremiah": "耶利米書",
-            "Luke": "路加福音",
-            "Mark": "馬可福音",
-            "Acts": "使徒行傳",
-            "Revelation": "啟示錄"
-        ]
-        
-        if isChinese, let chinese = chineseNames[name] {
-            return chinese
-        }
-        return name
     }
     
     var body: some View {
@@ -353,6 +368,129 @@ struct SettingsView: View {
             
             ScrollView {
                 VStack(spacing: 0) {
+                    // Settings title
+                    Text(settingsStore.appLanguage.localizedString("Settings"))
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(AppTheme.primaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 8)
+                    
+                    // Supporter Section
+                    if supporterService.isSupporter {
+                        SettingsSectionHeader(
+                            title: settingsStore.appLanguage.localizedString("SupporterActive"),
+                            icon: "heart.fill"
+                        )
+                        
+                        SettingsCard {
+                            HStack(spacing: 16) {
+                                ZStack {
+                                    Circle()
+                                        .fill(AppTheme.accentColor.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(AppTheme.accentColor)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(settingsStore.appLanguage.localizedString("SupporterActive"))
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(AppTheme.primaryText)
+                                    Text(settingsStore.appLanguage.localizedString("ThankYouSupport"))
+                                        .font(.system(size: 13))
+                                        .foregroundColor(AppTheme.secondaryText)
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                        }
+                    } else {
+                        SettingsSectionHeader(
+                            title: settingsStore.appLanguage.localizedString("BecomeSupporter"),
+                            icon: "heart.circle"
+                        )
+                        
+                        SettingsCard {
+                            Button(action: { showSupporterPaywall = true }) {
+                                HStack(spacing: 16) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(AppTheme.accentColor.opacity(0.15))
+                                            .frame(width: 40, height: 40)
+                                        Image(systemName: "heart.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(AppTheme.accentColor)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(settingsStore.appLanguage.localizedString("BecomeSupporter"))
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(AppTheme.primaryText)
+                                        Text(settingsStore.appLanguage.localizedString("UnlockAllFeatures"))
+                                            .font(.system(size: 13))
+                                            .foregroundColor(AppTheme.secondaryText)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(AppTheme.accentColor)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                            }
+                            
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            Button(action: restorePurchases) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "arrow.clockwise.circle")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(AppTheme.accentColor)
+                                        .frame(width: 24)
+                                    
+                                    if isRestoring {
+                                        ProgressView()
+                                            .tint(AppTheme.accentColor)
+                                        Text(settingsStore.appLanguage.localizedString("Restoring"))
+                                            .font(.system(size: 16))
+                                            .foregroundColor(AppTheme.primaryText)
+                                    } else {
+                                        Text(settingsStore.appLanguage.localizedString("RestorePurchases"))
+                                            .font(.system(size: 16))
+                                            .foregroundColor(AppTheme.primaryText)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                            }
+                            .disabled(isRestoring)
+                            
+                            if let message = restoreMessage {
+                                Divider()
+                                    .padding(.horizontal, 20)
+                                
+                                HStack {
+                                    Text(message)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(message.contains("✓") ? AppTheme.accentColor : .red)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                    
                     // Language Section
                     SettingsSectionHeader(
                         title: settingsStore.appLanguage.localizedString("AppLanguage"),
@@ -381,7 +519,8 @@ struct SettingsView: View {
                             icon: "1.circle",
                             title: settingsStore.appLanguage.localizedString("PrimaryTranslation"),
                             selection: $settingsStore.primaryLanguage,
-                            options: Language.allCases.filter { $0 != .none }
+                            options: Language.allCases.filter { $0 != .none },
+                            compactDisplayName: { $0.compactDisplayName }
                         ) { language in
                             language.displayName
                         }
@@ -403,7 +542,8 @@ struct SettingsView: View {
                                 icon: "2.circle",
                                 title: settingsStore.appLanguage.localizedString("SecondaryTranslation"),
                                 selection: $settingsStore.secondaryLanguage,
-                                options: Language.allCases.filter { $0 != .none && $0 != settingsStore.primaryLanguage }
+                                options: Language.allCases.filter { $0 != .none && $0 != settingsStore.primaryLanguage },
+                                compactDisplayName: { $0.compactDisplayName }
                             ) { language in
                                 language.displayName
                             }
@@ -417,7 +557,7 @@ struct SettingsView: View {
                     )
                     
                     SettingsCard {
-                        // Name and Spiritual Journey
+                        // Name and Spiritual Journey (Step 1 & 3)
                         SettingsProfileRow(
                             name: profileStore.profile.name.isEmpty ? settingsStore.appLanguage.localizedString("NotSet") : profileStore.profile.name,
                             maturity: profileStore.profile.spiritualMaturity.localizedDisplayName(for: settingsStore.appLanguage),
@@ -426,7 +566,35 @@ struct SettingsView: View {
                             }
                         )
                         
-                        // Saved Onboarding Verse (from Step 6)
+                        // Personal Reflection (Step 4)
+                        if let reflection = profileStore.profile.personalReflection, !reflection.isEmpty {
+                            Divider()
+                                .padding(.horizontal, 20)
+                            
+                            HStack(spacing: 16) {
+                                Image(systemName: "text.quote")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(isChinese ? "心裡的話" : "Your Reflection")
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.secondaryText)
+                                    Text(reflection)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(AppTheme.primaryText)
+                                        .lineLimit(2)
+                                        .italic()
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        }
+                        
+                        // Saved Onboarding Verse (Step 5)
                         if let savedVerse = profileStore.profile.savedOnboardingVerse {
                             Divider()
                                 .padding(.horizontal, 20)
@@ -456,52 +624,24 @@ struct SettingsView: View {
                             .padding(.vertical, 12)
                         }
                         
-                        // Recommended Books (from Step 7)
-                        if let books = profileStore.profile.recommendedBooks, !books.isEmpty {
+                        // Relationship with God (Step 6)
+                        if let desire = profileStore.profile.relationshipDesire {
                             Divider()
                                 .padding(.horizontal, 20)
                             
                             HStack(spacing: 16) {
-                                Image(systemName: "books.vertical")
+                                Image(systemName: "hands.sparkles")
                                     .font(.system(size: 18, weight: .medium))
                                     .foregroundColor(AppTheme.accentColor)
                                     .frame(width: 24)
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(isChinese ? "推薦書卷" : "Recommended Books")
+                                    Text(isChinese ? "與神的關係" : "Seeking in Faith")
                                         .font(.caption)
                                         .foregroundColor(AppTheme.secondaryText)
-                                    Text(books.map { localizedBookName($0.bookName) }.joined(separator: ", "))
+                                    Text(desire.localizedDisplayName(for: settingsStore.appLanguage))
                                         .font(.system(size: 14))
                                         .foregroundColor(AppTheme.primaryText)
-                                }
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        }
-                        
-                        // Personal Reflection (from Step 4)
-                        if let reflection = profileStore.profile.personalReflection, !reflection.isEmpty {
-                            Divider()
-                                .padding(.horizontal, 20)
-                            
-                            HStack(spacing: 16) {
-                                Image(systemName: "text.quote")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(AppTheme.accentColor)
-                                    .frame(width: 24)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(isChinese ? "心裡的話" : "Your Reflection")
-                                        .font(.caption)
-                                        .foregroundColor(AppTheme.secondaryText)
-                                    Text(reflection)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(AppTheme.primaryText)
-                                        .lineLimit(2)
-                                        .italic()
                                 }
                                 
                                 Spacer()
@@ -521,99 +661,6 @@ struct SettingsView: View {
                                 profileStore.resetOnboarding()
                             }
                         )
-                    }
-                    
-                    // History & My Notes Section
-                    SettingsSectionHeader(
-                        title: settingsStore.appLanguage.localizedString("HistoryAndMyNotes"),
-                        icon: "bookmark"
-                    )
-                    
-                    SettingsCard {
-                        SettingsNavigationRow(
-                            icon: "clock.arrow.circlepath",
-                            title: settingsStore.appLanguage.localizedString("ReadingHistory"),
-                            action: {
-                                showReadingHistory = true
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        SettingsActionRow(
-                            icon: "trash",
-                            title: settingsStore.appLanguage.localizedString("ClearChatHistory"),
-                            action: {
-                                ChatStore.shared.sessions.removeAll()
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        SettingsNavigationRow(
-                            icon: "book.fill",
-                            title: settingsStore.appLanguage.localizedString("MyNotes"),
-                            badge: noteStore.savedVerses.isEmpty ? nil : "\(noteStore.savedVerses.count)",
-                            action: {
-                                showSavedNotes = true
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        SettingsNavigationRow(
-                            icon: "bubble.left.and.bubble.right",
-                            title: settingsStore.appLanguage.localizedString("QAHistory"),
-                            action: {
-                                showChatHistory = true
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        SettingsNavigationRow(
-                            icon: "hands.sparkles.fill",
-                            title: settingsStore.appLanguage.localizedString("PrayerRecords"),
-                            badge: prayerLogStore.logs.isEmpty ? nil : "\(prayerLogStore.logs.count)",
-                            action: {
-                                showPrayerHistory = true
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        // Refresh Verse of the Day
-                        Button(action: {
-                            refreshVerseOfTheDay()
-                        }) {
-                            HStack(spacing: 16) {
-                                if isRefreshingVerse {
-                                    ProgressView()
-                                        .frame(width: 24)
-                                } else {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 18, weight: .medium))
-                                        .foregroundColor(AppTheme.accentColor)
-                                        .frame(width: 24)
-                                }
-                                
-                                Text(settingsStore.appLanguage == .chineseTraditional ? "重新生成今日經文" :
-                                     settingsStore.appLanguage == .chineseSimplified ? "重新生成今日经文" :
-                                     "Refresh Verse of the Day")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(isRefreshingVerse ? AppTheme.secondaryText : AppTheme.primaryText)
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 16)
-                        }
-                        .disabled(isRefreshingVerse)
                     }
                     
                     // Notifications Section
@@ -743,27 +790,25 @@ struct SettingsView: View {
                         .padding(.vertical, 16)
                     }
                     
+                    #if DEBUG
+                    // Debug: Simulate supporter (for testing without a real purchase)
+                    SettingsSectionHeader(title: "Debug", icon: "ladybug")
+                    SettingsCard {
+                        SettingsToggleRow(
+                            icon: "heart.circle",
+                            title: "Simulate supporter (testing)",
+                            isOn: Binding(
+                                get: { SupporterService.simulateSupporterFromDefaults },
+                                set: { supporterService.setSimulateSupporter($0) }
+                            )
+                        )
+                    }
+                    #endif
+                    
                     // Bottom padding
                     Spacer()
                         .frame(height: 32)
                 }
-            }
-        }
-        .navigationTitle(settingsStore.appLanguage.localizedString("Settings"))
-        .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $showSavedNotes) {
-            NavigationStack {
-                SavedNotesListView(
-                    noteStore: noteStore,
-                    settingsStore: settingsStore
-                )
-                .environmentObject(router)
-            }
-        }
-        .sheet(isPresented: $showChatHistory) {
-            NavigationStack {
-                ChatHistoryView()
-                    .environmentObject(router)
             }
         }
         .sheet(isPresented: $showProfileEditor) {
@@ -772,46 +817,51 @@ struct SettingsView: View {
                     .environmentObject(router)
             }
         }
-        .sheet(isPresented: $showReadingHistory) {
-            NavigationStack {
-                ReadingHistoryView()
-                    .environmentObject(router)
-            }
+        .sheet(isPresented: $showSupporterPaywall) {
+            SupporterFullPaywallView(
+                contextualHeader: nil,
+                onDismiss: {
+                    showSupporterPaywall = false
+                }
+            )
         }
-        .sheet(isPresented: $showPrayerHistory) {
-            NavigationStack {
-                PrayerHistoryView()
-                    .environmentObject(router)
+        .onAppear {
+            Task {
+                await supporterService.refreshStatus()
             }
-        }
-        .alert(
-            settingsStore.appLanguage == .chineseTraditional ? "今日經文已更新" :
-            settingsStore.appLanguage == .chineseSimplified ? "今日经文已更新" :
-            "Verse Updated",
-            isPresented: $showVerseRefreshedAlert
-        ) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(settingsStore.appLanguage == .chineseTraditional ? "返回首頁查看新的經文" :
-                 settingsStore.appLanguage == .chineseSimplified ? "返回首页查看新的经文" :
-                 "Return to Today to see your new verse")
         }
     }
     
-    private func refreshVerseOfTheDay() {
-        isRefreshingVerse = true
+    // MARK: - Restore Purchases
+    
+    private func restorePurchases() {
+        restoreMessage = nil
+        isRestoring = true
+        
         Task {
             do {
-                _ = try await DailyVerseService.shared.forceRefreshVerseOfTheDay()
+                let customerInfo = try await supporterService.restorePurchases()
                 await MainActor.run {
-                    isRefreshingVerse = false
-                    showVerseRefreshedAlert = true
-                    // Post notification so HomeView can reload
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshVerseOfTheDay"), object: nil)
+                    isRestoring = false
+                    if customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true {
+                        restoreMessage = isChinese ? "✓ 已恢復" : "✓ Restored successfully"
+                    } else {
+                        restoreMessage = isChinese ? "沒有找到可恢復的購買" : "No purchases to restore"
+                    }
+                }
+                
+                // Clear message after 3 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    restoreMessage = nil
                 }
             } catch {
                 await MainActor.run {
-                    isRefreshingVerse = false
+                    isRestoring = false
+                    restoreMessage = isChinese ? "恢復失敗" : "Restore failed"
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    restoreMessage = nil
                 }
             }
         }

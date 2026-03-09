@@ -146,9 +146,10 @@ class ReadingPlanStore: ObservableObject {
         planProgress.completedDays.insert(dayNumber)
         planProgress.lastReadAt = Date()
         
-        // Advance to next day if this was the current day
         if planProgress.currentDay == dayNumber - 1 {
-            planProgress.currentDay = dayNumber
+            let plan = plans.first(where: { $0.id == planId })
+            let maxIndex = (plan?.days.count ?? 1) - 1
+            planProgress.currentDay = min(dayNumber, maxIndex)
         }
         
         progress[planId] = planProgress
@@ -198,7 +199,8 @@ class ReadingPlanStore: ObservableObject {
     }
     
     func getTodayReading(for planId: String) -> ReadingPlanDay? {
-        guard let plan = plans.first(where: { $0.id == planId }) else {
+        guard let plan = plans.first(where: { $0.id == planId }),
+              !plan.days.isEmpty else {
             return nil
         }
         
@@ -210,13 +212,16 @@ class ReadingPlanStore: ObservableObject {
             return plan.days.first
         }
         
-        // Return current day if not completed, otherwise next day
+        guard planProgress.currentDay < plan.days.count else {
+            return plan.days.last
+        }
+        
         let currentDay = plan.days[planProgress.currentDay]
         if planProgress.completedDays.contains(currentDay.dayNumber) {
-            // Move to next day if current is completed
             if planProgress.currentDay + 1 < plan.days.count {
                 return plan.days[planProgress.currentDay + 1]
             }
+            return plan.days.last
         }
         
         return currentDay

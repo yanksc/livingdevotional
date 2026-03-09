@@ -31,9 +31,17 @@ struct ChatView: View {
             
             Divider()
             
-            // Pinned verse reference at top (always visible when verse context exists)
+            // Pinned reference at top (verse or chapter context)
             if viewModel.hasVerseContext {
                 verseReferenceView
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+                
+                Divider()
+                    .padding(.horizontal)
+            } else if viewModel.hasChapterContext {
+                chapterReferenceView
                     .padding(.horizontal)
                     .padding(.top, 12)
                     .padding(.bottom, 8)
@@ -129,8 +137,10 @@ struct ChatView: View {
             // Input Area
             HStack(spacing: 12) {
                 TextField(
-                    viewModel.book != nil ? 
+                    viewModel.hasVerseContext ?
                         (settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題..." : "Ask a question about this verse...") :
+                        viewModel.hasChapterContext ?
+                        (settingsStore.appLanguage == .chineseTraditional ? "詢問關於這章的問題..." : "Ask a question about this chapter...") :
                         (settingsStore.appLanguage == .chineseTraditional ? "詢問關於聖經或屬靈成長的問題..." : "Ask a question about the Bible or spiritual growth..."),
                     text: $viewModel.inputMessage
                 )
@@ -182,6 +192,49 @@ struct ChatView: View {
                 await viewModel.sendInitialQuestionIfNeeded()
             }
         }
+    }
+    
+    var chapterReferenceView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let book = viewModel.book, let chapter = viewModel.chapter {
+                HStack(spacing: 8) {
+                    let iconName = viewModel.chapterContextType == "summary" ? "doc.text.fill" : "book.closed.fill"
+                    Image(systemName: iconName)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.accentColor)
+                    
+                    let localizedBook = BibleData.localizedBookName(book, language: settingsStore.primaryLanguage)
+                    let typeLabel: String = {
+                        if viewModel.chapterContextType == "summary" {
+                            return settingsStore.appLanguage == .chineseTraditional ? "\(localizedBook) 第\(chapter)章摘要" :
+                                   settingsStore.appLanguage == .chineseSimplified ? "\(localizedBook) 第\(chapter)章摘要" :
+                                   "\(localizedBook) Chapter \(chapter) Summary"
+                        } else {
+                            return settingsStore.appLanguage == .chineseTraditional ? "\(localizedBook) 第\(chapter)章背景" :
+                                   settingsStore.appLanguage == .chineseSimplified ? "\(localizedBook) 第\(chapter)章背景" :
+                                   "\(localizedBook) Chapter \(chapter) Context"
+                        }
+                    }()
+                    
+                    Text(typeLabel)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.accentColor)
+                    
+                    Spacer()
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(AppTheme.accentColor.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppTheme.accentColor.opacity(0.15), lineWidth: 1)
+                )
+        )
     }
     
     var verseReferenceView: some View {
@@ -258,10 +311,17 @@ struct ChatView: View {
                 .font(.headline)
                 .foregroundColor(AppTheme.primaryText)
             
-            Text(settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題，或繼續之前的對話。" : "Ask questions about this verse or continue a previous conversation.")
-                .font(.subheadline)
-                .foregroundColor(AppTheme.secondaryText)
-                .multilineTextAlignment(.center)
+            if viewModel.hasChapterContext {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "根據此章的內容提問，獲得更深入的解答。" : "Ask questions based on this chapter's content for a deeper understanding.")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text(settingsStore.appLanguage == .chineseTraditional ? "詢問關於這節經文的問題，或繼續之前的對話。" : "Ask questions about this verse or continue a previous conversation.")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)

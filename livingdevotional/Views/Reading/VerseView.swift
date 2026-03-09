@@ -86,7 +86,7 @@ struct VerseView: View {
                     AppTheme.verseSelectionGradient
                         .cornerRadius(8)
                 } else if isSaved {
-                    AppTheme.accentColor.opacity(0.05)
+                    AppTheme.accentColor.opacity(0.15)
                         .cornerRadius(8)
                 } else {
                     Color.clear
@@ -97,9 +97,9 @@ struct VerseView: View {
             Group {
                 if isSaved && !isSelected {
                     Rectangle()
-                        .frame(width: 3)
+                        .frame(width: 4)
                         .foregroundColor(AppTheme.accentColor)
-                        .cornerRadius(1.5)
+                        .cornerRadius(2)
                 } else {
                     Color.clear
                 }

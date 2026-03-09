@@ -88,16 +88,18 @@ struct ReadingPlanCard: View {
 }
 
 #Preview {
-    HStack {
-        ReadingPlanCard(
-            plan: ReadingPlanStore.shared.plans[0],
-            progress: nil
-        )
-        
-        ReadingPlanCard(
-            plan: ReadingPlanStore.shared.plans[0],
-            progress: ReadingPlanProgress(planId: "test")
-        )
+    if let plan = ReadingPlanStore.shared.plans.first {
+        HStack {
+            ReadingPlanCard(
+                plan: plan,
+                progress: nil
+            )
+            
+            ReadingPlanCard(
+                plan: plan,
+                progress: ReadingPlanProgress(planId: "test")
+            )
+        }
+        .padding()
     }
-    .padding()
 }

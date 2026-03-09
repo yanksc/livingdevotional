@@ -1,5 +1,5 @@
 // JourneyAIViews.swift
-// AI-related views for the Journey feature: loading, error, and insights button
+// AI-related views for the Journey feature: loading and error
 
 import SwiftUI
 
@@ -81,61 +81,5 @@ struct AIErrorView: View {
         .frame(maxWidth: .infinity)
         .background(AppTheme.cardGradient)
         .cornerRadius(16)
-    }
-}
-
-// MARK: - Get Spiritual Insights Button
-
-struct GetAIInsightsButton: View {
-    let onTap: () -> Void
-    @ObservedObject private var settingsStore = SettingsStore.shared
-    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
-    
-    var body: some View {
-        Button(action: onTap) {
-            ZStack {
-                // Background Image
-                SereneBackgroundImage(
-                    filename: backgroundManager.journeyBackground,
-                    targetSize: CGSize(width: UIScreen.main.bounds.width, height: 350)
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: 340)
-                .clipped()
-                .overlay(
-                    LinearGradient(
-                        colors: [.black.opacity(0.6), .black.opacity(0.2)],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                
-                VStack(spacing: 24) {
-                    VStack(spacing: 8) {
-                        // Title
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "獲取屬靈洞見" : "Receive Spiritual Insight")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                        
-                        // Description
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "回顧您的閱讀歷程，獲得個人化的屬靈鼓勵" : "Reflect on your journey and get personalized spiritual encouragement")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Arrow indicator
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.title3)
-                        .foregroundColor(.white)
-                }
-                .padding(.vertical, 50)
-            }
-            .cornerRadius(20)
-            .shadow(color: Color.black.opacity(0.1), radius: 12, x: 0, y: 6)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }

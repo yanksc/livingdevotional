@@ -1,4 +1,4 @@
-// PrayerAmenView - Step 10: Personalized opening prayer
+// PrayerAmenView - Step 12: Personalized opening prayer
 // Reuses SerenePrayerBackground, verse display, PrayerTypewriterText, and AmenButton from PrayerFlowView
 
 import SwiftUI
@@ -45,49 +45,47 @@ struct PrayerAmenView: View {
     
     private func contentView(prayer: String) -> some View {
         VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Verse display at the top - from Scripture Echo step
-                    if let echo = state.scriptureEcho, showVerse {
-                        verseCard(echo: echo)
-                            .padding(.top, 40)
-                            .transition(.opacity)
-                    }
-                    
-                    // Prayer text with typewriter animation (strip trailing Amen)
-                    if showPrayer {
-                        VStack(alignment: .leading, spacing: 0) {
-                            PrayerTypewriterText(
-                                text: stripTrailingAmen(prayer),
-                                speed: state.isChinese ? 0.05 : 0.04,
-                                font: .system(size: 18, weight: .regular, design: .serif),
-                                onComplete: {
-                                    // Show Amen button when prayer completes
-                                    withAnimation(.easeIn(duration: 1.0)) {
-                                        showAmen = true
-                                    }
-                                }
-                            )
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.leading)
-                            .lineSpacing(8)
-                            .shadow(color: Color.black.opacity(0.6), radius: 3, x: 0, y: 1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 32)
-                        .padding(.top, 40)
-                        .transition(.opacity)
-                    }
-                }
+            // Verse display at the top - from Scripture Echo step
+            if let echo = state.scriptureEcho {
+                verseCard(echo: echo)
+                    .padding(.top, 28)
+                    .opacity(showVerse ? 1 : 0)
             }
             
-            // Centered Amen button at bottom (no back button - this is the final step)
+            // Prayer text with typewriter animation (strip trailing Amen)
+            if showPrayer {
+                VStack(alignment: .leading, spacing: 0) {
+                    PrayerTypewriterText(
+                        text: stripTrailingAmen(prayer),
+                        speed: state.isChinese ? 0.075 : 0.06,
+                        font: .system(size: 16, weight: .regular, design: .serif),
+                        onComplete: {
+                            // Show Amen button when prayer completes
+                            withAnimation(.easeIn(duration: 1.0)) {
+                                showAmen = true
+                            }
+                        }
+                    )
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.leading)
+                    .lineSpacing(6)
+                    .shadow(color: Color.black.opacity(0.6), radius: 3, x: 0, y: 1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
+                .transition(.opacity)
+            }
+            
+            Spacer()
+            
+            // Centered Amen button pinned at bottom (no back button - this is the final step)
             AmenButton(onComplete: {
                 state.completeOnboarding()
                 onComplete()
             })
             .padding(.horizontal, 24)
-            .padding(.bottom, 40)
+            .padding(.bottom, 52)
             .opacity(showAmen ? 1 : 0)
         }
     }
@@ -119,22 +117,22 @@ struct PrayerAmenView: View {
     // MARK: - Verse Card
     
     private func verseCard(echo: ScriptureEchoResponse) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             Text(echo.verseText)
-                .font(.system(size: 16, weight: .regular, design: .serif))
+                .font(.system(size: 15, weight: .regular, design: .serif))
                 .italic()
                 .foregroundColor(.white.opacity(0.95))
                 .multilineTextAlignment(.center)
-                .lineSpacing(5)
+                .lineSpacing(4)
                 .shadow(color: Color.black.opacity(0.4), radius: 2, x: 0, y: 1)
             
             Text("— \(echo.verseReference)")
-                .font(.system(size: 13, weight: .medium, design: .serif))
+                .font(.system(size: 12, weight: .medium, design: .serif))
                 .foregroundColor(.white.opacity(0.8))
                 .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 1)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 16)
@@ -231,14 +229,14 @@ struct PrayerAmenView: View {
     
     private func handleAppear() {
         if state.personalizedPrayer != nil {
-            // Show verse first with fade in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeOut(duration: 0.8)) {
+            // Show verse first with slow, gentle fade in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.easeInOut(duration: 1.5)) {
                     showVerse = true
                 }
                 
-                // Show prayer after verse appears
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                // Show prayer after verse fully fades in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showPrayer = true
                     }

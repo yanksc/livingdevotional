@@ -10,10 +10,9 @@ class PrayerFlowViewModel: ObservableObject {
     
     @Published var currentQuestionIndex = 0
     @Published var selectedIntent: PrayerIntent?
-    @Published var selectedFocus: PrayerFocus?
+    @Published var selectedTopics: Set<PrayerTopic> = []
     @Published var customTopicText: String = ""
     @Published var selectedVerseOption: VerseOption?
-    @Published var emotionalNeed: EmotionalNeed?
     
     @Published var verseOptions: [VerseOption] = []
     @Published var isLoadingOptions = false
@@ -23,7 +22,13 @@ class PrayerFlowViewModel: ObservableObject {
     @Published var isLoadingPrayer = false
     @Published var errorMessage: String?
     @Published var backgroundTransitionProgress: Double = 0.0
+    @Published var introBackgroundProgress: Double = 0.0
+    @Published var introLine1Visible: Bool = false
+    @Published var introLine2Visible: Bool = false
     @Published var limitReached: Bool = false
+    
+    /// Verses already shown in this prayer session; used to exclude from re-search.
+    private var excludedVerseReferences: [String] = []
     
     // MARK: - Dependencies
     
@@ -39,10 +44,10 @@ class PrayerFlowViewModel: ObservableObject {
     // MARK: - Computed Properties
     
     var questions: [PrayerQuestionType] {
-        // First question: prayer intent; then heart focus, optional verse, emotional need
-        let baseQuestions: [PrayerQuestionType] = [.prayerIntent, .heartFocus]
+        let intro: [PrayerQuestionType] = [.prayerIntro]
+        let topicScreen: [PrayerQuestionType] = [.firstScreen]
         let verseQuestion: [PrayerQuestionType] = initialVerse != nil ? [] : [.chooseVerse]
-        return baseQuestions + verseQuestion + [.emotionalNeed]
+        return intro + topicScreen + verseQuestion
     }
     
     // MARK: - Init
@@ -85,27 +90,7 @@ class PrayerFlowViewModel: ObservableObject {
             var options: [VerseOption] = []
             let isChinese = settingsStore.appLanguage == .chineseTraditional
             
-            // 1. Daily Verse
-            if let dailyVerseService = services.dailyVerseService {
-                do {
-                    let dailyVerse = try await dailyVerseService.getVerseOfTheDay(date: nil)
-                    let verseText = dailyVerse.text(for: settingsStore.primaryLanguage)
-                    options.append(VerseOption(
-                        id: "daily_\(dailyVerse.book)_\(dailyVerse.chapter)_\(dailyVerse.verseNumber)",
-                        book: dailyVerse.book,
-                        chapter: dailyVerse.chapter,
-                        verseNumber: dailyVerse.verseNumber,
-                        verseText: verseText,
-                        source: .dailyVerse,
-                        sourceDescription: isChinese ? "今日經文" : "Today's Verse",
-                        timestamp: Date()
-                    ))
-                } catch {
-                    // Silently fail - daily verse is optional
-                }
-            }
-            
-            // 2. Recent Reading
+            // 1. Recent Reading
             if let book = progressStore.currentBook,
                let chapter = progressStore.currentChapter {
                 do {
@@ -143,7 +128,7 @@ class PrayerFlowViewModel: ObservableObject {
                 }
             }
             
-            // 3. Recently Saved Verses (last 5)
+            // 2. Recently Saved Verses (last 5)
             let recentSaved = Array(noteStore.savedVerses.prefix(5))
             for savedVerse in recentSaved {
                 do {
@@ -170,7 +155,7 @@ class PrayerFlowViewModel: ObservableObject {
                 }
             }
             
-            // 4. Recent Q&A Verses (last 5)
+            // 3. Recent Q&A Verses (last 5)
             let recentQAs = Array(chatStore.sessions.prefix(5))
             for session in recentQAs {
                 guard let book = session.book,
@@ -191,55 +176,124 @@ class PrayerFlowViewModel: ObservableObject {
                 ))
             }
             
-            // 5. "Find something new" option
-            options.append(VerseOption(
-                id: "new_search",
-                book: "",
-                chapter: 0,
-                verseNumber: 0,
-                verseText: isChinese ? "為我找一節新的經文" : "Find me a new verse",
-                source: .newSearch,
-                sourceDescription: isChinese ? "新經文" : "New Verse",
-                timestamp: Date.distantPast
-            ))
-            
-            // Sort by timestamp (most recent first), but keep "new_search" at the end
-            verseOptions = options.sorted { option1, option2 in
-                if option1.source == .newSearch { return false }
-                if option2.source == .newSearch { return true }
-                return option1.timestamp > option2.timestamp
-            }
+            // Sort by timestamp (most recent first)
+            verseOptions = options.sorted { $0.timestamp > $1.timestamp }
             isLoadingOptions = false
         }
     }
     
     // MARK: - Flow Control
     
-    func handleAnswer() {
+    func advanceFromIntro() {
         if currentQuestionIndex < questions.count - 1 {
             withAnimation(.easeInOut(duration: 0.5)) {
                 currentQuestionIndex += 1
             }
-        } else {
-            generatePersonalizedVerse()
         }
     }
     
-    func handleSkip() {
-        // When skipping intent question, default to "Help me pray" for backward compatibility
-        if currentQuestionIndex == 0 && questions.first == .prayerIntent {
-            selectedIntent = .helpMePray
+    private var hasStartedIntroSequence = false
+    
+    func startIntroSequence() {
+        guard !hasStartedIntroSequence else { return }
+        hasStartedIntroSequence = true
+        
+        introBackgroundProgress = 0
+        introLine1Visible = false
+        introLine2Visible = false
+        
+        Task { @MainActor in
+            // Phase 1-2: Background emerges over 2s
+            withAnimation(.easeInOut(duration: 2.0)) {
+                introBackgroundProgress = 1.0
+            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            // Phase 3: Line 1 appears ("Every prayer brings you closer to Him")
+            withAnimation(.easeInOut(duration: 2.0)) {
+                introLine1Visible = true
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            
+            // Phase 4: Line 2 appears (Psalm 145:18 quote in rounded rect)
+            withAnimation(.easeInOut(duration: 2.0)) {
+                introLine2Visible = true
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            
+            // Phase 5: Pause before advancing
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            advanceFromIntro()
         }
+    }
+    
+    func handleIntentSelected(_ intent: PrayerIntent) {
+        selectedIntent = intent
         if currentQuestionIndex < questions.count - 1 {
             withAnimation(.easeInOut(duration: 0.5)) {
                 currentQuestionIndex += 1
             }
+            // Generate verse immediately when advancing to verse selection (page 3)
+            if questions[currentQuestionIndex] == .chooseVerse {
+                generateVerseOnly()
+            }
         } else {
-            generatePersonalizedVerse()
+            // No verse selection step (e.g. initialVerse provided)—generate verse and prayer directly
+            generateVerseAndPrayer()
         }
     }
     
-    func generatePersonalizedVerse() {
+    func handleFindVerse() {
+        if let verse = selectedVerse {
+            let ref = "\(verse.book) \(verse.chapter):\(verse.verseNumber)"
+            excludedVerseReferences.append(ref)
+        }
+        selectedVerseOption = nil
+        generateVerseOnly()
+    }
+    
+    func handleSelectVerseOption(_ option: VerseOption) {
+        selectedVerseOption = option
+        generateVerseOnly()
+    }
+    
+    /// Finds a verse (AI or from option) and shows it on verse selection screen. Does NOT generate prayer.
+    func generateVerseOnly() {
+        guard let services = services else { return }
+        isLoadingVerse = true
+        errorMessage = nil
+        selectedVerse = nil
+        
+        Task {
+            do {
+                let verse: DailyVerse
+                
+                if let selectedOption = selectedVerseOption {
+                    verse = try await loadVerseFromOption(selectedOption)
+                } else {
+                    verse = try await findVerseWithAI(excludeReferences: excludedVerseReferences)
+                }
+                
+                selectedVerse = verse
+                isLoadingVerse = false
+            } catch {
+                isLoadingVerse = false
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    /// User confirmed the verse on verse selection screen—generate prayer and show result.
+    func handleConfirmVerseAndGeneratePrayer() {
+        guard let verse = selectedVerse else { return }
+        Task {
+            await generatePrayer(for: verse)
+        }
+    }
+    
+    /// Generate verse and prayer in one go (used when no verse selection step, e.g. initialVerse provided).
+    private func generateVerseAndPrayer() {
         guard let services = services else { return }
         isLoadingVerse = true
         errorMessage = nil
@@ -249,18 +303,9 @@ class PrayerFlowViewModel: ObservableObject {
                 let verse: DailyVerse
                 
                 if let selectedOption = selectedVerseOption {
-                    if selectedOption.source == .newSearch {
-                        verse = try await findVerseWithAI()
-                    } else {
-                        verse = try await loadVerseFromOption(selectedOption)
-                    }
+                    verse = try await loadVerseFromOption(selectedOption)
                 } else {
-                    if let dailyVerseService = services.dailyVerseService,
-                       let dailyVerse = try? await dailyVerseService.getVerseOfTheDay(date: nil) {
-                        verse = dailyVerse
-                    } else {
-                        verse = try await findVerseWithAI()
-                    }
+                    verse = try await findVerseWithAI(excludeReferences: excludedVerseReferences)
                 }
                 
                 selectedVerse = verse
@@ -273,24 +318,29 @@ class PrayerFlowViewModel: ObservableObject {
         }
     }
     
-    private func findVerseWithAI() async throws -> DailyVerse {
+    private func findVerseWithAI(excludeReferences: [String]) async throws -> DailyVerse {
         guard let aiService = services?.aiService else {
             throw NSError(domain: "PrayerFlow", code: -1, userInfo: [NSLocalizedDescriptionKey: "AI service not available"])
         }
         
+        let customTrimmed = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let topicsText = selectedTopics.map(\.displayName).joined(separator: ", ")
         let focusText: String
-        if selectedFocus == .custom && !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            focusText = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customTrimmed.isEmpty && !topicsText.isEmpty {
+            focusText = "\(customTrimmed), \(topicsText)"
+        } else if !customTrimmed.isEmpty {
+            focusText = customTrimmed
         } else {
-            focusText = selectedFocus?.displayName ?? ""
+            focusText = topicsText
         }
-        let needText = emotionalNeed?.displayName ?? ""
+        let needText = focusText.isEmpty ? "" : focusText
         
         return try await aiService.findVerseForPrayer(
             focus: focusText,
             need: needText,
             language: settingsStore.primaryLanguage,
-            appLanguage: settingsStore.appLanguage
+            appLanguage: settingsStore.appLanguage,
+            excludeReferences: excludeReferences
         )
     }
     
@@ -385,13 +435,17 @@ class PrayerFlowViewModel: ObservableObject {
         let languageCode = settingsStore.appLanguage.resolvedLanguageCode()
         let isSimplified = languageCode == "zh-Hans"
         let isChinese = languageCode == "zh-Hans" || languageCode == "zh-Hant"
-        let needText = emotionalNeed?.displayName ?? ""
+        let customTrimmed = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let topicsText = selectedTopics.map(\.displayName).joined(separator: ", ")
         let focusText: String
-        if selectedFocus == .custom && !customTopicText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            focusText = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customTrimmed.isEmpty && !topicsText.isEmpty {
+            focusText = "\(customTrimmed), \(topicsText)"
+        } else if !customTrimmed.isEmpty {
+            focusText = customTrimmed
         } else {
-            focusText = selectedFocus?.displayName ?? ""
+            focusText = topicsText
         }
+        let needText = focusText
         
         switch intent {
         case .prayForMe:
@@ -409,14 +463,14 @@ class PrayerFlowViewModel: ObservableObject {
                 请根据这节经文撰写一篇简短的代祷文，为 \(nameForPrayer) 向神祷告。你是在代替别人向神祈求，不是让 \(nameForPrayer) 自己祷告。
                 \(focusText.isEmpty ? "" : "祷告主题：\(focusText)")\(needText.isEmpty ? "" : "\n他们目前需要：\(needText)")
                 
-                请用"我们为 \(nameForPrayer) 祷告"或类似的代祷语开头。用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 80-120 字以内。
+                请用"我们为 \(nameForPrayer) 祷告"或类似的代祷语开头。用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 105-155 字以内。
                 """
             } else if isChinese {
                 return """
                 請根據這節經文撰寫一篇簡短的代禱文，為 \(nameForPrayer) 向神禱告。你是在代替別人向神祈求，不是讓 \(nameForPrayer) 自己禱告。
                 \(focusText.isEmpty ? "" : "禱告主題：\(focusText)")\(needText.isEmpty ? "" : "\n他們目前需要：\(needText)")
                 
-                請用「我們為 \(nameForPrayer) 禱告」或類似的代禱語開頭。用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。請控制在 80-120 字以內。
+                請用「我們為 \(nameForPrayer) 禱告」或類似的代禱語開頭。用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。請控制在 105-155 字以內。
                 """
             } else {
                 return """
@@ -427,20 +481,20 @@ class PrayerFlowViewModel: ObservableObject {
                 """
             }
         case .helpMePray:
-            guard selectedFocus == .custom, !focusText.isEmpty else {
+            guard !focusText.isEmpty else {
                 if isSimplified {
                     return """
                     请根据这节经文撰写一篇简短而深刻的祷告文，供读者自己向神祷告。
                     \(focusText.isEmpty ? "" : "读者心中的主题：\(focusText)")\(needText.isEmpty ? "" : "\n读者现在需要：\(needText)")
                     
-                    请简洁地包含：感谢神显明的真理、认罪悔改（如经文章相关）、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称（我/我们）。请控制在 80-120 字以内。
+                    请简洁地包含：感谢神显明的真理、认罪悔改（如经文章相关）、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称（我/我们）。请控制在 105-155 字以内。
                     """
                 } else if isChinese {
                     return """
                     請根據這節經文撰寫一篇簡短而深刻的禱告文，供讀者自己向神禱告。
                     \(focusText.isEmpty ? "" : "讀者心中的主題：\(focusText)")\(needText.isEmpty ? "" : "\n讀者現在需要：\(needText)")
                     
-                    請簡潔地包含：感謝神顯明的真理、認罪悔改（如經文相關）、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱（我/我們）。請控制在 80-120 字以內。
+                    請簡潔地包含：感謝神顯明的真理、認罪悔改（如經文相關）、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱（我/我們）。請控制在 105-155 字以內。
                     """
                 } else {
                     return """
@@ -456,14 +510,14 @@ class PrayerFlowViewModel: ObservableObject {
                 请根据这节经文撰写一篇简短而深刻的祷告文，特别针对以下主题：「\(focusText)」
                 \(needText.isEmpty ? "" : "读者现在需要：\(needText)")
                 
-                请简洁地包含：感谢神显明的真理、为「\(focusText)」向神祷告、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称。请控制在 80-120 字以内。
+                请简洁地包含：感谢神显明的真理、为「\(focusText)」向神祷告、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称。请控制在 105-155 字以内。
                 """
             } else if isChinese {
                 return """
                 請根據這節經文撰寫一篇簡短而深刻的禱告文，特別針對以下主題：「\(focusText)」
                 \(needText.isEmpty ? "" : "讀者現在需要：\(needText)")
                 
-                請簡潔地包含：感謝神顯明的真理、為「\(focusText)」向神禱告、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱。請控制在 80-120 字以內。
+                請簡潔地包含：感謝神顯明的真理、為「\(focusText)」向神禱告、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱。請控制在 105-155 字以內。
                 """
             } else {
                 return """
@@ -478,14 +532,18 @@ class PrayerFlowViewModel: ObservableObject {
     
     func resetFlow() {
         currentQuestionIndex = 0
+        hasStartedIntroSequence = false
+        introBackgroundProgress = 0.0
+        introLine1Visible = false
+        introLine2Visible = false
         selectedIntent = nil
-        selectedFocus = nil
+        selectedTopics = []
         customTopicText = ""
         selectedVerseOption = nil
-        emotionalNeed = nil
         selectedVerse = nil
         generatedPrayer = ""
         verseOptions = []
+        excludedVerseReferences = []
         errorMessage = nil
         loadVerseOptions()
     }
@@ -495,25 +553,32 @@ class PrayerFlowViewModel: ObservableObject {
     private func savePrayerLog(verse: DailyVerse, prayer: String) {
         guard let services = services else { return }
         
+        let customTrimmed = customTopicText.trimmingCharacters(in: .whitespacesAndNewlines)
         let topicString: String
-        if selectedFocus == .custom {
+        let customTopicTextForLog: String?
+        if !customTrimmed.isEmpty {
             topicString = "custom"
+            customTopicTextForLog = customTrimmed
+        } else if !selectedTopics.isEmpty {
+            topicString = selectedTopics.map(\.rawValue).joined(separator: ",")
+            customTopicTextForLog = nil
         } else {
-            topicString = selectedFocus?.rawValue ?? "other"
+            topicString = "other"
+            customTopicTextForLog = nil
         }
         
         let verseText = verse.text(for: settingsStore.primaryLanguage)
         
         let log = PrayerLog(
             topic: topicString,
-            customTopicText: selectedFocus == .custom && !customTopicText.isEmpty ? customTopicText : nil,
+            customTopicText: customTopicTextForLog,
             verseReference: "\(verse.book) \(verse.chapter):\(verse.verseNumber)",
             verseBook: verse.book,
             verseChapter: verse.chapter,
             verseNumber: verse.verseNumber,
             verseText: verseText,
             prayerText: prayer,
-            emotionalNeed: emotionalNeed?.rawValue
+            emotionalNeed: nil
         )
         
         services.prayerLogStore.addLog(log)

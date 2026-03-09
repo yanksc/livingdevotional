@@ -7,17 +7,24 @@ import Combine
 /// Entitlement and product identifiers (must match RevenueCat dashboard + App Store Connect)
 enum SupporterIdentifiers {
     static let entitlementId = "supporter"
-    static let monthlyProductId = "supporter_monthly_499"
-    static let annualProductId = "supporter_annual_4999"
+    static let monthlyProductId = "supporter_by_month_499"
+    static let annualProductId = "supporter_yearly_4999"
 }
 
 /// RevenueCat wrapper singleton for supporter subscription management
 final class SupporterService: NSObject, ObservableObject {
     static let shared = SupporterService()
     
+    /// UserDefaults key for DEBUG-only "simulate supporter" (no real purchase). Not compiled in Release.
+    private static let simulateSupporterKey = "SimulateSupporter"
+    
     // MARK: - Published State
     
+    /// True when user has active entitlement or (DEBUG only) simulate flag is on.
     @Published private(set) var isSupporter: Bool = false
+    
+    /// Real entitlement from RevenueCat (used so we can combine with simulate flag in DEBUG).
+    private var realIsSupporter: Bool = false
     @Published private(set) var monthlyPackage: Package?
     @Published private(set) var annualPackage: Package?
     @Published private(set) var isLoadingOfferings: Bool = false
@@ -38,6 +45,7 @@ final class SupporterService: NSObject, ObservableObject {
             print("⚠️ REVENUECAT_APPLE_API_KEY not set. Supporter features will be unavailable.")
             #endif
             isConfigured = true
+            Task { @MainActor in updateEffectiveSupporterStatus() }
             return
         }
         
@@ -49,6 +57,7 @@ final class SupporterService: NSObject, ObservableObject {
         Task { @MainActor in
             await refreshStatus()
             await fetchOfferings()
+            updateEffectiveSupporterStatus()
         }
     }
     
@@ -113,7 +122,8 @@ final class SupporterService: NSObject, ObservableObject {
         let result = try await Purchases.shared.purchase(package: package)
         
         await MainActor.run {
-            isSupporter = result.customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+            realIsSupporter = result.customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+            updateEffectiveSupporterStatus()
         }
         
         return result.customerInfo
@@ -129,7 +139,8 @@ final class SupporterService: NSObject, ObservableObject {
         let customerInfo = try await Purchases.shared.restorePurchases()
         
         await MainActor.run {
-            isSupporter = customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+            realIsSupporter = customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+            updateEffectiveSupporterStatus()
         }
         
         return customerInfo
@@ -145,7 +156,8 @@ final class SupporterService: NSObject, ObservableObject {
             let customerInfo = try await Purchases.shared.customerInfo()
             
             await MainActor.run {
-                isSupporter = customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+                realIsSupporter = customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
+                updateEffectiveSupporterStatus()
             }
         } catch {
             // Non-fatal - status will be updated when user makes a purchase or restores
@@ -168,7 +180,34 @@ extension SupporterService: PurchasesDelegate {
         let isActive = customerInfo.entitlements[SupporterIdentifiers.entitlementId]?.isActive == true
         
         Task { @MainActor in
-            self.isSupporter = isActive
+            self.realIsSupporter = isActive
+            self.updateEffectiveSupporterStatus()
         }
     }
+}
+
+// MARK: - Debug: Simulate supporter (testing only)
+
+extension SupporterService {
+    /// Updates `isSupporter` from real entitlement and (in DEBUG) simulate flag. Call on main actor.
+    private func updateEffectiveSupporterStatus() {
+        #if DEBUG
+        isSupporter = Self.simulateSupporterFromDefaults || realIsSupporter
+        #else
+        isSupporter = realIsSupporter
+        #endif
+    }
+    
+    #if DEBUG
+    /// True when "Simulate supporter" is enabled in Settings (DEBUG builds only). Use for UI testing without a real purchase.
+    static var simulateSupporterFromDefaults: Bool {
+        UserDefaults.standard.bool(forKey: Self.simulateSupporterKey)
+    }
+    
+    /// Toggle "Simulate supporter" for testing. Call from Settings debug section. Updates `isSupporter` immediately.
+    func setSimulateSupporter(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: Self.simulateSupporterKey)
+        updateEffectiveSupporterStatus()
+    }
+    #endif
 }
