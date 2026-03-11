@@ -35,13 +35,12 @@ struct PathStatusCardView: View {
                 .background(Color.white.opacity(0.3))
                 .padding(.vertical, 4)
             
-            // Analysis description — left aligned, line-limited to hint at more content
+            // Analysis description — left aligned, expands to fill available card space
             Text(pathStatus.description)
                 .font(.body)
                 .foregroundColor(.white.opacity(0.92))
                 .multilineTextAlignment(.leading)
                 .lineSpacing(7)
-                .lineLimit(8)
                 .shadow(color: Color.black.opacity(0.35), radius: 2, x: 0, y: 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -128,8 +127,8 @@ struct AnalysisFullScreenView: View {
                 // Scrollable content
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Top spacer to clear the close button
-                        Spacer().frame(height: 56)
+                        // Top spacer to clear the close button (accounts for safe area)
+                        Spacer().frame(height: max(geometry.safeAreaInsets.top + 16, 60) + 24)
                         
                         Text(pathStatus.title)
                             .font(.title2)
@@ -174,7 +173,7 @@ struct AnalysisFullScreenView: View {
                                 .foregroundColor(.white.opacity(0.9))
                                 .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
                         }
-                        .padding(.top, 16)
+                        .padding(.top, max(geometry.safeAreaInsets.top + 16, 60))
                         .padding(.trailing, 20)
                     }
                     Spacer()
