@@ -73,6 +73,18 @@ struct WidgetStyles {
         .system(size: size, weight: .medium, design: .serif)
     }
     
+    /// Maps verse character count to a font size between `minSize` and `maxSize`.
+    /// Breakpoints: <60 → max, 60–120 → mid-high, 120–220 → mid-low, 220+ → min
+    static func adaptiveVerseFontSize(length: Int, max maxSize: CGFloat, min minSize: CGFloat) -> CGFloat {
+        let range = maxSize - minSize
+        switch length {
+        case ..<60:    return maxSize
+        case 60..<120: return maxSize - range * 0.25
+        case 120..<220: return maxSize - range * 0.55
+        default:       return minSize
+        }
+    }
+    
     /// Reference font
     static func referenceFont(size: CGFloat) -> Font {
         .system(size: size, weight: .semibold, design: .serif)

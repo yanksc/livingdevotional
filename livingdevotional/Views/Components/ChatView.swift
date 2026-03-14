@@ -189,7 +189,6 @@ struct ChatView: View {
                 // Load verse text first if needed (for Ask questions with verse context)
                 await viewModel.loadVerseTextIfNeeded(primaryLanguage: settingsStore.primaryLanguage)
                 await viewModel.loadSuggestions()
-                await viewModel.sendInitialQuestionIfNeeded()
             }
         }
     }

@@ -34,9 +34,35 @@ enum AppConfig {
     /// Helicone AI Gateway base URL
     static let heliconeBaseURL = "https://ai-gateway.helicone.ai/v1/chat/completions"
     
-    /// OpenAI model to use (default for most calls)
-    static let openAIModel = "gpt-4o-mini"
+    /// Fast model for latency-sensitive streaming features
+    static let fastModel = "gpt-5.4/openai"
     
-    /// Premium model for high-quality onboarding moments (Scripture Echo, etc.)
-    static let premiumModel = "gpt-4o"
+    /// Default model for most calls — balanced quality and speed
+    static let openAIModel = "gpt-4.1-mini"
+    
+    /// Premium model for high-quality, user-facing moments (e.g. chat, journey analysis)
+    static let premiumModel = "gpt-5.4/openai"
+    
+    // MARK: - LangFuse Configuration
+    
+    /// LangFuse Public Key for observability tracing
+    static var langfusePublicKey: String {
+        if let key = Bundle.main.object(forInfoDictionaryKey: "LANGFUSE_PUBLIC_KEY") as? String,
+           !key.isEmpty {
+            return key
+        }
+        return ""
+    }
+    
+    /// LangFuse Secret Key for observability tracing
+    static var langfuseSecretKey: String {
+        if let key = Bundle.main.object(forInfoDictionaryKey: "LANGFUSE_SECRET_KEY") as? String,
+           !key.isEmpty {
+            return key
+        }
+        return ""
+    }
+    
+    /// LangFuse Cloud base URL
+    static let langfuseBaseURL = "https://us.cloud.langfuse.com"
 }

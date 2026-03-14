@@ -21,12 +21,12 @@ struct PersonalizedPlanConfigView: View {
     @ObservedObject private var chatStore = ChatStore.shared
     @ObservedObject private var progressStore = ProgressStore.shared
     
-    private var aiService: AIService? {
-        services.aiService as? AIService
+    private var aiService: AIServiceProtocol? {
+        services.aiService
     }
-    
+
     @State private var currentStep: PlanCreationStep = .profileConfirmation
-    @State private var dynamicQuestions: [AIService.PlanQuestion] = []
+    @State private var dynamicQuestions: [PlanQuestion] = []
     @State private var answers: [String: String] = [:]
     @State private var generatedPlan: ReadingPlan?
     @State private var isLoadingQuestions = false
@@ -172,7 +172,7 @@ struct PersonalizedPlanConfigView: View {
         }
     }
     
-    private func buildHistoryContext() -> AIService.UserHistoryContext? {
+    private func buildHistoryContext() -> UserHistoryContext? {
         // Build history from stores
         let recentNotes = noteStore.savedVerses.prefix(5).map { verse -> String in
             if !verse.content.isEmpty {
@@ -200,7 +200,7 @@ struct PersonalizedPlanConfigView: View {
             return nil
         }
         
-        return AIService.UserHistoryContext(
+        return UserHistoryContext(
             recentNotes: Array(recentNotes),
             recentPrayers: recentPrayers,
             recentQuestions: recentQuestions,
@@ -467,7 +467,7 @@ struct ProfileConfirmationStep: View {
 // MARK: - Questionnaire Step
 
 struct QuestionnaireStep: View {
-    let dynamicQuestions: [AIService.PlanQuestion]
+    let dynamicQuestions: [PlanQuestion]
     @Binding var answers: [String: String]
     let isLoading: Bool
     let onComplete: () -> Void
@@ -611,7 +611,7 @@ struct QuestionnaireStep: View {
         }
     }
     
-    private func dynamicQuestionView(_ question: AIService.PlanQuestion, index: Int) -> some View {
+    private func dynamicQuestionView(_ question: PlanQuestion, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             // Context caption
             Text(question.contextCaption)
@@ -642,7 +642,7 @@ struct QuestionnaireStep: View {
     }
     
     private func multipleChoiceOption(
-        option: AIService.QuestionOption,
+        option: PlanQuestionOption,
         isSelected: Bool,
         allowsMultiple: Bool,
         action: @escaping () -> Void
@@ -653,7 +653,7 @@ struct QuestionnaireStep: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    private func optionContent(option: AIService.QuestionOption, isSelected: Bool, allowsMultiple: Bool) -> some View {
+    private func optionContent(option: PlanQuestionOption, isSelected: Bool, allowsMultiple: Bool) -> some View {
         HStack(spacing: 16) {
             selectionIndicator(isSelected: isSelected, allowsMultiple: allowsMultiple)
             optionText(option.text)
@@ -876,7 +876,7 @@ struct QuestionnaireStep: View {
 }
 
 enum QuestionItem {
-    case dynamic(AIService.PlanQuestion, index: Int)
+    case dynamic(PlanQuestion, index: Int)
     case duration
     case direction
 }

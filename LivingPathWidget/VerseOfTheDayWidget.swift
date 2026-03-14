@@ -92,11 +92,15 @@ struct VerseWidgetEntryView: View {
 struct SmallVerseView: View {
     let data: WidgetData
     
+    private var verseFontSize: CGFloat {
+        WidgetStyles.adaptiveVerseFontSize(length: data.verseText.count, max: 15, min: 9)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Verse text - primary focus, allow wrapping
             Text(data.verseText)
-                .font(WidgetStyles.verseFont(size: 12))
+                .font(WidgetStyles.verseFont(size: verseFontSize))
                 .foregroundColor(.primary.opacity(0.85))
                 .multilineTextAlignment(.leading)
                 .lineSpacing(2)
@@ -133,11 +137,15 @@ struct SmallVerseView: View {
 struct MediumVerseView: View {
     let data: WidgetData
     
+    private var verseFontSize: CGFloat {
+        WidgetStyles.adaptiveVerseFontSize(length: data.verseText.count, max: 18, min: 11)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Verse text - primary focus, allow wrapping
             Text(data.verseText)
-                .font(WidgetStyles.verseFont(size: 14))
+                .font(WidgetStyles.verseFont(size: verseFontSize))
                 .foregroundColor(.primary.opacity(0.85))
                 .multilineTextAlignment(.leading)
                 .lineSpacing(3)
@@ -174,11 +182,15 @@ struct MediumVerseView: View {
 struct LargeVerseView: View {
     let data: WidgetData
     
+    private var verseFontSize: CGFloat {
+        WidgetStyles.adaptiveVerseFontSize(length: data.verseText.count, max: 23, min: 14)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Full verse text - primary focus
             Text(data.verseText)
-                .font(WidgetStyles.verseFont(size: 17))
+                .font(WidgetStyles.verseFont(size: verseFontSize))
                 .foregroundColor(.primary.opacity(0.85))
                 .lineSpacing(5)
                 .multilineTextAlignment(.leading)

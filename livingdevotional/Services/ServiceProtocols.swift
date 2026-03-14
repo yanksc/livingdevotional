@@ -17,20 +17,31 @@ protocol AuthenticationServiceProtocol {
 // MARK: - AI Service Protocol
 
 protocol AIServiceProtocol {
+    // Verse explanation and chat
     func explainVerse(book: String, chapter: Int, verse: Int, verseText: String, language: Language, mode: AIMode, appLanguage: AppLanguage, conversationHistory: [ChatMessage]?, userPrompt: String?) async throws -> AsyncThrowingStream<String, Error>
+    func chatWithVerse(book: String, chapter: Int, verse: Int, verseText: String, appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
+    func chatWithChapterContext(book: String, chapter: Int, chapterContent: String, contentType: String, appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
+    func generateSuggestedQuestions(book: String, chapter: Int, verse: Int, verseText: String, appLanguage: AppLanguage) async throws -> [String]
+    func generateChapterSuggestedQuestions(book: String, chapter: Int, chapterContent: String, contentType: String, appLanguage: AppLanguage) async throws -> [String]
+    // Verse search and related verses
     func findRelatedVerses(book: String, chapter: Int, verse: Int, text: String, appLanguage: AppLanguage) async throws -> [RelatedVerse]
     func searchVerses(query: String, appLanguage: AppLanguage) async throws -> VerseSearchResponse
     func searchMoreVerses(query: String, excludeReferences: [String], appLanguage: AppLanguage) async throws -> VerseSearchResponse
+    // General chat
     func askQuestion(question: String, context: String?) async throws -> String
+    func chatGeneral(appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
+    // Chapter summary and context
     func summarizeChapter(book: String, chapter: Int, language: Language) async throws -> String
     func summarizeChapterStream(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
     func getChapterContext(book: String, chapter: Int, appLanguage: AppLanguage) async throws -> AsyncThrowingStream<String, Error>
+    // Prayer and verse discovery
     func searchBible(query: String, language: Language) async throws -> [SearchResult]
     func findVerseForPrayer(focus: String, need: String, language: Language, appLanguage: AppLanguage, excludeReferences: [String]) async throws -> DailyVerse
     func generateVerseRationale(verseReference: String, verseText: String, userAction: String, appLanguage: AppLanguage) async throws -> String
+    // Journey analysis
     func analyzeJourney(data: JourneyDataForAI, appLanguage: AppLanguage) async throws -> AIJourneyAnalysis
-    func chatGeneral(appLanguage: AppLanguage, conversationHistory: [ChatMessage], userQuestion: String) async throws -> AsyncThrowingStream<String, Error>
-    func generatePersonalizedPlanQuestions(profile: UserProfile, history: AIService.UserHistoryContext?, appLanguage: AppLanguage) async throws -> [AIService.PlanQuestion]
+    // Personalized reading plan
+    func generatePersonalizedPlanQuestions(profile: UserProfile, history: UserHistoryContext?, appLanguage: AppLanguage) async throws -> [PlanQuestion]
     func generateReadingPlan(answers: [String: String], profile: UserProfile, appLanguage: AppLanguage) async throws -> ReadingPlan
 }
 

@@ -10,6 +10,7 @@ struct AskCategoryDetailView: View {
     @ObservedObject private var settingsStore = SettingsStore.shared
     @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
     @State private var selectedQuestion: AskQuestion?
+    @State private var chatViewModel: ChatViewModel?
     
     // Get category index for consistent background assignment
     private var categoryIndex: Int {
@@ -88,6 +89,20 @@ struct AskCategoryDetailView: View {
                                 router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
                                 return
                             }
+                            if let aiService = services.aiService {
+                                chatViewModel = ChatViewModel(
+                                    aiService: aiService,
+                                    book: question.verseBook,
+                                    chapter: question.verseChapter,
+                                    verse: question.verseNumber,
+                                    verseText: nil,
+                                    appLanguage: settingsStore.appLanguage,
+                                    initialQuestion: question.localizedQuestion(for: settingsStore.appLanguage),
+                                    onLimitReached: {
+                                        router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
+                                    }
+                                )
+                            }
                             selectedQuestion = question
                         } label: {
                             HStack(alignment: .top, spacing: 16) {
@@ -110,8 +125,20 @@ struct AskCategoryDetailView: View {
                                         .foregroundColor(AppTheme.primaryText)
                                         .multilineTextAlignment(.leading)
                                     
-                                    // Verse reference if available
-                                    if let verseRef = question.verseReference {
+                                    // Verse reference localized by primary Bible language
+                                    if let verseBook = question.verseBook,
+                                       let verseChapter = question.verseChapter,
+                                       let verseNumber = question.verseNumber {
+                                        let localizedBook = BibleData.localizedBookName(verseBook, language: settingsStore.primaryLanguage)
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "book.fill")
+                                                .font(.caption2)
+                                                .foregroundColor(AppTheme.accentColor)
+                                            Text("\(localizedBook) \(verseChapter):\(verseNumber)")
+                                                .font(.caption)
+                                                .foregroundColor(AppTheme.accentColor)
+                                        }
+                                    } else if let verseRef = question.verseReference {
                                         HStack(spacing: 4) {
                                             Image(systemName: "book.fill")
                                                 .font(.caption2)
@@ -170,24 +197,14 @@ struct AskCategoryDetailView: View {
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
-        .sheet(item: $selectedQuestion) { question in
-            if let aiService = services.aiService {
+        .sheet(item: $selectedQuestion) { _ in
+            if let vm = chatViewModel {
                 ChatView(
-                    viewModel: ChatViewModel(
-                        aiService: aiService,
-                        book: question.verseBook,
-                        chapter: question.verseChapter,
-                        verse: question.verseNumber,
-                        verseText: nil, // We don't have verse text here, will be loaded if needed
-                        appLanguage: settingsStore.appLanguage,
-                        initialQuestion: question.localizedQuestion(for: settingsStore.appLanguage),
-                        onLimitReached: {
-                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("UsageLimitReached"))
-                        }
-                    ),
+                    viewModel: vm,
                     settingsStore: settingsStore,
                     onClose: {
                         selectedQuestion = nil
+                        chatViewModel = nil
                     }
                 )
                 .environmentObject(router)

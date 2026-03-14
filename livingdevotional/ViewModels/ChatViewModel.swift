@@ -56,6 +56,7 @@ class ChatViewModel: ObservableObject {
         self.chapterContext = chapterContext
         self.chapterContextType = chapterContextType
         self.onLimitReached = onLimitReached
+        self.inputMessage = initialQuestion ?? ""
         
         if let sessionId = sessionId, let existingSession = chatStore.getSession(id: sessionId) {
             self.session = existingSession
@@ -98,12 +99,10 @@ class ChatViewModel: ObservableObject {
     func loadSuggestions() async {
         guard session == nil || session?.messages.isEmpty == true else { return }
         
-        guard let service = aiService as? AIService else { return }
-        
         do {
             if let book = book, let chapter = chapter, let verse = verse, let verseText = verseText {
                 // Verse-specific suggestions
-                suggestedQuestions = try await service.generateSuggestedQuestions(
+                suggestedQuestions = try await aiService.generateSuggestedQuestions(
                     book: book,
                     chapter: chapter,
                     verse: verse,
@@ -113,7 +112,7 @@ class ChatViewModel: ObservableObject {
             } else if let book = book, let chapter = chapter,
                       let chapterContext = chapterContext, let chapterContextType = chapterContextType {
                 // Chapter-level suggestions based on context or summary
-                suggestedQuestions = try await service.generateChapterSuggestedQuestions(
+                suggestedQuestions = try await aiService.generateChapterSuggestedQuestions(
                     book: book,
                     chapter: chapter,
                     chapterContent: chapterContext,
@@ -167,40 +166,39 @@ class ChatViewModel: ObservableObject {
         let assistantMsgId = UUID().uuidString
         
         do {
-            if let service = aiService as? AIService {
-                let stream: AsyncThrowingStream<String, Error>
-                
-                // Route to the appropriate chat method based on available context
-                if let book = book, let chapter = chapter, let verse = verse, let verseText = verseText {
-                    // Verse-specific chat
-                    stream = try await service.chatWithVerse(
-                        book: book,
-                        chapter: chapter,
-                        verse: verse,
-                        verseText: verseText,
-                        appLanguage: appLanguage,
-                        conversationHistory: history,
-                        userQuestion: question
-                    )
-                } else if let book = book, let chapter = chapter,
-                          let chapterContext = chapterContext, let chapterContextType = chapterContextType {
-                    // Chapter-level chat using context or summary
-                    stream = try await service.chatWithChapterContext(
-                        book: book,
-                        chapter: chapter,
-                        chapterContent: chapterContext,
-                        contentType: chapterContextType,
-                        appLanguage: appLanguage,
-                        conversationHistory: history,
-                        userQuestion: question
-                    )
-                } else {
-                    stream = try await service.chatGeneral(
-                        appLanguage: appLanguage,
-                        conversationHistory: history,
-                        userQuestion: question
-                    )
-                }
+            let stream: AsyncThrowingStream<String, Error>
+
+            // Route to the appropriate chat method based on available context
+            if let book = book, let chapter = chapter, let verse = verse, let verseText = verseText {
+                // Verse-specific chat
+                stream = try await aiService.chatWithVerse(
+                    book: book,
+                    chapter: chapter,
+                    verse: verse,
+                    verseText: verseText,
+                    appLanguage: appLanguage,
+                    conversationHistory: history,
+                    userQuestion: question
+                )
+            } else if let book = book, let chapter = chapter,
+                      let chapterContext = chapterContext, let chapterContextType = chapterContextType {
+                // Chapter-level chat using context or summary
+                stream = try await aiService.chatWithChapterContext(
+                    book: book,
+                    chapter: chapter,
+                    chapterContent: chapterContext,
+                    contentType: chapterContextType,
+                    appLanguage: appLanguage,
+                    conversationHistory: history,
+                    userQuestion: question
+                )
+            } else {
+                stream = try await aiService.chatGeneral(
+                    appLanguage: appLanguage,
+                    conversationHistory: history,
+                    userQuestion: question
+                )
+            }
                 
                 // Add placeholder assistant message
                 let assistantMsg = ChatMessage(id: assistantMsgId, role: .assistant, content: "", createdAt: Date())
@@ -235,7 +233,6 @@ class ChatViewModel: ObservableObject {
                 
                 UsageLimitStore.shared.recordAIQuestionUsed()
                 refreshSession()
-            }
         } catch {
             errorMessage = error.localizedDescription
             // Remove the user message if failed? Or keep it with error?
