@@ -43,6 +43,7 @@ extension AIService {
             經文：「\(verseText)」
             
             \(languageInstruction)
+            直接給出完整的解釋，不要以反思問題作結。
             """ : """
             \(userContext)
             
@@ -54,6 +55,7 @@ extension AIService {
             Verse Text: "\(verseText)"
             
             \(languageInstruction)
+            Give a complete explanation. Do not end with a reflective question.
             """
         ]
         messages.append(systemMessage)
@@ -69,7 +71,7 @@ extension AIService {
         if let prompt = userPrompt {
             messages.append(["role": "user", "content": prompt])
         } else {
-            let lengthConstraint = isChinese ? "請控制在 80-120 字以內，精簡扼要。" : "Please keep it concise, around 50-80 words."
+            let lengthConstraint = isChinese ? "請控制在 120-180 字以內，精簡扼要。" : "Please keep it concise, around 75-120 words."
             let initialPrompt: String
 
             switch mode {
@@ -122,7 +124,7 @@ extension AIService {
                     """
                 }
             case .pray:
-                let prayerLengthConstraint = isChinese ? "請控制在 105-155 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 60-100 words."
+                let prayerLengthConstraint = isChinese ? "請控制在 155-230 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 90-150 words."
                 if isChinese {
                     initialPrompt = """
                     請根據這節經文撰寫一篇簡短而深刻的禱告文。
@@ -151,13 +153,13 @@ extension AIService {
             messages.append(["role": "user", "content": initialPrompt])
         }
 
-        let maxTokens = mode == .pray ? 600 : (mode == .insight || mode == .reflect ? 450 : 750)
+        let maxTokens = mode == .pray ? 900 : (mode == .insight || mode == .reflect ? 700 : 1100)
         let requestBody: [String: Any] = [
-            "model": fastModel,
+            "model": openAIModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": maxTokens
+            "max_completion_tokens": maxTokens
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "explainVerse")
@@ -198,8 +200,7 @@ extension AIService {
             **回應結構（自然地整合，勿使用標題或條列）：**
             1. 先以同理心回應問題背後的心情或關切
             2. 提供紮實的釋經洞見——這節經文的意義、語境、以及神學要點，並引用一至兩處相關的聖經交叉引用來加深理解
-            3. 在適當時，簡要提及基督徒不同傳統（更正教、天主教、東正教等）如何理解這段經文
-            4. 提供具體且貼近生活的個人應用——\(readerName)如何在今天的生活中活出這真理
+            3. 提供具體且貼近生活的個人應用——\(readerName)如何在今天的生活中活出這真理
             
             **重要規則：**
             - 回應目標為 600-800 字，提供深度豐富的解答
@@ -222,8 +223,7 @@ extension AIService {
             **Response structure (weave naturally — no headers or bullet points in output):**
             1. Open by meeting the heart or curiosity behind the question with genuine warmth
             2. Offer substantive exegetical insight — the meaning, context, and theological weight of this verse, anchored with 1–2 cross-references from Scripture
-            3. Where fitting, briefly note how different Christian traditions (Protestant, Catholic, Orthodox, etc.) have understood this passage
-            4. Offer a concrete personal application — how \(readerName) might live this truth today
+            3. Offer a concrete personal application — how \(readerName) might live this truth today
             
             **Important rules:**
             - Aim for 600–800 words — give a rich, thorough, and deeply substantive answer
@@ -243,11 +243,11 @@ extension AIService {
         messages.append(["role": "user", "content": userQuestion])
 
         let requestBody: [String: Any] = [
-            "model": openAIModel,
+            "model": premiumModel,
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 2700
+            "max_completion_tokens": 2700
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "chatWithVerse")
@@ -378,7 +378,7 @@ extension AIService {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 2000
+            "max_completion_tokens": 2000
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "chatWithChapterContext")
@@ -435,7 +435,7 @@ extension AIService {
         }
 
         let messages: [[String: Any]] = [["role": "user", "content": prompt]]
-        let requestBody: [String: Any] = ["model": openAIModel, "messages": messages, "max_tokens": 120]
+        let requestBody: [String: Any] = ["model": openAIModel, "messages": messages, "max_completion_tokens": 120]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateChapterSuggestedQuestions") else {
             return []
@@ -486,7 +486,7 @@ extension AIService {
         }
 
         let messages: [[String: Any]] = [["role": "user", "content": prompt]]
-        let requestBody: [String: Any] = ["model": openAIModel, "messages": messages, "max_tokens": 100]
+        let requestBody: [String: Any] = ["model": openAIModel, "messages": messages, "max_completion_tokens": 100]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateSuggestedQuestions") else {
             return []
