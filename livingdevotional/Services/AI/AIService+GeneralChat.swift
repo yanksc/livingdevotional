@@ -87,7 +87,7 @@ extension AIService {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 3000
+            "max_completion_tokens": 3000
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "chatGeneral")

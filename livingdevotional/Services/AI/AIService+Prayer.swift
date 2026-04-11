@@ -90,7 +90,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.3,
-            "max_tokens": 200
+            "max_completion_tokens": 200
         ]
 
         let content = try await makeAIRequest(requestBody: requestBody, traceName: "findVerseForPrayer")
@@ -207,7 +207,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 250
+            "max_completion_tokens": 250
         ]
 
         let content = try await makeAIRequest(requestBody: requestBody, traceName: "generateVerseRationale")

@@ -54,23 +54,43 @@ struct HomeView: View {
         .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(settingsStore.appLanguage == .chineseTraditional ? "今日" :
-                     settingsStore.appLanguage == .chineseSimplified ? "今日" : "Today")
-                    .font(.system(size: 17, weight: .bold, design: .serif))
-                    .foregroundColor(AppTheme.accentColor)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 12) {
-                    // Records button
-                    Button(action: { showRecordsSheet = true }) {
-                        Image(systemName: "bookmark.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(AppTheme.accentColor)
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .principal) {
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "今日" :
+                         settingsStore.appLanguage == .chineseSimplified ? "今日" : "Today")
+                        .font(.system(size: 17, weight: .bold, design: .serif))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+                .sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button(action: { showRecordsSheet = true }) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(AppTheme.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        ProfileAvatarButton { router.showSettings = true }
                     }
-                    
-                    // Profile avatar
-                    ProfileAvatarButton { router.showSettings = true }
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) {
+                    Text(settingsStore.appLanguage == .chineseTraditional ? "今日" :
+                         settingsStore.appLanguage == .chineseSimplified ? "今日" : "Today")
+                        .font(.system(size: 17, weight: .bold, design: .serif))
+                        .foregroundColor(AppTheme.accentColor)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button(action: { showRecordsSheet = true }) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(AppTheme.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        ProfileAvatarButton { router.showSettings = true }
+                    }
                 }
             }
         }

@@ -430,11 +430,11 @@ class DailyVerseService: DailyVerseServiceProtocol {
     }
     
     /// Collect up to `maxVerses` consecutive verses starting at `startVerse` from a pre-loaded array.
-    /// Returns the joined text and the actual last verse number that was found.
+    /// Returns the joined text (trimmed to ~30 words) and the actual last verse number that was found.
     private func collectVerseRange(
         from verses: [BibleVerse],
         startVerse: Int,
-        maxVerses: Int = 4,
+        maxVerses: Int = 3,
         getText: (BibleVerse) -> String
     ) -> (text: String, endVerse: Int) {
         let endLimit = startVerse + maxVerses - 1
@@ -446,8 +446,16 @@ class DailyVerseService: DailyVerseServiceProtocol {
             return ("", startVerse)
         }
         
-        let text = rangeVerses.map { getText($0) }.filter { !$0.isEmpty }.joined(separator: " ")
+        let fullText = rangeVerses.map { getText($0) }.filter { !$0.isEmpty }.joined(separator: " ")
+        let text = trimToApproximateWordLimit(fullText, maxWords: 30)
         let endVerse = rangeVerses.last?.verseNumber ?? startVerse
         return (text, endVerse)
+    }
+    
+    /// Trims text to approximately `maxWords` words at a word boundary.
+    private func trimToApproximateWordLimit(_ text: String, maxWords: Int) -> String {
+        let words = text.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard words.count > maxWords else { return text }
+        return words.prefix(maxWords).joined(separator: " ")
     }
 }

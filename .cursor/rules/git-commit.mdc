@@ -1,0 +1,26 @@
+---
+description: Git commit identity - use personal yanksc GitHub account
+alwaysApply: true
+---
+
+# Git Commit Identity
+
+When committing code in this project, always use the **personal yanksc** GitHub account, NOT the Intuit work account.
+
+**Required git config for this repo:**
+- `user.name`: `yanksc`
+- `user.email`: `yanksc@gmail.com`
+
+Before committing, verify the local repo config is correct:
+
+```bash
+git config user.name   # should be "yanksc"
+git config user.email  # should be "yanksc@gmail.com"
+```
+
+If the config is wrong, fix it with:
+
+```bash
+git config user.name "yanksc"
+git config user.email "yanksc@gmail.com"
+```

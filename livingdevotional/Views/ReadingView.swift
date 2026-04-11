@@ -1083,6 +1083,7 @@ struct ReadingView: View {
                     ToolbarItem(placement: .navigationBarLeading) { toolbarLeadingButton }
                         .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .principal) { toolbarPrincipalButton }
+                        .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .navigationBarTrailing) { toolbarTrailingButtons }
                         .sharedBackgroundVisibility(.hidden)
                 } else {

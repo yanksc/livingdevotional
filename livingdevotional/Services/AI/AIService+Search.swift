@@ -93,7 +93,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.3,
-            "max_tokens": 1200
+            "max_completion_tokens": 1200
         ]
 
         let content = try await makeAIRequest(requestBody: requestBody, traceName: "findRelatedVerses")
@@ -233,7 +233,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.3,
-            "max_tokens": 1200
+            "max_completion_tokens": 1200
         ]
 
         let content = try await makeAIRequest(requestBody: requestBody, traceName: "searchVerses")
@@ -385,7 +385,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.5,
-            "max_tokens": 1200
+            "max_completion_tokens": 1200
         ]
 
         let content = try await makeAIRequest(requestBody: requestBody, traceName: "loadMoreRelatedVerses")

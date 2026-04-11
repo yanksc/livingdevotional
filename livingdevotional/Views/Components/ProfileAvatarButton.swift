@@ -9,15 +9,11 @@ struct ProfileAvatarButton: View {
     
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(AppTheme.accentColor.opacity(0.15))
-                    .frame(width: 32, height: 32)
-                Text(initial)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.accentColor)
-            }
+            Text(initial)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(AppTheme.accentColor)
         }
+        .buttonStyle(.plain)
     }
     
     private var initial: String {

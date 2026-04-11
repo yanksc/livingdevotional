@@ -44,6 +44,7 @@ extension AIService {
             
             \(languageInstruction)
             直接給出完整的解釋，不要以反思問題作結。
+            不要在回覆中重複經卷名稱、章節或節數（例如不要說「在創世記第三章中」），讀者已經知道自己在讀哪段經文。
             """ : """
             \(userContext)
             
@@ -56,6 +57,7 @@ extension AIService {
             
             \(languageInstruction)
             Give a complete explanation. Do not end with a reflective question.
+            Do not repeat the source book, chapter, or verse number in your response (e.g. don't say "In Genesis chapter 3…"). The reader already knows which verse they are reading.
             """
         ]
         messages.append(systemMessage)
@@ -85,7 +87,7 @@ extension AIService {
                     2. 經文在整章或整卷書中的上下文位置和意義
                     3. 重要的神學概念或教義背景
                     
-                    請用繁體中文（台灣用語）書寫，使用"這節經文"開頭。\(lengthConstraint)
+                    請用繁體中文（台灣用語）書寫，使用"這節經文"開頭，不要重複經卷名稱或章節號。\(lengthConstraint)
                     """
                 } else {
                     initialPrompt = """
@@ -96,7 +98,7 @@ extension AIService {
                     2. The verse's position and meaning within the chapter or book
                     3. Important theological concepts or doctrinal background
                     
-                    Please write in English, starting with "This verse". \(lengthConstraint)
+                    Please write in English, starting with "This verse". Do not restate the book name, chapter, or verse number. \(lengthConstraint)
                     """
                 }
             case .reflect:
@@ -109,7 +111,7 @@ extension AIService {
                     2. 具體的生活情境或例子來說明如何實踐
                     3. 如何在日常生活中活出這節經文的教導
                     
-                    請用繁體中文（台灣用語）書寫，使用"這節經文"開頭。\(lengthConstraint)
+                    請用繁體中文（台灣用語）書寫，使用"這節經文"開頭，不要重複經卷名稱或章節號。\(lengthConstraint)
                     """
                 } else {
                     initialPrompt = """
@@ -120,7 +122,7 @@ extension AIService {
                     2. Specific life situations or examples of how to practice it
                     3. How to live out this verse's teaching in daily life
                     
-                    Please write in English, starting with "This verse". \(lengthConstraint)
+                    Please write in English, starting with "This verse". Do not restate the book name, chapter, or verse number. \(lengthConstraint)
                     """
                 }
             case .pray:

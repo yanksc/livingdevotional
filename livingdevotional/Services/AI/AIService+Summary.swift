@@ -67,7 +67,7 @@ extension AIService {
             3. 一至两处与本章相呼应的圣经交叉引用（如适用），说明这主题如何贯穿圣经
             4. 以一句话点出本章的灵修核心——读者今天可以从中带走什么
             
-            请直接开始摘要，不需要标题或开场白。使用简体中文书写。
+            请直接开始摘要，不需要标题或开场白。不要以反思性的反问句结尾。使用简体中文书写。
             """
         } else if isChinese {
             prompt = """
@@ -83,7 +83,7 @@ extension AIService {
             3. 一至兩處與本章相呼應的聖經交叉引用（如適用），說明這主題如何貫穿聖經
             4. 以一句話點出本章的靈修核心——讀者今天可以從中帶走什麼
             
-            請直接開始摘要，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            請直接開始摘要，不需要標題或開場白。不要以反思性的反問句結尾。使用繁體中文（台灣用語）書寫。
             """
         } else {
             prompt = """
@@ -99,7 +99,7 @@ extension AIService {
             3. One or two cross-references to other parts of Scripture that echo or illuminate this chapter's themes (where applicable)
             4. A one-sentence devotional takeaway — the spiritual heart of this chapter that a reader can carry with them today
             
-            Start directly with the summary, no title or introduction. Write in English.
+            Start directly with the summary, no title or introduction. Do not end with a reflecting rhetorical question. Write in English.
             """
         }
 
@@ -113,7 +113,7 @@ extension AIService {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 700
+            "max_completion_tokens": 700
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "summarizeChapterStream")
@@ -176,7 +176,7 @@ extension AIService {
             3. 这一章在整本圣经（或整卷书）大叙事中的位置——它如何与更广的救恩故事相连
             4. 基督徒不同传统（如更正教、天主教、东正教等）如何理解这章中的核心神学主题，或这段经文的重要解读
             
-            直接开始，不需要标题或开场白。使用简体中文书写。
+            直接开始，不需要标题或开场白。不要以反思性的反问句结尾。使用简体中文书写。
             """
         } else if isChinese {
             prompt = """
@@ -192,7 +192,7 @@ extension AIService {
             3. 這一章在整本聖經（或整卷書）大敘事中的位置——它如何與更廣的救恩故事相連
             4. 基督徒不同傳統（如更正教、天主教、東正教等）如何理解這章中的核心神學主題，或這段經文的重要詮釋
             
-            直接開始，不需要標題或開場白。使用繁體中文（台灣用語）書寫。
+            直接開始，不需要標題或開場白。不要以反思性的反問句結尾。使用繁體中文（台灣用語）書寫。
             """
         } else {
             prompt = """
@@ -208,7 +208,7 @@ extension AIService {
             3. This chapter's place in the larger biblical narrative — how it connects to the overarching story of salvation and the rest of Scripture
             4. A brief note on how different Christian traditions (Protestant, Catholic, Orthodox, etc.) have read or valued this passage — its enduring theological contribution
             
-            Start directly without title or introduction. Write in English.
+            Start directly without title or introduction. Do not end with a reflecting rhetorical question. Write in English.
             """
         }
 
@@ -222,7 +222,7 @@ extension AIService {
             "messages": messages,
             "stream": true,
             "stream_options": ["include_usage": false],
-            "max_tokens": 700
+            "max_completion_tokens": 700
         ]
 
         return try makeStreamingRequest(requestBody: requestBody, traceName: "getChapterContext")

@@ -47,14 +47,28 @@ struct ExploreView: View {
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(settingsStore.appLanguage == .chineseTraditional ? "探索" :
-                         settingsStore.appLanguage == .chineseSimplified ? "探索" : "Explore")
-                        .font(.system(size: 17, weight: .bold, design: .serif))
-                        .foregroundColor(AppTheme.accentColor)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    ProfileAvatarButton { router.showSettings = true }
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .principal) {
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "探索" :
+                             settingsStore.appLanguage == .chineseSimplified ? "探索" : "Explore")
+                            .font(.system(size: 17, weight: .bold, design: .serif))
+                            .foregroundColor(AppTheme.accentColor)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ProfileAvatarButton { router.showSettings = true }
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .principal) {
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "探索" :
+                             settingsStore.appLanguage == .chineseSimplified ? "探索" : "Explore")
+                            .font(.system(size: 17, weight: .bold, design: .serif))
+                            .foregroundColor(AppTheme.accentColor)
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ProfileAvatarButton { router.showSettings = true }
+                    }
                 }
             }
             // Sheet modifiers

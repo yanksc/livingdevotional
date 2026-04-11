@@ -65,34 +65,72 @@ struct JourneyView: View {
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Living Path")
-                        .font(.system(size: 17, weight: .bold, design: .serif))
-                        .foregroundColor(AppTheme.accentColor)
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        if !UsageLimitStore.shared.canRefreshJourneyAnalysis() {
-                            router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("JourneyRefreshLimitReached"))
-                        } else {
-                            Task {
-                                await viewModel.refreshAIAnalysis(appLanguage: settingsStore.appLanguage)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .principal) {
+                        Text("Living Path")
+                            .font(.system(size: 17, weight: .bold, design: .serif))
                             .foregroundColor(AppTheme.accentColor)
                     }
-                    .disabled(viewModel.isLoadingAI)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 12) {
-                        Button { showRecordsSheet = true } label: {
-                            Image(systemName: "bookmark.fill")
+                    .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            if !UsageLimitStore.shared.canRefreshJourneyAnalysis() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("JourneyRefreshLimitReached"))
+                            } else {
+                                Task {
+                                    await viewModel.refreshAIAnalysis(appLanguage: settingsStore.appLanguage)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
                                 .foregroundColor(AppTheme.accentColor)
                         }
                         .buttonStyle(.plain)
-                        ProfileAvatarButton { router.showSettings = true }
+                        .disabled(viewModel.isLoadingAI)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        HStack(spacing: 12) {
+                            Button { showRecordsSheet = true } label: {
+                                Image(systemName: "bookmark.fill")
+                                    .foregroundColor(AppTheme.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            ProfileAvatarButton { router.showSettings = true }
+                        }
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .principal) {
+                        Text("Living Path")
+                            .font(.system(size: 17, weight: .bold, design: .serif))
+                            .foregroundColor(AppTheme.accentColor)
+                    }
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            if !UsageLimitStore.shared.canRefreshJourneyAnalysis() {
+                                router.presentUsageLimitPaywall(context: settingsStore.appLanguage.localizedString("JourneyRefreshLimitReached"))
+                            } else {
+                                Task {
+                                    await viewModel.refreshAIAnalysis(appLanguage: settingsStore.appLanguage)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(AppTheme.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isLoadingAI)
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        HStack(spacing: 12) {
+                            Button { showRecordsSheet = true } label: {
+                                Image(systemName: "bookmark.fill")
+                                    .foregroundColor(AppTheme.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            ProfileAvatarButton { router.showSettings = true }
+                        }
                     }
                 }
             }

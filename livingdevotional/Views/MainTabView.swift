@@ -150,10 +150,16 @@ struct BibleTabView: View {
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // Only show avatar when not in ReadingView (ReadingView has its own dense toolbar)
                 if viewModel.selectedBook == nil || viewModel.selectedChapter == nil {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        ProfileAvatarButton { router.showSettings = true }
+                    if #available(iOS 26.0, *) {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            ProfileAvatarButton { router.showSettings = true }
+                        }
+                        .sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            ProfileAvatarButton { router.showSettings = true }
+                        }
                     }
                 }
             }

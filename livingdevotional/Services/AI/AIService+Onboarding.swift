@@ -69,7 +69,7 @@ extension AIService {
             "model": premiumModel,
             "messages": messages,
             "temperature": 0.9,
-            "max_tokens": 1000
+            "max_completion_tokens": 1000
         ]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "getScriptureEcho", timeout: 15) else {
@@ -126,7 +126,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 400
+            "max_completion_tokens": 400
         ]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateDeepDiveQuestion", timeout: 15) else {
@@ -213,7 +213,7 @@ extension AIService {
             "model": openAIModel,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 500
+            "max_completion_tokens": 500
         ]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateBookIntros", timeout: 15) else {
@@ -281,7 +281,7 @@ extension AIService {
             "model": premiumModel,
             "messages": messages,
             "temperature": 0.85,
-            "max_tokens": 500
+            "max_completion_tokens": 500
         ]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateRelatedVerses", timeout: 20) else {
@@ -339,7 +339,7 @@ extension AIService {
             "model": premiumModel,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 400
+            "max_completion_tokens": 400
         ]
 
         guard let content = await makeAIRequestOptional(requestBody: requestBody, traceName: "generateOnboardingPrayer", timeout: 20) else {
