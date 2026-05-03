@@ -331,7 +331,9 @@ struct ChatMessageView: View {
     let message: ChatMessage
     @ObservedObject var settingsStore: SettingsStore
     @EnvironmentObject var router: AppRouter
-    
+
+    @State private var isShowingReportConfirmation = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if message.role == .assistant {
@@ -342,7 +344,7 @@ struct ChatMessageView: View {
             } else {
                 Spacer()
             }
-            
+
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 if message.role == .assistant {
                     // Use markdown rendering for assistant messages with clickable verses
@@ -359,6 +361,13 @@ struct ChatMessageView: View {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(Color.gray.opacity(0.1))
                     )
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            isShowingReportConfirmation = true
+                        } label: {
+                            Label(reportLocalized, systemImage: "flag")
+                        }
+                    }
                 } else {
                     Text(message.content)
                         .font(.system(size: 15))
@@ -369,15 +378,30 @@ struct ChatMessageView: View {
                                 .fill(AppTheme.accentColor)
                         )
                 }
-                
-                if let date = message.createdAt {
-                    Text(date.formatted(date: .omitted, time: .shortened))
-                        .font(.caption2)
-                        .foregroundColor(AppTheme.secondaryText)
-                        .padding(.horizontal, 4)
+
+                HStack(spacing: 8) {
+                    if let date = message.createdAt {
+                        Text(date.formatted(date: .omitted, time: .shortened))
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+
+                    if message.role == .assistant {
+                        Button {
+                            isShowingReportConfirmation = true
+                        } label: {
+                            Label(reportLocalized, systemImage: "flag")
+                                .labelStyle(.titleAndIcon)
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(reportAccessibilityLabel)
+                    }
                 }
+                .padding(.horizontal, 4)
             }
-            
+
             if message.role == .user {
                 Image(systemName: "person.circle.fill")
                     .foregroundColor(AppTheme.secondaryText)
@@ -386,11 +410,129 @@ struct ChatMessageView: View {
                 Spacer()
             }
         }
+        .confirmationDialog(
+            reportConfirmationTitle,
+            isPresented: $isShowingReportConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(reportConfirmActionLocalized, role: .destructive) {
+                openReportEmail()
+            }
+            Button(cancelLocalized, role: .cancel) {}
+        } message: {
+            Text(reportConfirmationMessage)
+        }
     }
-    
+
     private func navigateToVerse(book: String, chapter: Int, verse: Int) {
         if let bibleBook = BibleData.book(named: book) {
             router.navigateToReading(book: bibleBook, chapter: chapter, verse: verse)
+        }
+    }
+
+    // MARK: - Report flow
+
+    private func openReportEmail() {
+        let subject = reportEmailSubject
+        let body = reportEmailBody
+        guard let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "mailto:livingpathapp@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") else {
+            return
+        }
+        UIApplication.shared.open(url)
+    }
+
+    private var reportEmailSubject: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "舉報 AI 回覆"
+        case .chineseSimplified: return "举报 AI 回复"
+        default: return "Report AI response"
+        }
+    }
+
+    private var reportEmailBody: String {
+        let timestamp = (message.createdAt ?? Date()).formatted(date: .abbreviated, time: .standard)
+        let header: String
+        let messageLabel: String
+        let reasonPrompt: String
+        switch settingsStore.appLanguage {
+        case .chineseTraditional:
+            header = "我想舉報以下 AI 回覆內容："
+            messageLabel = "AI 回覆（時間：\(timestamp)）"
+            reasonPrompt = "舉報原因（請說明）："
+        case .chineseSimplified:
+            header = "我想举报以下 AI 回复内容："
+            messageLabel = "AI 回复（时间：\(timestamp)）"
+            reasonPrompt = "举报原因（请说明）："
+        default:
+            header = "I'd like to report the following AI response:"
+            messageLabel = "AI response (sent: \(timestamp))"
+            reasonPrompt = "Reason for report (please describe):"
+        }
+        return """
+        \(header)
+
+        --- \(messageLabel) ---
+        \(message.content)
+        ---
+
+        \(reasonPrompt)
+
+
+        """
+    }
+
+    // MARK: - Localized strings
+
+    private var reportLocalized: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "舉報"
+        case .chineseSimplified: return "举报"
+        default: return "Report"
+        }
+    }
+
+    private var reportAccessibilityLabel: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "舉報此 AI 回覆"
+        case .chineseSimplified: return "举报此 AI 回复"
+        default: return "Report this AI response"
+        }
+    }
+
+    private var reportConfirmationTitle: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "舉報此回覆？"
+        case .chineseSimplified: return "举报此回复？"
+        default: return "Report this response?"
+        }
+    }
+
+    private var reportConfirmationMessage: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional:
+            return "我們會在 24 小時內審查回報內容並採取適當行動。系統會開啟電子郵件，附上此回覆的內容供我們參考。"
+        case .chineseSimplified:
+            return "我们会在 24 小时内审查报告内容并采取适当行动。系统会打开电子邮件，附上此回复的内容供我们参考。"
+        default:
+            return "We review reports within 24 hours and act on objectionable content. Your email app will open with this response attached so we can investigate."
+        }
+    }
+
+    private var reportConfirmActionLocalized: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "舉報"
+        case .chineseSimplified: return "举报"
+        default: return "Report"
+        }
+    }
+
+    private var cancelLocalized: String {
+        switch settingsStore.appLanguage {
+        case .chineseTraditional: return "取消"
+        case .chineseSimplified: return "取消"
+        default: return "Cancel"
         }
     }
 }
