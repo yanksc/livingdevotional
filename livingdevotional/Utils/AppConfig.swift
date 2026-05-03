@@ -42,27 +42,19 @@ enum AppConfig {
     
     /// Premium model for high-quality, user-facing moments (e.g. chat, journey analysis)
     static let premiumModel = "gpt-5.4/openai"
-    
-    // MARK: - LangFuse Configuration
-    
-    /// LangFuse Public Key for observability tracing
-    static var langfusePublicKey: String {
-        if let key = Bundle.main.object(forInfoDictionaryKey: "LANGFUSE_PUBLIC_KEY") as? String,
-           !key.isEmpty {
-            return key
+
+    // MARK: - Anonymous Install Identifier
+
+    /// Stable, anonymous per-install identifier used for Helicone session tagging.
+    /// Generated on first access and persisted in UserDefaults. Not tied to any
+    /// personal data; resets when the user reinstalls the app.
+    static var installID: String {
+        let key = "AppConfig.installID"
+        if let existing = UserDefaults.standard.string(forKey: key), !existing.isEmpty {
+            return existing
         }
-        return ""
+        let new = UUID().uuidString
+        UserDefaults.standard.set(new, forKey: key)
+        return new
     }
-    
-    /// LangFuse Secret Key for observability tracing
-    static var langfuseSecretKey: String {
-        if let key = Bundle.main.object(forInfoDictionaryKey: "LANGFUSE_SECRET_KEY") as? String,
-           !key.isEmpty {
-            return key
-        }
-        return ""
-    }
-    
-    /// LangFuse Cloud base URL
-    static let langfuseBaseURL = "https://us.cloud.langfuse.com"
 }

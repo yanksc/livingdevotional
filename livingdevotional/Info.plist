@@ -6,10 +6,6 @@
 	<string>$(REVENUECAT_APPLE_API_KEY)</string>
 	<key>HELICONE_API_KEY</key>
 	<string>$(HELICONE_API_KEY)</string>
-	<key>LANGFUSE_SECRET_KEY</key>
-	<string>$(LANGFUSE_SECRET_KEY)</string>
-	<key>LANGFUSE_PUBLIC_KEY</key>
-	<string>$(LANGFUSE_PUBLIC_KEY)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

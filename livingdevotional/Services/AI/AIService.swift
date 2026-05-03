@@ -10,12 +10,17 @@ class AIService: AIServiceProtocol {
     let fastModel = AppConfig.fastModel
     let openAIModel = AppConfig.openAIModel
     let premiumModel = AppConfig.premiumModel
-    let langFuse = LangFuseService()
 
     // MARK: - Private Request Helpers
 
     /// Builds an authorized URLRequest for the Helicone endpoint.
-    func buildRequest(requestBody: [String: Any], timeoutInterval: TimeInterval? = nil) throws -> URLRequest {
+    ///
+    /// Tags every request with Helicone observability headers so we can group
+    /// traces by feature (`Helicone-Property-Trace-Name`) and by anonymous
+    /// install (`Helicone-User-Id`). Helicone's dashboard records the full
+    /// prompt, completion, model, latency, and cost — replacing the previous
+    /// LangFuse-on-device tracing while keeping all secrets server-side.
+    func buildRequest(requestBody: [String: Any], traceName: String? = nil, timeoutInterval: TimeInterval? = nil) throws -> URLRequest {
         guard let url = URL(string: heliconeBaseURL) else {
             throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
@@ -23,6 +28,10 @@ class AIService: AIServiceProtocol {
         request.httpMethod = "POST"
         request.setValue("Bearer \(heliconeAPIKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppConfig.installID, forHTTPHeaderField: "Helicone-User-Id")
+        if let traceName, !traceName.isEmpty {
+            request.setValue(traceName, forHTTPHeaderField: "Helicone-Property-Trace-Name")
+        }
         request.timeoutInterval = timeoutInterval ?? 120
         guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
             throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode request"])
@@ -31,15 +40,13 @@ class AIService: AIServiceProtocol {
         return request
     }
 
-    /// Executes a streaming AI request, accumulates the full response, and fires a LangFuse trace on completion.
+    /// Executes a streaming AI request and accumulates the full response.
+    /// Tracing is handled server-side by Helicone via headers set in `buildRequest`.
     func makeStreamingRequest(
         requestBody: [String: Any],
         traceName: String
     ) throws -> AsyncThrowingStream<String, Error> {
-        let request = try buildRequest(requestBody: requestBody)
-        let model = requestBody["model"] as? String ?? openAIModel
-        let messages = requestBody["messages"] as? [[String: Any]] ?? []
-        let startTime = Date()
+        let request = try buildRequest(requestBody: requestBody, traceName: traceName)
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -87,7 +94,6 @@ class AIService: AIServiceProtocol {
                                 if line.hasPrefix("data: ") {
                                     let jsonString = String(line.dropFirst(6))
                                     if jsonString.trimmingCharacters(in: .whitespaces) == "[DONE]" {
-                                        langFuse.logGeneration(name: traceName, model: model, messages: messages, output: accumulated, startTime: startTime, endTime: Date())
                                         continuation.finish()
                                         return
                                     }
@@ -109,7 +115,6 @@ class AIService: AIServiceProtocol {
                             }
                         }
                     }
-                    langFuse.logGeneration(name: traceName, model: model, messages: messages, output: accumulated, startTime: startTime, endTime: Date())
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -118,15 +123,13 @@ class AIService: AIServiceProtocol {
         }
     }
 
-    /// Executes a non-streaming AI request, fires a LangFuse trace, and returns the raw content string.
+    /// Executes a non-streaming AI request and returns the raw content string.
+    /// Tracing is handled server-side by Helicone via headers set in `buildRequest`.
     func makeAIRequest(
         requestBody: [String: Any],
         traceName: String
     ) async throws -> String {
-        let request = try buildRequest(requestBody: requestBody)
-        let model = requestBody["model"] as? String ?? openAIModel
-        let messages = requestBody["messages"] as? [[String: Any]] ?? []
-        let startTime = Date()
+        let request = try buildRequest(requestBody: requestBody, traceName: traceName)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -140,7 +143,6 @@ class AIService: AIServiceProtocol {
             throw NSError(domain: "AIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get AI response"])
         }
 
-        langFuse.logGeneration(name: traceName, model: model, messages: messages, output: content, startTime: startTime, endTime: Date())
         return content
     }
 
@@ -150,12 +152,9 @@ class AIService: AIServiceProtocol {
         traceName: String,
         timeout: TimeInterval? = nil
     ) async -> String? {
-        guard let request = try? buildRequest(requestBody: requestBody, timeoutInterval: timeout) else {
+        guard let request = try? buildRequest(requestBody: requestBody, traceName: traceName, timeoutInterval: timeout) else {
             return nil
         }
-        let model = requestBody["model"] as? String ?? openAIModel
-        let messages = requestBody["messages"] as? [[String: Any]] ?? []
-        let startTime = Date()
 
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               let httpResponse = response as? HTTPURLResponse,
@@ -168,7 +167,6 @@ class AIService: AIServiceProtocol {
             return nil
         }
 
-        langFuse.logGeneration(name: traceName, model: model, messages: messages, output: content, startTime: startTime, endTime: Date())
         return content
     }
 
