@@ -126,28 +126,32 @@ extension AIService {
                     """
                 }
             case .pray:
-                let prayerLengthConstraint = isChinese ? "請控制在 155-230 字以內，精簡而深刻。" : "Please keep it concise and meaningful, around 90-150 words."
+                let prayerLengthConstraint = isChinese ? "篇幅請落在 260-360 字之間，讓禱告有足夠的呼吸與深度，不要倉促作結。" : "Aim for 160-220 words — give the prayer room to breathe and deepen; don't rush the close."
                 if isChinese {
                     initialPrompt = """
-                    請根據這節經文撰寫一篇簡短而深刻的禱告文。
-                    
-                    請簡潔地包含：
-                    1. 感謝神在這節經文中顯明的真理
-                    2. 認罪和悔改（如果經文相關）
-                    3. 祈求神幫助我們活出這節經文的教導
-                    
-                    請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。\(prayerLengthConstraint)
+                    請根據這節經文撰寫一篇真摯、富有靈性深度的禱告文。讓禱告緩緩展開，像是讀者真實向神傾心吐意，而不是條列式的祈求。
+
+                    請自然地融入以下元素（不需逐項標明，讓它們在禱告中流淌）：
+                    1. 凝視這節經文所啟示的神的本性或真理，向神獻上具體的感謝或敬拜
+                    2. 在這節經文的光照下誠實地省察自己——可能是認罪、可能是渴慕、可能是承認自己的軟弱或掙扎
+                    3. 將這節經文中的應許或教導帶入今日的生活情境，求神的同在與幫助
+                    4. 在某處留下一個安靜的時刻——也許是「主，我在這裡聆聽你」、「我願意」這類的短語，讓禱告有停頓與呼吸
+                    5. 以信心與順服作結，而不只是「奉耶穌的名禱告，阿們」
+
+                    語氣要溫暖、誠實、富有畫面感——可以使用譬喻、聖經中的意象、第一人稱的真情流露。避免空泛的宗教套語。請用繁體中文（台灣用語）書寫，以「親愛的天父」或「主啊」開頭。\(prayerLengthConstraint)
                     """
                 } else {
                     initialPrompt = """
-                    Please compose a concise and meaningful prayer based on this verse.
-                    
-                    Briefly include:
-                    1. Thanksgiving for the truth revealed in this verse
-                    2. Confession and repentance (if relevant to the verse)
-                    3. Request for God's help to live out this verse's teaching
-                    
-                    Please write in English, starting with "Dear Heavenly Father" or "Lord". \(prayerLengthConstraint)
+                    Please compose a sincere, spiritually thoughtful prayer rooted in this verse. Let the prayer unfold slowly — as if the reader is truly opening their heart before God, not ticking through a checklist of requests.
+
+                    Weave the following naturally into the prayer (don't label them; let them flow):
+                    1. Gaze at the truth this verse reveals about God's character, and offer specific thanksgiving or worship
+                    2. In the light of this verse, lead the reader into honest self-examination — confession, longing, an admission of weakness, or a wrestling with where they fall short
+                    3. Bring the verse's promise or teaching into a real present-day moment, asking for God's presence and help
+                    4. Include a quiet, listening pause somewhere — phrases like "Lord, I'm here", "I am willing", or "Speak to me" — so the prayer has breath, not just words
+                    5. End with faith and surrender, not a formulaic "in Jesus' name, amen"
+
+                    The tone should be warm, honest, and concrete — feel free to use metaphor, biblical imagery, and first-person vulnerability. Avoid hollow religious cliché. Write in English, starting with "Dear Heavenly Father" or "Lord". \(prayerLengthConstraint)
                     """
                 }
             }
