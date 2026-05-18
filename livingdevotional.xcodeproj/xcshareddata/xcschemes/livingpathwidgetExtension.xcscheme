@@ -17,8 +17,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "6291CDAD2F2A7DB7008A9CF0"
-               BuildableName = "livingpathwidgetExtension.appex"
-               BlueprintName = "livingpathwidgetExtension"
+               BuildableName = "LivingPathWidgetExtension.appex"
+               BlueprintName = "LivingPathWidgetExtension"
                ReferencedContainer = "container:livingdevotional.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -63,8 +63,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6291CDAD2F2A7DB7008A9CF0"
-            BuildableName = "livingpathwidgetExtension.appex"
-            BlueprintName = "livingpathwidgetExtension"
+            BuildableName = "LivingPathWidgetExtension.appex"
+            BlueprintName = "LivingPathWidgetExtension"
             ReferencedContainer = "container:livingdevotional.xcodeproj">
          </BuildableReference>
       </RemoteRunnable>

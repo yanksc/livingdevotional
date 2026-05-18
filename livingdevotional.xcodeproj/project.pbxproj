@@ -10,7 +10,7 @@
 		623AC8812F3D521900690A32 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 623AC8802F3D521900690A32 /* StoreKit.framework */; };
 		6291CDB12F2A7DB7008A9CF0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */; };
 		6291CDB32F2A7DB7008A9CF0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */; };
-		6291CDBF2F2A7DB9008A9CF0 /* livingpathwidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6291CDBF2F2A7DB9008A9CF0 /* LivingPathWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6291CDAE2F2A7DB7008A9CF0 /* LivingPathWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		62CB97032F0267DE00A2C3D1 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 62CB97022F0267DE00A2C3D1 /* RevenueCat */; };
 		62CBE41F2F02752F00A2C3D1 /* BibleData.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */; };
 /* End PBXBuildFile section */
@@ -21,7 +21,7 @@
 			containerPortal = 62CB970E2F0267DE00A2C3D1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 6291CDAD2F2A7DB7008A9CF0;
-			remoteInfo = livingpathwidgetExtension;
+			remoteInfo = LivingPathWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -32,7 +32,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				6291CDBF2F2A7DB9008A9CF0 /* livingpathwidgetExtension.appex in Embed Foundation Extensions */,
+				6291CDBF2F2A7DB9008A9CF0 /* LivingPathWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -41,10 +41,10 @@
 
 /* Begin PBXFileReference section */
 		623AC8802F3D521900690A32 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
-		6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = livingpathwidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6291CDAE2F2A7DB7008A9CF0 /* LivingPathWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LivingPathWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6291CDB02F2A7DB7008A9CF0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		6291CDB22F2A7DB7008A9CF0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = livingpathwidgetExtension.entitlements; sourceTree = "<group>"; };
+		6291CDD32F2A8032008A9CF0 /* LivingPathWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LivingPathWidgetExtension.entitlements; sourceTree = "<group>"; };
 		62CB97162F0267DE00A2C3D1 /* livingdevotional.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = livingdevotional.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = BibleData.bundle; path = livingdevotional/Resources/BibleData.bundle; sourceTree = "<group>"; };
 		62RC0DB12F00000100A2C3D1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -52,12 +52,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		6291CDC02F2A7DB9008A9CF0 /* Exceptions for "livingpathwidget" folder in "livingpathwidgetExtension" target */ = {
+		6291CDC02F2A7DB9008A9CF0 /* Exceptions for "LivingPathWidget" folder in "LivingPathWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */;
+			target = 6291CDAD2F2A7DB7008A9CF0 /* LivingPathWidgetExtension */;
 		};
 		6291CDD52F2A8089008A9CF0 /* Exceptions for "livingdevotional" folder in "livingdevotional" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -69,12 +69,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */ = {
+		6291CDB42F2A7DB7008A9CF0 /* LivingPathWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				6291CDC02F2A7DB9008A9CF0 /* Exceptions for "livingpathwidget" folder in "livingpathwidgetExtension" target */,
+				6291CDC02F2A7DB9008A9CF0 /* Exceptions for "LivingPathWidget" folder in "LivingPathWidgetExtension" target */,
 			);
-			path = livingpathwidget;
+			path = LivingPathWidget;
 			sourceTree = "<group>";
 		};
 		62CB97182F0267DE00A2C3D1 /* livingdevotional */ = {
@@ -124,10 +124,10 @@
 			children = (
 				62RC0DB12F00000100A2C3D1 /* Debug.xcconfig */,
 				62RC0REL2F00000200A2C3D1 /* Release.xcconfig */,
-				6291CDD32F2A8032008A9CF0 /* livingpathwidgetExtension.entitlements */,
+				6291CDD32F2A8032008A9CF0 /* LivingPathWidgetExtension.entitlements */,
 				62CBE41E2F02752F00A2C3D1 /* BibleData.bundle */,
 				62CB97182F0267DE00A2C3D1 /* livingdevotional */,
-				6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */,
+				6291CDB42F2A7DB7008A9CF0 /* LivingPathWidget */,
 				6291CDAF2F2A7DB7008A9CF0 /* Frameworks */,
 				62CB97172F0267DE00A2C3D1 /* Products */,
 			);
@@ -137,7 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				62CB97162F0267DE00A2C3D1 /* livingdevotional.app */,
-				6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */,
+				6291CDAE2F2A7DB7008A9CF0 /* LivingPathWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -145,9 +145,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */ = {
+		6291CDAD2F2A7DB7008A9CF0 /* LivingPathWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "livingpathwidgetExtension" */;
+			buildConfigurationList = 6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "LivingPathWidgetExtension" */;
 			buildPhases = (
 				6291CDAA2F2A7DB7008A9CF0 /* Sources */,
 				6291CDAB2F2A7DB7008A9CF0 /* Frameworks */,
@@ -158,13 +158,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				6291CDB42F2A7DB7008A9CF0 /* livingpathwidget */,
+				6291CDB42F2A7DB7008A9CF0 /* LivingPathWidget */,
 			);
-			name = livingpathwidgetExtension;
+			name = LivingPathWidgetExtension;
 			packageProductDependencies = (
 			);
-			productName = livingpathwidgetExtension;
-			productReference = 6291CDAE2F2A7DB7008A9CF0 /* livingpathwidgetExtension.appex */;
+			productName = LivingPathWidgetExtension;
+			productReference = 6291CDAE2F2A7DB7008A9CF0 /* LivingPathWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		62CB97152F0267DE00A2C3D1 /* livingdevotional */ = {
@@ -228,7 +228,7 @@
 			projectRoot = "";
 			targets = (
 				62CB97152F0267DE00A2C3D1 /* livingdevotional */,
-				6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */,
+				6291CDAD2F2A7DB7008A9CF0 /* LivingPathWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -271,7 +271,7 @@
 /* Begin PBXTargetDependency section */
 		6291CDBD2F2A7DB9008A9CF0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 6291CDAD2F2A7DB7008A9CF0 /* livingpathwidgetExtension */;
+			target = 6291CDAD2F2A7DB7008A9CF0 /* LivingPathWidgetExtension */;
 			targetProxy = 6291CDBC2F2A7DB9008A9CF0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -282,13 +282,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = livingpathwidgetExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = LivingPathWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TGD728798Q;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = livingpathwidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = livingpathwidget;
+				INFOPLIST_FILE = LivingPathWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LivingPathWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -296,7 +296,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.livingpathwidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.LivingPathWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -310,13 +310,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = livingpathwidgetExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = LivingPathWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TGD728798Q;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = livingpathwidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = livingpathwidget;
+				INFOPLIST_FILE = LivingPathWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LivingPathWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -324,7 +324,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.livingpathwidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ykh.livingdevotional.LivingPathWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -533,7 +533,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "livingpathwidgetExtension" */ = {
+		6291CDC12F2A7DB9008A9CF0 /* Build configuration list for PBXNativeTarget "LivingPathWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				6291CDC22F2A7DB9008A9CF0 /* Debug */,
