@@ -10,6 +10,7 @@ struct PrayerAmenView: View {
     @State private var showVerse = false
     @State private var showPrayer = false
     @State private var showAmen = false
+    @State private var prayerTypingComplete = false
     
     var body: some View {
         ZStack {
@@ -60,8 +61,8 @@ struct PrayerAmenView: View {
                         speed: state.isChinese ? 0.075 : 0.06,
                         font: .system(size: 16, weight: .regular, design: .serif),
                         onComplete: {
-                            // Show Amen button when prayer completes
-                            withAnimation(.easeIn(duration: 1.0)) {
+                            withAnimation(.easeIn(duration: 0.6)) {
+                                prayerTypingComplete = true
                                 showAmen = true
                             }
                         }
@@ -76,17 +77,30 @@ struct PrayerAmenView: View {
                 .padding(.top, 24)
                 .transition(.opacity)
             }
-            
+
             Spacer()
-            
-            // Centered Amen button pinned at bottom (no back button - this is the final step)
-            AmenButton(onComplete: {
-                state.completeOnboarding()
-                onComplete()
-            })
+
+            // Amen button — shown dimly as soon as prayer starts typing so
+            // the user can long-press to skip the typewriter at any time.
+            // Fully revealed once typing completes.
+            VStack(spacing: 10) {
+                AmenButton(onComplete: {
+                    state.completeOnboarding()
+                    onComplete()
+                })
+
+                // Hint label: visible while typing, fades out when done
+                Text(holdHintText)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(.white.opacity(0.55))
+                    .opacity(prayerTypingComplete ? 0 : 1)
+                    .animation(.easeOut(duration: 0.4), value: prayerTypingComplete)
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 52)
-            .opacity(showAmen ? 1 : 0)
+            .opacity(showPrayer ? (showAmen ? 1.0 : 0.45) : 0)
+            .animation(.easeIn(duration: 0.8), value: showPrayer)
+            .animation(.easeIn(duration: 0.6), value: showAmen)
         }
     }
     
@@ -225,8 +239,20 @@ struct PrayerAmenView: View {
         }
     }
     
+    // MARK: - Hold Hint
+
+    private var holdHintText: String {
+        if state.isChinese {
+            return "長按「阿們」完成禱告"
+        } else if state.isSpanish {
+            return "Mantén presionado \"Amén\" para terminar"
+        } else {
+            return "Hold \"Amen\" to finish"
+        }
+    }
+
     // MARK: - Appear Logic
-    
+
     private func handleAppear() {
         if state.personalizedPrayer != nil {
             // Show verse first with slow, gentle fade in
