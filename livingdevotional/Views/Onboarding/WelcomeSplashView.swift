@@ -15,30 +15,28 @@ struct WelcomeSplashView: View {
     private let subtitleFullText = "Your scripture journey begins here."
     
     var body: some View {
-        GeometryReader { geo in
+        VStack(alignment: .center, spacing: 0) {
+            Spacer()
+
+            // Text block: subtitle + scripture quote, shifted down ~10%
             VStack(alignment: .center, spacing: 0) {
-                Spacer()
+                subtitleText
+                    .padding(.bottom, 20)
 
-                // Text block: subtitle + scripture quote, shifted down 10%
-                VStack(alignment: .center, spacing: 0) {
-                    subtitleText
-                        .padding(.bottom, 20)
-
-                    scriptureQuote
-                        .padding(.bottom, 32)
-                }
-                .padding(.top, geo.size.height * 0.1)
-                .frame(maxWidth: .infinity)
-
-                Spacer()
-
-                // Get Started CTA pinned to bottom
-                getStartedButton
-                    .opacity(showCTA ? 1 : 0)
-                    .padding(.bottom, 34)
+                scriptureQuote
+                    .padding(.bottom, 32)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 80)
+
+            Spacer()
+
+            // Get Started CTA pinned to bottom
+            getStartedButton
+                .opacity(showCTA ? 1 : 0)
+                .padding(.bottom, 34)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .onAppear {
             startRevealSequence()
         }
@@ -99,15 +97,14 @@ struct WelcomeSplashView: View {
     // MARK: - Subtitle (Centered Typewriter)
     
     private var subtitleText: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .center) {
             // Invisible full text to reserve the exact vertical space
             Text(subtitleFullText)
                 .font(.system(size: 17, weight: .regular, design: .serif))
                 .foregroundColor(.clear)
                 .multilineTextAlignment(.center)
                 .lineSpacing(8)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 36)
+                .frame(maxWidth: .infinity, alignment: .center)
 
             // Visible typewriter text
             Text(subtitleDisplayed)
@@ -115,9 +112,10 @@ struct WelcomeSplashView: View {
                 .foregroundColor(AppTheme.onboardingText.opacity(0.8))
                 .multilineTextAlignment(.center)
                 .lineSpacing(8)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 36)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+        .padding(.horizontal, 36)
+        .frame(maxWidth: .infinity, alignment: .center)
         .opacity(showSubtitle ? 1 : 0)
     }
     
