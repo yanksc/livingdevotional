@@ -16,26 +16,28 @@ struct WelcomeSplashView: View {
     
     var body: some View {
         GeometryReader { geo in
-            VStack(spacing: 0) {
+            VStack(alignment: .center, spacing: 0) {
                 Spacer()
-                
+
                 // Text block: subtitle + scripture quote, shifted down 10%
-                VStack(spacing: 0) {
+                VStack(alignment: .center, spacing: 0) {
                     subtitleText
                         .padding(.bottom, 20)
-                    
+
                     scriptureQuote
                         .padding(.bottom, 32)
                 }
                 .padding(.top, geo.size.height * 0.1)
-                
+                .frame(maxWidth: .infinity)
+
                 Spacer()
-                
+
                 // Get Started CTA pinned to bottom
                 getStartedButton
                     .opacity(showCTA ? 1 : 0)
                     .padding(.bottom, 34)
             }
+            .frame(maxWidth: .infinity)
         }
         .onAppear {
             startRevealSequence()
@@ -104,14 +106,16 @@ struct WelcomeSplashView: View {
                 .foregroundColor(.clear)
                 .multilineTextAlignment(.center)
                 .lineSpacing(8)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 36)
-            
+
             // Visible typewriter text
             Text(subtitleDisplayed)
                 .font(.system(size: 17, weight: .regular, design: .serif))
                 .foregroundColor(AppTheme.onboardingText.opacity(0.8))
                 .multilineTextAlignment(.center)
                 .lineSpacing(8)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 36)
         }
         .opacity(showSubtitle ? 1 : 0)
@@ -126,11 +130,13 @@ struct WelcomeSplashView: View {
                 .italic()
                 .foregroundColor(AppTheme.onboardingText.opacity(0.55))
                 .multilineTextAlignment(.center)
-            
+
             Text("— Psalm 16:11")
                 .font(.system(size: 13, weight: .regular, design: .serif))
                 .foregroundColor(AppTheme.onboardingText.opacity(0.45))
         }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 36)
         .opacity(showQuote ? 1 : 0)
     }
     
@@ -144,12 +150,18 @@ struct WelcomeSplashView: View {
         }) {
             Text("Get Started")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 48)
+                .foregroundColor(AppTheme.onboardingButtonText)
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(AppTheme.buttonGradient)
+                .background(AppTheme.onboardingButtonGradient)
                 .cornerRadius(OnboardingDesign.buttonCornerRadius)
-                .shadow(color: AppTheme.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: OnboardingDesign.buttonCornerRadius)
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
+                )
+                .shadow(color: AppTheme.primaryBlue.opacity(0.22), radius: 10, x: 0, y: 5)
         }
+        .padding(.horizontal, 48)
+        .frame(maxWidth: .infinity)
     }
 }

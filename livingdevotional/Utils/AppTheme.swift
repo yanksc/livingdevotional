@@ -49,6 +49,22 @@ struct AppTheme {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    // Onboarding CTA — a softer, more sophisticated gradient that leans
+    // toward cream. Muted warm sand easing into a light sand-beige, for a
+    // calmer, more premium feel than the saturated sand→sage button.
+    static let onboardingButtonGradient = LinearGradient(
+        colors: [
+            Color(red: 0.847, green: 0.706, blue: 0.553), // Soft muted sand
+            Color(red: 0.910, green: 0.835, blue: 0.718)  // Soft Beige (cream-leaning)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    // Text color for the onboarding CTA — warm dark brown keeps strong
+    // contrast on the lighter cream button (white would wash out).
+    static let onboardingButtonText = Color(red: 0.40, green: 0.31, blue: 0.22)
     
     // Chapter selection colors - using Serene Sands palette
     static let chapterButtonGradient = LinearGradient(
