@@ -32,8 +32,9 @@ struct RelatedVersesSheet: View {
     
     var body: some View {
         ZStack {
-            SereneGradientBackground()
-            
+            AppTheme.backgroundGradient
+                .ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Header with close button
                 HStack {

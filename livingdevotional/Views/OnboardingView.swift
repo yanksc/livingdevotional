@@ -35,7 +35,9 @@ struct OnboardingView: View {
                 
                 // Step content - all views have built-in navigation now
                 stepContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
     

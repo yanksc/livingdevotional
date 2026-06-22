@@ -460,71 +460,131 @@ class PrayerFlowViewModel: ObservableObject {
             }
             if isSimplified {
                 return """
-                请根据这节经文撰写一篇简短的代祷文，为 \(nameForPrayer) 向神祷告。你是在代替别人向神祈求，不是让 \(nameForPrayer) 自己祷告。
+                请根据这节经文撰写一篇真挚而富有灵性深度的代祷文，为 \(nameForPrayer) 向神祷告。你是在代替别人向神祈求，不是让 \(nameForPrayer) 自己祷告。让禱告缓缓展开，仿佛你正陪着 \(nameForPrayer) 来到神面前。
                 \(focusText.isEmpty ? "" : "祷告主题：\(focusText)")\(needText.isEmpty ? "" : "\n他们目前需要：\(needText)")
-                
-                请用"我们为 \(nameForPrayer) 祷告"或类似的代祷语开头。用简体中文书写，以"亲爱的天父"或"主啊"开头。请控制在 105-155 字以内。
+
+                请自然地融入以下元素（不需逐项标明，让它们在祷告中流淌）：
+                1. 凝视这节经文所启示的神的本性或真理，向神献上具体的感谢
+                2. 在这节经文的光照下，将 \(nameForPrayer) 的处境、软弱与渴慕真实地带到神面前
+                3. 把经文中的应许或教导具体地为 \(nameForPrayer) 求告——求神的同在、医治、智慧或带领
+                4. 在某处留下一个安静的时刻（例如「主，我们和 \(nameForPrayer) 一同安静在你面前」），让祷告有停顿与呼吸
+                5. 以信心与交托作结，把 \(nameForPrayer) 完全放在神手中
+
+                请用"我们为 \(nameForPrayer) 祷告"或类似的代祷语开头。语气要温暖、诚实、富有画面感，避免空泛的宗教套语。用简体中文书写，以"亲爱的天父"或"主啊"开头。篇幅请落在 240-340 字之间，让代祷有足够的深度与呼吸。
                 """
             } else if isChinese {
                 return """
-                請根據這節經文撰寫一篇簡短的代禱文，為 \(nameForPrayer) 向神禱告。你是在代替別人向神祈求，不是讓 \(nameForPrayer) 自己禱告。
+                請根據這節經文撰寫一篇真摯而富有靈性深度的代禱文，為 \(nameForPrayer) 向神禱告。你是在代替別人向神祈求，不是讓 \(nameForPrayer) 自己禱告。讓禱告緩緩展開，彷彿你正陪著 \(nameForPrayer) 來到神面前。
                 \(focusText.isEmpty ? "" : "禱告主題：\(focusText)")\(needText.isEmpty ? "" : "\n他們目前需要：\(needText)")
-                
-                請用「我們為 \(nameForPrayer) 禱告」或類似的代禱語開頭。用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭。請控制在 105-155 字以內。
+
+                請自然地融入以下元素（不需逐項標明，讓它們在禱告中流淌）：
+                1. 凝視這節經文所啟示的神的本性或真理，向神獻上具體的感謝
+                2. 在這節經文的光照下，將 \(nameForPrayer) 的處境、軟弱與渴慕真實地帶到神面前
+                3. 把經文中的應許或教導具體地為 \(nameForPrayer) 求告——求神的同在、醫治、智慧或帶領
+                4. 在某處留下一個安靜的時刻（例如「主，我們和 \(nameForPrayer) 一同安靜在祢面前」），讓禱告有停頓與呼吸
+                5. 以信心與交託作結，把 \(nameForPrayer) 完全放在神手中
+
+                請用「我們為 \(nameForPrayer) 禱告」或類似的代禱語開頭。語氣要溫暖、誠實、富有畫面感，避免空泛的宗教套語。用繁體中文（台灣用語）書寫，以「親愛的天父」或「主啊」開頭。篇幅請落在 240-340 字之間，讓代禱有足夠的深度與呼吸。
                 """
             } else {
                 return """
-                Compose an intercessory prayer praying FOR \(nameForPrayer) based on this verse. You are praying on their behalf to God, not as if they are praying themselves.
+                Compose a sincere, spiritually thoughtful intercessory prayer FOR \(nameForPrayer) rooted in this verse. You are praying on their behalf to God, not as if they are praying themselves. Let the prayer unfold slowly, as if you are kneeling alongside \(nameForPrayer) and bringing them before the Lord.
                 \(focusText.isEmpty ? "" : "Prayer focus: \(focusText)")\(needText.isEmpty ? "" : "\nThey currently need: \(needText)")
-                
-                Use phrases like "We lift up \(nameForPrayer) to You" or "We pray for \(nameForPrayer)". Write in English, starting with "Dear Heavenly Father" or "Lord". Keep it concise and meaningful, around 60-100 words.
+
+                Weave the following naturally into the prayer (don't label them; let them flow):
+                1. Gaze at the truth this verse reveals about God's character, and offer specific thanksgiving
+                2. In the light of this verse, honestly bring \(nameForPrayer)'s situation, weakness, and longing before God
+                3. Take the promise or teaching of the verse and ask it concretely for \(nameForPrayer) — God's presence, healing, wisdom, or guidance
+                4. Include a quiet listening pause somewhere (e.g. "Lord, we sit with \(nameForPrayer) before You in silence") so the prayer has breath, not just words
+                5. End with faith and surrender, placing \(nameForPrayer) wholly into God's hands
+
+                Use phrases like "We lift up \(nameForPrayer) to You" or "We pray for \(nameForPrayer)". The tone should be warm, honest, and concrete — feel free to use metaphor and biblical imagery; avoid hollow religious cliché. Write in English, starting with "Dear Heavenly Father" or "Lord". Aim for 140-200 words — give the prayer room to breathe and deepen.
                 """
             }
         case .helpMePray:
             guard !focusText.isEmpty else {
                 if isSimplified {
                     return """
-                    请根据这节经文撰写一篇简短而深刻的祷告文，供读者自己向神祷告。
-                    \(focusText.isEmpty ? "" : "读者心中的主题：\(focusText)")\(needText.isEmpty ? "" : "\n读者现在需要：\(needText)")
-                    
-                    请简洁地包含：感谢神显明的真理、认罪悔改（如经文章相关）、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称（我/我们）。请控制在 105-155 字以内。
+                    请根据这节经文撰写一篇真挚而富有灵性深度的祷告文，供读者自己向神祷告。让禱告缓缓展开，像是读者真实向神倾心吐意，而不是条列式的祈求。
+
+                    请自然地融入以下元素（不需逐项标明，让它们在祷告中流淌）：
+                    1. 凝视这节经文所启示的神的本性或真理，向神献上具体的感谢或敬拜
+                    2. 在这节经文的光照下诚实地省察自己——可能是认罪、渴慕、承认软弱或挣扎
+                    3. 将这节经文中的应许或教导带入今日的生活情境，求神的同在与帮助
+                    4. 在某处留下一个安静的时刻——像是"主，我在这里聆听你"或"我愿意"，让祷告有停顿与呼吸
+                    5. 以信心与顺服作结，而不只是"奉耶稣的名祷告，阿们"
+
+                    语气要温暖、诚实、富有画面感——可以使用譬喻、圣经中的意象、第一人称的真情流露。避免空泛的宗教套语。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称（我/我们）。篇幅请落在 240-340 字之间，让祷告有足够的深度与呼吸。
                     """
                 } else if isChinese {
                     return """
-                    請根據這節經文撰寫一篇簡短而深刻的禱告文，供讀者自己向神禱告。
-                    \(focusText.isEmpty ? "" : "讀者心中的主題：\(focusText)")\(needText.isEmpty ? "" : "\n讀者現在需要：\(needText)")
-                    
-                    請簡潔地包含：感謝神顯明的真理、認罪悔改（如經文相關）、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱（我/我們）。請控制在 105-155 字以內。
+                    請根據這節經文撰寫一篇真摯而富有靈性深度的禱告文，供讀者自己向神禱告。讓禱告緩緩展開，像是讀者真實向神傾心吐意，而不是條列式的祈求。
+
+                    請自然地融入以下元素（不需逐項標明，讓它們在禱告中流淌）：
+                    1. 凝視這節經文所啟示的神的本性或真理，向神獻上具體的感謝或敬拜
+                    2. 在這節經文的光照下誠實地省察自己——可能是認罪、渴慕、承認軟弱或掙扎
+                    3. 將這節經文中的應許或教導帶入今日的生活情境，求神的同在與幫助
+                    4. 在某處留下一個安靜的時刻——像是「主，我在這裡聆聽祢」或「我願意」，讓禱告有停頓與呼吸
+                    5. 以信心與順服作結，而不只是「奉耶穌的名禱告，阿們」
+
+                    語氣要溫暖、誠實、富有畫面感——可以使用譬喻、聖經中的意象、第一人稱的真情流露。避免空泛的宗教套語。請用繁體中文（台灣用語）書寫，以「親愛的天父」或「主啊」開頭，用第一人稱（我/我們）。篇幅請落在 240-340 字之間，讓禱告有足夠的深度與呼吸。
                     """
                 } else {
                     return """
-                    Please compose a concise and meaningful prayer based on this verse for the reader to pray themselves.
-                    \(focusText.isEmpty ? "" : "Their heart's focus: \(focusText)")\(needText.isEmpty ? "" : "\nThey currently need: \(needText)")
-                    
-                    Briefly include: thanksgiving for the truth in this verse, confession/repentance (if relevant), request for God's help to live out the teaching. Please write in English, starting with "Dear Heavenly Father" or "Lord", using first person (I/we). Keep it around 60-100 words.
+                    Please compose a sincere, spiritually thoughtful prayer rooted in this verse for the reader to pray themselves. Let the prayer unfold slowly — as if the reader is truly opening their heart before God, not ticking through a checklist of requests.
+
+                    Weave the following naturally into the prayer (don't label them; let them flow):
+                    1. Gaze at the truth this verse reveals about God's character, and offer specific thanksgiving or worship
+                    2. In the light of this verse, lead the reader into honest self-examination — confession, longing, an admission of weakness, or wrestling
+                    3. Bring the verse's promise or teaching into a real present-day moment, asking for God's presence and help
+                    4. Include a quiet, listening pause somewhere — phrases like "Lord, I'm here" or "I am willing" — so the prayer has breath, not just words
+                    5. End with faith and surrender, not a formulaic "in Jesus' name, amen"
+
+                    The tone should be warm, honest, and concrete — feel free to use metaphor, biblical imagery, and first-person vulnerability. Avoid hollow religious cliché. Write in English, starting with "Dear Heavenly Father" or "Lord", using first person (I/we). Aim for 140-200 words — give the prayer room to breathe and deepen.
                     """
                 }
             }
             if isSimplified {
                 return """
-                请根据这节经文撰写一篇简短而深刻的祷告文，特别针对以下主题：「\(focusText)」
+                请根据这节经文撰写一篇真挚而富有灵性深度的祷告文，特别针对以下主题：「\(focusText)」。让禱告缓缓展开，像是读者真实向神倾心吐意，而不是条列式的祈求。
                 \(needText.isEmpty ? "" : "读者现在需要：\(needText)")
-                
-                请简洁地包含：感谢神显明的真理、为「\(focusText)」向神祷告、祈求神帮助活出教导。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称。请控制在 105-155 字以内。
+
+                请自然地融入以下元素（不需逐项标明，让它们在祷告中流淌）：
+                1. 凝视这节经文所启示的神的本性或真理，向神献上具体的感谢
+                2. 把「\(focusText)」诚实地带到神面前——读者在其中的挣扎、渴慕、软弱或盼望
+                3. 求经文中的应许或真理，具体地进入「\(focusText)」这个领域中
+                4. 在某处留下一个安静的时刻——像是"主，我在这里聆听你"或"我愿意"，让祷告有停顿与呼吸
+                5. 以信心与交托作结，把「\(focusText)」完全放在神手中
+
+                语气要温暖、诚实、富有画面感——可以使用譬喻、圣经中的意象、第一人称的真情流露。避免空泛的宗教套语。请用简体中文书写，以"亲爱的天父"或"主啊"开头，用第一人称。篇幅请落在 240-340 字之间，让祷告有足够的深度与呼吸。
                 """
             } else if isChinese {
                 return """
-                請根據這節經文撰寫一篇簡短而深刻的禱告文，特別針對以下主題：「\(focusText)」
+                請根據這節經文撰寫一篇真摯而富有靈性深度的禱告文，特別針對以下主題：「\(focusText)」。讓禱告緩緩展開，像是讀者真實向神傾心吐意，而不是條列式的祈求。
                 \(needText.isEmpty ? "" : "讀者現在需要：\(needText)")
-                
-                請簡潔地包含：感謝神顯明的真理、為「\(focusText)」向神禱告、祈求神幫助活出教導。請用繁體中文（台灣用語）書寫，以"親愛的天父"或"主啊"開頭，用第一人稱。請控制在 105-155 字以內。
+
+                請自然地融入以下元素（不需逐項標明，讓它們在禱告中流淌）：
+                1. 凝視這節經文所啟示的神的本性或真理，向神獻上具體的感謝
+                2. 把「\(focusText)」誠實地帶到神面前——讀者在其中的掙扎、渴慕、軟弱或盼望
+                3. 求經文中的應許或真理，具體地進入「\(focusText)」這個領域中
+                4. 在某處留下一個安靜的時刻——像是「主，我在這裡聆聽祢」或「我願意」，讓禱告有停頓與呼吸
+                5. 以信心與交託作結，把「\(focusText)」完全放在神手中
+
+                語氣要溫暖、誠實、富有畫面感——可以使用譬喻、聖經中的意象、第一人稱的真情流露。避免空泛的宗教套語。請用繁體中文（台灣用語）書寫，以「親愛的天父」或「主啊」開頭，用第一人稱。篇幅請落在 240-340 字之間，讓禱告有足夠的深度與呼吸。
                 """
             } else {
                 return """
-                Please compose a concise and meaningful prayer based on this verse, specifically addressing: "\(focusText)"
+                Please compose a sincere, spiritually thoughtful prayer rooted in this verse, specifically addressing: "\(focusText)". Let the prayer unfold slowly — as if the reader is truly opening their heart before God, not ticking through a checklist of requests.
                 \(needText.isEmpty ? "" : "The reader currently needs: \(needText)")
-                
-                Briefly include: thanksgiving, prayer about "\(focusText)", request for God's help. Please write in English, starting with "Dear Heavenly Father" or "Lord", using first person. Keep it around 60-100 words.
+
+                Weave the following naturally into the prayer (don't label them; let them flow):
+                1. Gaze at the truth this verse reveals about God's character, and offer specific thanksgiving
+                2. Bring "\(focusText)" honestly before God — the reader's struggle, longing, weakness, or hope around it
+                3. Pray the verse's promise or truth concretely into the area of "\(focusText)"
+                4. Include a quiet listening pause somewhere — phrases like "Lord, I'm here" or "I am willing" — so the prayer has breath, not just words
+                5. End with faith and surrender, placing "\(focusText)" wholly in God's hands
+
+                The tone should be warm, honest, and concrete — feel free to use metaphor, biblical imagery, and first-person vulnerability. Avoid hollow religious cliché. Write in English, starting with "Dear Heavenly Father" or "Lord", using first person. Aim for 140-200 words — give the prayer room to breathe and deepen.
                 """
             }
         }
