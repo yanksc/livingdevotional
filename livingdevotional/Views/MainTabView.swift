@@ -5,7 +5,8 @@ import SwiftUI
 struct MainTabView: View {
     @StateObject private var bibleViewModel = BibleViewModel()
     @EnvironmentObject var router: AppRouter
-    
+    @ObservedObject private var backgroundManager = SereneBackgroundManager.shared
+
     var body: some View {
         TabView(selection: Binding(
             get: { currentTab },
@@ -49,6 +50,12 @@ struct MainTabView: View {
         .tint(AppTheme.accentColor)
         .toolbarBackground(AppTheme.backgroundGradient, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .onAppear {
+            backgroundManager.preloadExploreViewImages(
+                categoryCount: AskCategoryStore.shared.categories.count,
+                planIds: ReadingPlanStore.shared.plans.map { $0.id }
+            )
+        }
         .onChange(of: router.currentRoute) { oldRoute, newRoute in
             // Handle navigation to reading view
             if case .reading(let book, let chapter, let verse) = newRoute {

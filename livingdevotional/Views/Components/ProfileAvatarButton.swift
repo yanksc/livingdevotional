@@ -12,6 +12,9 @@ struct ProfileAvatarButton: View {
             Text(initial)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.accentColor)
+                .frame(width: 30, height: 30)
+                .background(Color.white.opacity(0.18))
+                .clipShape(Circle())
         }
         .buttonStyle(.plain)
     }

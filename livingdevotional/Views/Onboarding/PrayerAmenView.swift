@@ -80,9 +80,6 @@ struct PrayerAmenView: View {
 
             Spacer()
 
-            // Amen button — shown dimly as soon as prayer starts typing so
-            // the user can long-press to skip the typewriter at any time.
-            // Fully revealed once typing completes.
             VStack(spacing: 10) {
                 AmenButton(onComplete: {
                     state.completeOnboarding()
@@ -98,8 +95,7 @@ struct PrayerAmenView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 52)
-            .opacity(showPrayer ? (showAmen ? 1.0 : 0.45) : 0)
-            .animation(.easeIn(duration: 0.8), value: showPrayer)
+            .opacity(showPrayer && showAmen ? 1.0 : 0)
             .animation(.easeIn(duration: 0.6), value: showAmen)
         }
     }

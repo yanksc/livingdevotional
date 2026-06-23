@@ -185,15 +185,12 @@ struct AskCategoryDetailView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
-                        Text(settingsStore.appLanguage == .chineseTraditional ? "返回探索" : settingsStore.appLanguage == .chineseSimplified ? "返回探索" : "Back to Explore")
+                        Text(settingsStore.appLanguage == .chineseTraditional ? "返回" : settingsStore.appLanguage == .chineseSimplified ? "返回" : "Back")
                             .font(.body)
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(8)
                 }
+                .tint(.white)
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)

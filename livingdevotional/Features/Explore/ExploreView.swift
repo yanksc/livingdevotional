@@ -36,13 +36,6 @@ struct ExploreView: View {
                     .padding(.bottom, 100) // Extra padding for tab bar
                 }
             }
-            .onAppear {
-                // Preload images for all visible cards to eliminate loading delay
-                backgroundManager.preloadExploreViewImages(
-                    categoryCount: askCategoryStore.categories.count,
-                    planIds: planStore.plans.map { $0.id }
-                )
-            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.backgroundGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)

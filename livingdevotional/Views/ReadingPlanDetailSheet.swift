@@ -194,10 +194,7 @@ struct ReadingPlanDetailSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(8)
-                            .background(Color.black.opacity(0.2))
-                            .clipShape(Circle())
+                            .foregroundColor(.white)
                     }
                 }
             }
