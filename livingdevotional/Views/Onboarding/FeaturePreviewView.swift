@@ -9,6 +9,7 @@ struct FeaturePreviewView: View {
     
     @State private var currentPage: Int = 0
     @State private var showContent = false
+    @State private var maxPageReached: Int = 0
     
     private let featureCount = 8
     
@@ -24,6 +25,9 @@ struct FeaturePreviewView: View {
             .tabViewStyle(.page(indexDisplayMode: .always))
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 20)
+            .onChange(of: currentPage) { _, newPage in
+                maxPageReached = max(maxPageReached, newPage)
+            }
             
             // "Swipe to explore" hint below the page dots
             Text(subtitleLocalized)
@@ -32,11 +36,21 @@ struct FeaturePreviewView: View {
                 .padding(.bottom, 12)
             
             // Bottom navigation
-            HStack {
+            HStack(spacing: 0) {
                 OnboardingBackButton(state: state)
                 Spacer()
-                continueButton
+                if maxPageReached >= 3 {
+                    Button(action: { state.goNext() }) {
+                        Text(skipLocalized)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(AppTheme.secondaryText)
+                            .padding(.trailing, 20)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+                nextButton
             }
+            .animation(.easeInOut(duration: 0.3), value: maxPageReached >= 3)
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
@@ -915,15 +929,19 @@ struct FeaturePreviewView: View {
         }
     }
     
-    // MARK: - Continue Button
-    
-    private var continueButton: some View {
+    // MARK: - Next / Skip Buttons
+
+    private var nextButton: some View {
         Button(action: {
             withAnimation(.easeInOut(duration: 0.3)) {
-                state.goNext()
+                if currentPage < featureCount - 1 {
+                    currentPage += 1
+                } else {
+                    state.goNext()
+                }
             }
         }) {
-            Text(continueLocalized)
+            Text(nextLocalized)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 32)
@@ -932,11 +950,18 @@ struct FeaturePreviewView: View {
                 .cornerRadius(OnboardingDesign.buttonCornerRadius)
         }
     }
-    
-    private var continueLocalized: String {
-        if state.isChinese { return "繼續" }
-        if state.isSpanish { return "Continuar" }
-        return "Continue"
+
+    private var nextLocalized: String {
+        let isLastPage = currentPage == featureCount - 1
+        if state.isChinese { return isLastPage ? "繼續" : "下一頁" }
+        if state.isSpanish { return isLastPage ? "Continuar" : "Siguiente" }
+        return isLastPage ? "Continue" : "Next"
+    }
+
+    private var skipLocalized: String {
+        if state.isChinese { return "略過" }
+        if state.isSpanish { return "Omitir" }
+        return "Skip"
     }
 }
 

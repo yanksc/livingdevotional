@@ -13,6 +13,7 @@ class JourneyViewModel: ObservableObject {
     @Published var isLoadingAI = false
     @Published var errorMessage: String?
     @Published var aiErrorMessage: String?
+    @Published var hasNoActivityYet = false
     
     private let services: ServiceContainer
     
@@ -55,13 +56,22 @@ class JourneyViewModel: ObservableObject {
     @MainActor
     func loadAIAnalysis(appLanguage: AppLanguage) async {
         guard let journeyService = services.journeyService else { return }
-        
+
+        // A brand-new account has no reading/prayer/note history for the AI to reflect on.
+        // Show an empty state instead of sending a prompt the model can't satisfy.
+        guard journeyService.hasSufficientActivityForAnalysis else {
+            hasNoActivityYet = true
+            isLoadingAI = false
+            return
+        }
+        hasNoActivityYet = false
+
         // Only show loading if we don't have analysis to display (avoids flicker when refreshing in background)
         if aiAnalysis == nil {
             isLoadingAI = true
         }
         aiErrorMessage = nil
-        
+
         do {
             let analysis = try await journeyService.getAIJourneyAnalysis(appLanguage: appLanguage)
             self.aiAnalysis = analysis
@@ -75,7 +85,13 @@ class JourneyViewModel: ObservableObject {
     @MainActor
     func refreshAIAnalysis(appLanguage: AppLanguage) async {
         guard let journeyService = services.journeyService as? JourneyService else { return }
-        
+
+        guard journeyService.hasSufficientActivityForAnalysis else {
+            hasNoActivityYet = true
+            return
+        }
+        hasNoActivityYet = false
+
         // Check usage limit first
         guard UsageLimitStore.shared.canRefreshJourneyAnalysis() else {
             aiErrorMessage = appLanguage.localizedString("JourneyRefreshLimitReached")

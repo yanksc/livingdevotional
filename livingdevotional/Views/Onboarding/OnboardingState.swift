@@ -231,7 +231,8 @@ class OnboardingState: ObservableObject {
                     name: name,
                     reflection: trimmedReflection,
                     deepDiveSelection: deepDiveSelection,
-                    language: resolvedLanguage
+                    language: resolvedLanguage,
+                    excludeReference: scriptureEcho?.verseReference
                 )
                 await MainActor.run {
                     self.relatedVerses = verses

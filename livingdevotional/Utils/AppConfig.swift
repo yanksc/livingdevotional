@@ -9,24 +9,28 @@ enum AppConfig {
     /// Helicone API Key for AI Gateway
     /// Set via build setting: HELICONE_API_KEY
     /// Or via environment variable: HELICONE_API_KEY
+    /// The unfilled value from LocalSecrets.xcconfig.template — treated as "not configured"
+    /// so a forgotten copy-paste doesn't silently ship as a real (but invalid) key.
+    private static let heliconeAPIKeyPlaceholder = "your-api-key-here"
+
     static var heliconeAPIKey: String {
         // First, try to get from Info.plist (set via build settings)
         if let key = Bundle.main.object(forInfoDictionaryKey: "HELICONE_API_KEY") as? String,
-           !key.isEmpty {
+           !key.isEmpty, key != heliconeAPIKeyPlaceholder {
             return key
         }
-        
+
         // Fallback to environment variable (for local development)
         if let key = ProcessInfo.processInfo.environment["HELICONE_API_KEY"],
-           !key.isEmpty {
+           !key.isEmpty, key != heliconeAPIKeyPlaceholder {
             return key
         }
-        
+
         #if DEBUG
-        fatalError("HELICONE_API_KEY not configured. Set it via Info.plist (build settings) or HELICONE_API_KEY environment variable.")
+        fatalError("HELICONE_API_KEY not configured (still the LocalSecrets.xcconfig.template placeholder). Set it via Info.plist (build settings) or HELICONE_API_KEY environment variable.")
         #else
         // Graceful degradation in production - AI features will be unavailable
-        print("⚠️ HELICONE_API_KEY not configured. AI features will be unavailable.")
+        print("⚠️ HELICONE_API_KEY not configured or still the placeholder value. AI features will be unavailable.")
         return ""
         #endif
     }

@@ -82,6 +82,7 @@ protocol CheckInServiceProtocol {
 
 protocol JourneyServiceProtocol {
     var hasValidCache: Bool { get }
+    var hasSufficientActivityForAnalysis: Bool { get }
     func getJourneyStats() async throws -> JourneyStats
     func getMilestones(limit: Int) async throws -> [JourneyMilestone]
     func getDailyInsight() async throws -> JourneyInsight

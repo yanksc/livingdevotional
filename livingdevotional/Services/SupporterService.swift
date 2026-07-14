@@ -61,13 +61,20 @@ final class SupporterService: NSObject, ObservableObject {
         }
     }
     
+    /// The unfilled value from LocalSecrets.xcconfig.template — treated as "not configured"
+    /// so a forgotten copy-paste doesn't silently ship as a real (but invalid) key. An invalid
+    /// key here doesn't crash — Purchases.configure() just fails to fetch offerings, so the
+    /// paywall silently shows zero purchasable packages (this is what App Review flags as
+    /// "cannot locate the In-App Purchases").
+    private static let revenueCatAPIKeyPlaceholder = "your-revenuecat-production-key-here"
+
     private static var revenueCatAPIKey: String {
         if let key = Bundle.main.object(forInfoDictionaryKey: "REVENUECAT_APPLE_API_KEY") as? String,
-           !key.isEmpty {
+           !key.isEmpty, key != revenueCatAPIKeyPlaceholder {
             return key
         }
         if let key = ProcessInfo.processInfo.environment["REVENUECAT_APPLE_API_KEY"],
-           !key.isEmpty {
+           !key.isEmpty, key != revenueCatAPIKeyPlaceholder {
             return key
         }
         return ""

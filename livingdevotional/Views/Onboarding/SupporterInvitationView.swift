@@ -11,6 +11,7 @@ struct SupporterInvitationView: View {
     @State private var showMission = false
     @State private var missionComplete = false
     @State private var showActions = false
+    @State private var showDismiss = false
     @State private var showPricing = false
     
     var body: some View {
@@ -186,6 +187,8 @@ struct SupporterInvitationView: View {
                     .foregroundColor(AppTheme.secondaryText)
                     .padding(.vertical, 8)
             }
+            .opacity(showDismiss ? 1 : 0)
+            .animation(.easeIn(duration: 0.4), value: showDismiss)
         }
         .padding(.horizontal, 36)
     }
@@ -226,6 +229,10 @@ struct SupporterInvitationView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             showMission = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            showDismiss = true
         }
     }
 }

@@ -49,6 +49,33 @@ struct AILoadingView: View {
     }
 }
 
+// MARK: - Empty State View (no activity yet)
+
+struct JourneyEmptyStateView: View {
+    @ObservedObject private var settingsStore = SettingsStore.shared
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sparkles")
+                .font(.title)
+                .foregroundColor(AppTheme.accentColor)
+
+            Text(settingsStore.appLanguage == .chineseTraditional ? "您的屬靈旅程即將展開" : "Your Path Is Just Beginning")
+                .font(.headline)
+                .foregroundColor(AppTheme.primaryText)
+
+            Text(settingsStore.appLanguage == .chineseTraditional ? "閱讀一個章節、保存一節經文，或為心中的事禱告——之後回來查看專屬於您的屬靈分析。" : "Read a chapter, save a verse, or pray about what's on your heart — then come back for a personalized reflection.")
+                .font(.subheadline)
+                .foregroundColor(AppTheme.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background(AppTheme.cardGradient)
+        .cornerRadius(16)
+    }
+}
+
 // MARK: - Insight Error View
 
 struct AIErrorView: View {

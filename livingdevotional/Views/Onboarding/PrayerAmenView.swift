@@ -11,6 +11,7 @@ struct PrayerAmenView: View {
     @State private var showPrayer = false
     @State private var showAmen = false
     @State private var prayerTypingComplete = false
+    @State private var incompletePressCount = 0
     
     var body: some View {
         ZStack {
@@ -80,16 +81,28 @@ struct PrayerAmenView: View {
 
             Spacer()
 
-            VStack(spacing: 10) {
-                AmenButton(onComplete: {
-                    state.completeOnboarding()
-                    onComplete()
-                })
+            // Centered Amen button pinned at bottom (no back button - this is the final step)
+            VStack(spacing: 12) {
+                AmenButton(
+                    onComplete: {
+                        state.completeOnboarding()
+                        onComplete()
+                    },
+                    onIncompletePress: {
+                        incompletePressCount += 1
+                        // Safety valve: if the user keeps tapping instead of holding,
+                        // let them move past this final step after 5 tries.
+                        if incompletePressCount >= 5 {
+                            state.completeOnboarding()
+                            onComplete()
+                        }
+                    }
+                )
 
                 // Hint label: visible while typing, fades out when done
-                Text(holdHintText)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundColor(.white.opacity(0.55))
+                Text(state.resolvedLanguage.localizedString("AmenHoldHint"))
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundColor(.white.opacity(0.5))
                     .opacity(prayerTypingComplete ? 0 : 1)
                     .animation(.easeOut(duration: 0.4), value: prayerTypingComplete)
             }
@@ -235,18 +248,6 @@ struct PrayerAmenView: View {
         }
     }
     
-    // MARK: - Hold Hint
-
-    private var holdHintText: String {
-        if state.isChinese {
-            return "長按「阿們」完成禱告"
-        } else if state.isSpanish {
-            return "Mantén presionado \"Amén\" para terminar"
-        } else {
-            return "Hold \"Amen\" to finish"
-        }
-    }
-
     // MARK: - Appear Logic
 
     private func handleAppear() {

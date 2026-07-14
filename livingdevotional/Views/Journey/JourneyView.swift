@@ -28,6 +28,8 @@ struct JourneyView: View {
                         // Spiritual Analysis Section
                         if viewModel.isLoadingAI {
                             AILoadingView()
+                        } else if viewModel.hasNoActivityYet {
+                            JourneyEmptyStateView()
                         } else if let analysis = viewModel.aiAnalysis {
                             // Path Status Card (merged with encouragement and summary)
                             PathStatusCardView(pathStatus: analysis.pathStatus) {

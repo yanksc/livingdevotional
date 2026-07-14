@@ -241,7 +241,8 @@ extension AIService {
         name: String,
         reflection: String,
         deepDiveSelection: DeepDiveSelection?,
-        language: AppLanguage
+        language: AppLanguage,
+        excludeReference: String? = nil
     ) async throws -> [OnboardingRecommendedVerse] {
         guard let selection = deepDiveSelection, !selection.displayText.isEmpty else {
             return getDefaultRelatedVerses(language: language)
@@ -251,22 +252,26 @@ extension AIService {
         let isSpanish = language == .spanish
         let languageInstruction = isChinese ? "Traditional Chinese (繁體中文)" : (isSpanish ? "Spanish" : "English")
 
+        let exclusionLine = excludeReference.map { ref in
+            "\nIMPORTANT: Do NOT use \(ref) — that verse was already shown to this user earlier."
+        } ?? ""
+
         let prompt = """
         Based on \(name)'s reflection:
         "\(reflection)"
-        
+
         And their desire to explore:
         "\(selection.displayText)"
-        
+
         Choose ONE Bible verse as their personalized "Verse of the Day" to begin their journey.
         - Pick a verse that speaks directly to what they shared — comfort, guidance, or insight
         - Provide the full verse text (not a fragment)
         - Write a brief (1 sentence) personal explanation of why this verse was chosen for them
-        - Draw from the full breadth of Scripture — avoid overused verses like Jeremiah 29:11 or Matthew 11:28 unless they are truly the best fit
-        
+        - Draw from the full breadth of Scripture — avoid overused verses like Jeremiah 29:11 or Matthew 11:28 unless they are truly the best fit\(exclusionLine)
+
         Make it feel personal, like this verse was handpicked just for them.
         Warm, contemplative tone.
-        
+
         Language: \(languageInstruction)
         Format as JSON:
         {

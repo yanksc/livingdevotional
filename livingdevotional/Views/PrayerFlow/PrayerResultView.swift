@@ -163,11 +163,13 @@ struct PrayerTypewriterText: View {
 
 struct AmenButton: View {
     var onComplete: () -> Void
+    var onIncompletePress: (() -> Void)? = nil
     @ObservedObject private var settingsStore = SettingsStore.shared
-    
+
     @State private var isHolding = false
     @State private var progress: Double = 0.0
     @State private var timer: Timer?
+    @State private var didComplete = false
     
     private let hapticLight = UIImpactFeedbackGenerator(style: .light)
     private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
@@ -269,13 +271,19 @@ struct AmenButton: View {
         isHolding = false
         timer?.invalidate()
         timer = nil
-        
+
         withAnimation(.easeOut(duration: 0.3)) {
             progress = 0.0
         }
+
+        // Released before the full hold completed — report a tap/incomplete press
+        if !didComplete {
+            onIncompletePress?()
+        }
     }
-    
+
     private func completeAmen() {
+        didComplete = true
         notificationGenerator.notificationOccurred(.success)
         
         withAnimation(.easeOut(duration: 0.5)) {

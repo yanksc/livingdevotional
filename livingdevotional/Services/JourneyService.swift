@@ -52,7 +52,20 @@ class JourneyService: JourneyServiceProtocol {
         
         return delta < activityThreshold
     }
-    
+
+    /// Whether the user has any engagement at all (reading, saved verses, questions, or prayers).
+    /// A brand-new account has nothing for the AI to analyze, so callers should show an
+    /// empty state instead of sending an unsatisfiable "be specific" prompt to the model.
+    var hasSufficientActivityForAnalysis: Bool {
+        let chapters = progressStore.readingHistory.count
+        let verses = noteStore.savedVerses.count
+        let questions = chatStore.sessions.reduce(0) { count, session in
+            count + session.messages.filter { $0.role == .user }.count
+        }
+        let prayers = prayerLogStore.getAllLogs().count
+        return chapters + verses + questions + prayers > 0
+    }
+
     init(
         progressStore: ProgressStore = .shared,
         noteStore: NoteStore = .shared,
